@@ -5,6 +5,16 @@ import argparse, csv, os, sqlite3, sys, statistics as st
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from autobets.tennis import tables
 
+def read_rows(fn):
+    """Rows as dicts from a .csv or .xlsx file."""
+    if fn.lower().endswith(".xlsx"):
+        import openpyxl
+        it = openpyxl.load_workbook(fn, data_only=True, read_only=True).active.iter_rows(values_only=True)
+        head = [str(h) for h in next(it)]
+        return [dict(zip(head, ["" if v is None else v for v in row])) for row in it if row and row[0]]
+    return list(csv.DictReader(open(fn, encoding="utf-8-sig")))
+
+
 ap = argparse.ArgumentParser()
 ap.add_argument("--tour", default="ATP"); ap.add_argument("--surface", default="all")
 ap.add_argument("--start"); ap.add_argument("--stop")
@@ -16,7 +26,7 @@ print(f"api-tennis: {used} matches used, {skipped} skipped (no stats), {len(rows
 ti = {}
 for fn, cols in ((a.service, {"Service Pts W %": "service_pts", "Service hold %": "hold", "BP save %": "bp_save", "1st Serve W %": "first_w", "2nd Serve W %": "second_w", "1st Serve %": "first_serve_in"}),
                  (a.ret, {"Return Pts W %": "return_pts", "Opponent Hold %": "opp_hold", "BP W %": "bp_conv"})):
-    for r in csv.DictReader(open(fn, encoding="utf-8-sig")):
+    for r in read_rows(fn):
         d = ti.setdefault(r["Player"], {"matches": float(r["Match Stat Matches"])})
         for c, k in cols.items():
             try: d[k] = float(r[c])
