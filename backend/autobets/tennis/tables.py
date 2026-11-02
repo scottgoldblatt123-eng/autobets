@@ -32,10 +32,33 @@ def parse_match(raw):
         pk = str(s.get("player_key"))
         if k and pk in out and s.get("stat_total") is not None and s.get("stat_won") is not None:
             out[pk][k] = (int(s["stat_won"]), int(s["stat_total"]))
+    if any("hold" not in p or "rgw" not in p for p in out.values()):
+        derive_games(m, out)
     need = ("svc", "ret", "hold", "rgw")
     if len(out) != 2 or any(k not in p for p in out.values() for k in need):
         return None
     return out
+
+
+def derive_games(m, out):
+    """Fill service/return games won from point-by-point when the games statistics are absent
+    (api-tennis only publishes them for matches from about Feb 2026). Returns True if filled."""
+    pbp = m.get("pointbypoint") or []
+    side_key = {"First Player": str(m.get("first_player_key")), "Second Player": str(m.get("second_player_key"))}
+    a, b = side_key["First Player"], side_key["Second Player"]
+    held = {a: [0, 0], b: [0, 0]}  # [service games won, service games played]
+    for g in pbp:
+        srv, win = side_key.get(g.get("player_served")), side_key.get(g.get("serve_winner"))
+        if srv is None or win is None:
+            continue
+        held[srv][1] += 1
+        held[srv][0] += 1 if win == srv else 0
+    if held[a][1] + held[b][1] == 0 or a not in out or b not in out:
+        return False
+    for me, opp in ((a, b), (b, a)):
+        out[me]["hold"] = tuple(held[me])
+        out[me]["rgw"] = (held[opp][1] - held[opp][0], held[opp][1])  # opponent service games they broke
+    return True
 
 
 def build(db, tour, surface=None, start=None, stop=None):
