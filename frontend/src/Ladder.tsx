@@ -1,11 +1,12 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import type { MarketState, Order } from './api'
 import { hedge, money, type Position, type Side } from './maths'
-import { nearest, move, window } from './ticks'
+import { nearest, window } from './ticks'
 
 export interface Props {
   market: MarketState; marketId: string; selectionId: string; orders: Order[]
-  ticksShown: number; offset: number; active: boolean
+  ticksShown: number; centre: number | null; autoCentre: boolean; active: boolean
+  onSetCentre: (c: number) => void
   onClick: (side: Side, price: number) => void
   onCancelAt: (price: number) => void
   onWheel: (dir: number) => void
@@ -24,16 +25,24 @@ export default function Ladder(p: Props) {
   const pos: Position | undefined = p.market.positions[p.selectionId]
   const mine = p.orders.filter(o => o.selection_id === p.selectionId)
 
-  const view = useMemo(() => {
+  const ref = useMemo(() => {
     if (!sel) return null
-    const bestBack = sel.backs[0]?.[0], bestLay = sel.lays[0]?.[0]
-    const ref = sel.last ?? (bestBack && bestLay ? (bestBack + bestLay) / 2 : bestBack ?? bestLay ?? 2)
-    const centre = move(nearest(ref), p.offset)
+    const bb = sel.backs[0]?.[0], bl = sel.lays[0]?.[0]
+    return sel.last ?? (bb && bl ? (bb + bl) / 2 : bb ?? bl ?? null)
+  }, [sel])
+  // The ladder keeps its centre until the user recentres (Enter / ⌖), unless auto-recentre is switched on.
+  useEffect(() => { if (!p.autoCentre && p.centre == null && ref != null) p.onSetCentre(nearest(ref)) }, [p.autoCentre, p.centre, ref]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const view = useMemo(() => {
+    if (!sel || ref == null) return null
+    const centre = p.autoCentre || p.centre == null ? nearest(ref) : p.centre
     const rows = window(centre, p.ticksShown, p.ticksShown)
     const back = new Map(sel.backs), lay = new Map(sel.lays), traded = new Map(sel.traded)
     const maxTraded = Math.max(1, ...rows.map(r => traded.get(r) ?? 0))
-    return { rows, back, lay, traded, maxTraded, ltp: sel.last, bestBack, bestLay }
-  }, [sel, p.offset, p.ticksShown])
+    const ltp = sel.last
+    const away = ltp == null ? '' : ltp > rows[0] ? '▲' : ltp < rows[rows.length - 1] ? '▼' : ''
+    return { rows, back, lay, traded, maxTraded, ltp, away }
+  }, [sel, ref, p.centre, p.autoCentre, p.ticksShown])
 
   if (!sel || !view) return <div className="ladder"><div className="ladder-head"><b>{name}</b> · no data</div></div>
   const open = pos && (Math.abs(pos.win) > 0.004 || Math.abs(pos.lose) > 0.004)
@@ -53,6 +62,7 @@ export default function Ladder(p: Props) {
           <span title="Profit if this selection wins" className={pos!.win >= 0 ? 'gain' : 'loss'}>win {money(pos!.win)}</span>
           <span title="Profit if this selection loses" className={pos!.lose >= 0 ? 'gain' : 'loss'}>lose {money(pos!.lose)}</span>
         </>) : <span className="muted">no position</span>}
+        {view.away && <span className="muted" title="The last traded price is outside the visible ladder — recentre (Enter)">{view.away} price {view.ltp?.toFixed(2)}</span>}
         <span className="spacer" />
         <button className="sm" onClick={p.onClose} disabled={!open} title="Close position (C)">Close</button>
         <button className="sm" onClick={p.onCancelAll} disabled={!mine.length} title="Cancel all unmatched">Cancel</button>

@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, setToken, type MarketInfo, type State } from './api'
 import Ladder from './Ladder'
 import { money, orderSize, type Side } from './maths'
+import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
-interface Settings { ticksShown: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number }
+interface Settings { autoCentre: boolean; ticksShown: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number }
 interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string }
 
-const DEFAULTS: Settings = { ticksShown: 10, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50 }
+const DEFAULTS: Settings = { autoCentre: false, ticksShown: 10, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50 }
 const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
 
@@ -23,7 +24,7 @@ export default function App() {
   const [sport, setSport] = useState<'tennis' | 'football'>('tennis')
   const [markets, setMarkets] = useState<MarketInfo[]>([])
   const [ladders, setLadders] = useState<LadderRef[]>([])
-  const [offsets, setOffsets] = useState<Record<string, number>>({})
+  const [centres, setCentres] = useState<Record<string, number | null>>({})
   const [state, setState] = useState<State | null>(null)
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
@@ -128,7 +129,7 @@ export default function App() {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       const l = ladders.find(x => keyOf(x) === active)
       if (e.key === 'Escape') { setPending(null); setShowSettings(false) }
-      else if (e.key === 'Enter') setOffsets({})
+      else if (e.key === 'Enter') setCentres({})
       else if (['1', '2', '3', '4'].includes(e.key)) setSettings(s => (Number(e.key) - 1 < s.presets.length ? { ...s, stakeIdx: Number(e.key) - 1 } : s))
       else if (l && e.key.toLowerCase() === 'z') cancelAll(l, 'BACK')
       else if (l && e.key.toLowerCase() === 'x') cancelAll(l, 'LAY')
@@ -202,12 +203,13 @@ export default function App() {
               return (
                 <Ladder key={k} market={m} marketId={l.marketId} selectionId={l.selectionId}
                   orders={(state?.orders ?? []).filter(o => o.market_id === l.marketId)} ticksShown={settings.ticksShown}
-                  offset={offsets[k] ?? 0} active={active === k}
+                  centre={centres[k] ?? null} autoCentre={settings.autoCentre} active={active === k}
+                  onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
                   onClick={(side, price) => click(l, side, price)} onCancelAt={price => cancelAt(l, price)}
-                  onWheel={d => setOffsets(o => ({ ...o, [k]: (o[k] ?? 0) + d }))} onHover={() => setActive(k)}
+                  onWheel={d => setCentres(o => (o[k] == null ? o : { ...o, [k]: move(o[k]!, d) }))} onHover={() => setActive(k)}
                   onCancelAll={() => cancelAll(l)} onClose={() => closePos(l)}
                   onRemove={() => setLadders(cur => cur.filter(x => keyOf(x) !== k))}
-                  onRecentre={() => setOffsets(o => ({ ...o, [k]: 0 }))} />
+                  onRecentre={() => setCentres(o => ({ ...o, [k]: null }))} />
               )
             })}
           </div>
@@ -232,6 +234,8 @@ export default function App() {
         <div className="overlay" onClick={() => setShowSettings(false)}>
           <div className="card wide" onClick={e => e.stopPropagation()}>
             <h3>Ladder settings</h3>
+            <label className="check"><input type="checkbox" checked={settings.autoCentre} onChange={e => setSettings(s => ({ ...s, autoCentre: e.target.checked }))} />
+              Auto-recentre on the price (off: the ladder stays put until you press Enter or ⌖)</label>
             <label>Ticks shown each side of the price
               <input type="number" min={4} max={30} value={settings.ticksShown} onChange={e => setSettings(s => ({ ...s, ticksShown: Math.max(4, Math.min(30, Number(e.target.value) || 10)) }))} />
             </label>
