@@ -105,6 +105,11 @@ class BetfairAdapter(ExchangeAdapter):
             raise ExchangeError(f"unknown market {market_id}")
         return self.parse_book(res[0])
 
+    def get_books(self, market_ids: list[str]) -> list[MarketBook]:
+        """Best offers for several markets in one call (kept to <= 40 per call by the caller: Betfair data-weight limit)."""
+        res = self._call("listMarketBook", {"marketIds": market_ids, "priceProjection": {"priceData": ["EX_BEST_OFFERS"]}})
+        return [self.parse_book(r) for r in res]
+
     @staticmethod
     def parse_book(raw: dict) -> MarketBook:
         book = MarketBook(raw["marketId"], in_play=bool(raw.get("inplay")))
