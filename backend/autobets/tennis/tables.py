@@ -47,7 +47,13 @@ def derive_games(m, out):
     side_key = {"First Player": str(m.get("first_player_key")), "Second Player": str(m.get("second_player_key"))}
     a, b = side_key["First Player"], side_key["Second Player"]
     held = {a: [0, 0], b: [0, 0]}  # [service games won, service games played]
+    tb_sets = {g.get("set_number", "").replace(" TieBreak", "") for g in pbp if "tiebreak" in (g.get("set_number") or "").lower()}
     for g in pbp:
+        sn = g.get("set_number") or ""
+        if "tiebreak" in sn.lower():
+            continue  # individual tie-break points
+        if sn in tb_sets and str(g.get("number_game")) == "13":
+            continue  # the tie-break itself, counted as a 13th game
         srv, win = side_key.get(g.get("player_served")), side_key.get(g.get("serve_winner"))
         if srv is None or win is None:
             continue
@@ -61,7 +67,7 @@ def derive_games(m, out):
     return True
 
 
-def build(db, tour, surface=None, start=None, stop=None):
+def build(db, tour, surface=None, start=None, stop=None, main_draw=False, no_cups=False):
     """Aggregate per player. tour 'ATP'|'WTA'|'CH'; surface 'hard'|'clay'|'grass'|None(all)."""
     q, args = "SELECT raw, surface FROM matches WHERE tour=? AND status='Finished'", [tour]
     if start: q += " AND date>=?"; args.append(start)
@@ -71,6 +77,12 @@ def build(db, tour, surface=None, start=None, stop=None):
     for raw, surf in db.execute(q, args):
         if surface and surf not in SURFACES[surface]:
             continue
+        if main_draw or no_cups:
+            mm = json.loads(raw)
+            if main_draw and str(mm.get("event_qualification")).lower() == "true":
+                continue
+            if no_cups and any(w in (mm.get("tournament_name") or "").lower() for w in ("davis cup", "united cup", "laver", "hopman")):
+                continue
         p = parse_match(raw)
         if not p:
             skipped += 1; continue

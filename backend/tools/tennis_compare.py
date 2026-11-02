@@ -19,9 +19,10 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--tour", default="ATP"); ap.add_argument("--surface", default="all")
 ap.add_argument("--start"); ap.add_argument("--stop")
 ap.add_argument("--service", required=True); ap.add_argument("--ret", required=True)
+ap.add_argument("--main-draw", action="store_true"); ap.add_argument("--no-cups", action="store_true")
 ap.add_argument("--db", default="/opt/autobets/data/tennis.db"); ap.add_argument("--min", type=int, default=8)
 a = ap.parse_args()
-rows, used, skipped = tables.build(sqlite3.connect(a.db), a.tour, None if a.surface == "all" else a.surface, a.start, a.stop)
+rows, used, skipped = tables.build(sqlite3.connect(a.db), a.tour, None if a.surface == "all" else a.surface, a.start, a.stop, a.main_draw, a.no_cups)
 print(f"api-tennis: {used} matches used, {skipped} skipped (no stats), {len(rows)} players")
 ti = {}
 for fn, cols in ((a.service, {"Service Pts W %": "service_pts", "Service hold %": "hold", "BP save %": "bp_save", "1st Serve W %": "first_w", "2nd Serve W %": "second_w", "1st Serve %": "first_serve_in"}),
