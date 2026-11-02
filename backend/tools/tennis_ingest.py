@@ -13,7 +13,7 @@ def surface_map(key):
     r, _ = get("get_tournaments", key)
     out = {}
     for t in r.get("result") or []:
-        s = t.get("tournament_surface") or t.get("surface") or t.get("court")
+        s = t.get("tournament_sourface") or t.get("tournament_surface") or t.get("surface") or t.get("court")
         out[str(t.get("tournament_key"))] = s
     return out, r.get("result") or []
 
@@ -43,6 +43,8 @@ def main():
         d = e + dt.timedelta(days=1); time.sleep(0.3)
     for tour, n, st, pb in db.execute("SELECT tour,count(*),sum(has_stats),sum(has_pbp) FROM matches GROUP BY tour"):
         print(f"store {tour}: {n} matches, {st} with statistics, {pb} with point-by-point")
+    for sf, n in db.execute("SELECT coalesce(surface,'?'),count(*) FROM matches GROUP BY 1 ORDER BY 2 DESC"):
+        print(f"surface {sf}: {n}")
     print("INGEST-COMPLETE")
 
 
