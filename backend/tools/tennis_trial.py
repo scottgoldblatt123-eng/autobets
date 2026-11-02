@@ -26,15 +26,41 @@ def split_event(event_name: str):
     return None
 
 
+def tokens(name: str) -> set[str]:
+    name = re.sub(r"[^A-Za-z\u00c0-\u017f\- ]", " ", name or "").lower()
+    return {t for t in name.replace("-", " ").split() if len(t) > 1}
+
+
+def same_player(a: str, b: str) -> bool:
+    """Betfair 'Da Merida' vs API 'Daniel Merida Aguilar': every word of the shorter name is the start
+    of some word in the other (so 'da' matches 'daniel'), or the surnames match."""
+    ta, tb = tokens(a), tokens(b)
+    if not ta or not tb:
+        return False
+    short, long_ = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+    if all(any(w.startswith(t) for w in long_) for t in short):
+        return True
+    return surname(a) == surname(b)
+
+
 def coverage(betfair_events: list[str], api_matches: list[tuple[str, str]]):
-    api = {frozenset((surname(a), surname(b))) for a, b in api_matches}
-    hit, miss = [], []
+    """Singles only. Doubles ('A/B v C/D') are returned separately."""
+    hit, miss, doubles = [], [], []
     for ev in betfair_events:
-        pair = split_event(ev)
+        if "/" in ev:
+            doubles.append(ev)
+            continue
+        pair = None
+        for sep in (" v ", " vs "):
+            if sep in ev:
+                pair = tuple(x.strip() for x in ev.split(sep, 1))
+                break
         if not pair:
             continue
-        (hit if frozenset(pair) in api else miss).append(ev)
-    return hit, miss
+        ok = any((same_player(pair[0], a) and same_player(pair[1], b)) or
+                 (same_player(pair[0], b) and same_player(pair[1], a)) for a, b in api_matches)
+        (hit if ok else miss).append(ev)
+    return hit, miss, doubles
 
 
 def get(method: str, key: str, **params):
@@ -78,9 +104,9 @@ def main():
         bf = BetfairAdapter.from_env_file(SECRETS + "betfair.env")
         mk = bf.list_markets("2", max_results=200)
         events = [m["event"] for m in mk]
-        hit, miss = coverage(events, matches)
+        hit, miss, doubles = coverage(events, matches)
         pct = 100 * len(hit) / max(1, len(hit) + len(miss))
-        print(f"Betfair tennis matches checked: {len(hit)+len(miss)} | found in api-tennis: {len(hit)} ({pct:.0f}%)")
+        print(f"Betfair singles checked: {len(hit)+len(miss)} | found in api-tennis: {len(hit)} ({pct:.0f}%) | doubles skipped: {len(doubles)}")
         for m in miss[:15]:
             print("  missing:", m)
     except Exception as e:

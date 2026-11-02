@@ -1,6 +1,6 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
-from tennis_trial import surname, split_event, coverage
+from tennis_trial import surname, split_event, coverage, same_player
 
 
 def test_surname_and_split():
@@ -11,5 +11,10 @@ def test_surname_and_split():
 
 
 def test_coverage_is_order_independent():
-    hit, miss = coverage(["Alcaraz v Sinner", "Zverev v Rune"], [("Jannik Sinner", "Carlos Alcaraz")])
-    assert hit == ["Alcaraz v Sinner"] and miss == ["Zverev v Rune"]
+    hit, miss, dbl = coverage(["Alcaraz v Sinner", "Zverev v Rune", "A/B v C/D"], [("Jannik Sinner", "Carlos Alcaraz")])
+    assert hit == ["Alcaraz v Sinner"] and miss == ["Zverev v Rune"] and dbl == ["A/B v C/D"]
+
+
+def test_name_variants():
+    assert same_player("Da Merida", "Daniel Merida Aguilar") and same_player("Se Baez", "Sebastian Baez")
+    assert same_player("Ig Buse", "Ignacio Buse") and not same_player("A Zverev", "Musetti")
