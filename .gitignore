@@ -1,0 +1,8 @@
+.env
+*.key
+*.crt
+*.pem
+__pycache__/
+node_modules/
+.venv/
+data/
