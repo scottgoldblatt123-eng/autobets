@@ -79,7 +79,12 @@ def build(db, tour, surface=None, start=None, stop=None):
         for me, opp in ((a, b), (b, a)):
             mp, op = p[me], p[opp]; names[me] = mp["name"]; r = acc[me]
             r["n"] += 1
-            for k in ("svc", "ret", "hold", "w1", "w2", "bps", "bpc"):
+            for k in ("svc", "ret", "hold"):
+                if k in mp: r[k + "_w"] += mp[k][0]; r[k + "_t"] += mp[k][1]
+            if all(k in mp for k in ("w1", "w2")):  # 1st/2nd split only where both are reported
+                for k in ("w1", "w2"): r[k + "_w"] += mp[k][0]; r[k + "_t"] += mp[k][1]
+                r["svc_split_t"] += mp["svc"][1]
+            for k in ("bps", "bpc"):
                 if k in mp: r[k + "_w"] += mp[k][0]; r[k + "_t"] += mp[k][1]
             r["oh_w"] += op["hold"][0]; r["oh_t"] += op["hold"][1]
     rows = {}
@@ -87,7 +92,7 @@ def build(db, tour, surface=None, start=None, stop=None):
         pct = lambda w, t: round(100 * r[w] / r[t], 1) if r[t] else None
         rows[pk] = {"name": names[pk], "matches": r["n"], "service_pts": pct("svc_w", "svc_t"), "return_pts": pct("ret_w", "ret_t"),
                     "hold": pct("hold_w", "hold_t"), "opp_hold": pct("oh_w", "oh_t"), "bp_save": pct("bps_w", "bps_t"),
-                    "bp_conv": pct("bpc_w", "bpc_t"), "first_serve_in": pct("w1_t", "svc_t") if r["w1_t"] else None,
+                    "bp_conv": pct("bpc_w", "bpc_t"), "first_serve_in": pct("w1_t", "svc_split_t") if r["w1_t"] else None,
                     "first_w": pct("w1_w", "w1_t"), "second_w": pct("w2_w", "w2_t")}
     return rows, used, skipped
 

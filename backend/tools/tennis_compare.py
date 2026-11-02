@@ -49,6 +49,8 @@ for k in ("service_pts", "return_pts", "hold", "opp_hold", "bp_save", "bp_conv",
     d = [u - v for u, v in x]
     c = st.correlation([u for u, _ in x], [v for _, v in x]) if len(x) > 2 else float("nan")
     print(f"{k:16s} {st.mean(d):9.2f} {st.mean(abs(v) for v in d):11.2f} {c:6.2f}")
+ratios = sorted(p[2]["matches"] / p[1]["matches"] for p in pairs if p[1]["matches"] >= 8)
+print(f"\nMatch-count ratio api-tennis / Tennis Insight: median {ratios[len(ratios)//2]:.2f}, 10th pct {ratios[len(ratios)//10]:.2f}, 90th pct {ratios[9*len(ratios)//10]:.2f}")
 print("\nLargest differences (service_pts):")
 for full, d, r in sorted(big, key=lambda p: -abs(p[2]["service_pts"] - p[1].get("service_pts", 0)))[:6]:
     print(f"  {full:24s} TI {d.get('service_pts')} ({d['matches']:.0f}m)  API {r['service_pts']} ({r['matches']}m)")
