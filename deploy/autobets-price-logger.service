@@ -1,0 +1,14 @@
+[Unit]
+Description=AutoBets Betfair tennis price logger (read-only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/autobets/app
+ExecStart=/usr/bin/python3 backend/tools/tennis_price_logger.py --interval 60
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

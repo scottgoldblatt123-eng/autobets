@@ -18,6 +18,21 @@ def surface_map(key):
     return out, r.get("result") or []
 
 
+def ingest(key, db, start, stop, chunk=7, quiet=False):
+    """Pull finished matches start..stop (ISO dates) into the store. Returns number kept."""
+    surf, tl = surface_map(key)
+    d, end, kept = dt.date.fromisoformat(start), dt.date.fromisoformat(stop), 0
+    while d <= end:
+        e = min(d + dt.timedelta(days=chunk - 1), end)
+        fx, ms = get("get_fixtures", key, date_start=d.isoformat(), date_stop=e.isoformat())
+        rows = [r for r in (fx.get("result") or []) if r.get("event_status") == "Finished"]
+        k = sum(store.upsert_match(db, r, surf) for r in rows)
+        db.commit(); kept += k
+        if not quiet: print(f"{d}..{e}: finished={len(rows)} kept={k} [{ms:.0f} ms]", flush=True)
+        d = e + dt.timedelta(days=1); time.sleep(0.3)
+    return kept
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--start", required=True); ap.add_argument("--stop", required=True)
@@ -48,4 +63,5 @@ def main():
     print("INGEST-COMPLETE")
 
 
-main()
+if __name__ == "__main__":
+    main()

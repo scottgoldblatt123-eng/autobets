@@ -1,0 +1,2 @@
+# AutoBets: refresh tennis data and player tables daily at 05:30 server time
+30 5 * * * cd /opt/autobets/app && git pull -q && python3 backend/tools/tennis_daily.py >> /opt/autobets/data/daily.log 2>&1

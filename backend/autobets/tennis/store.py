@@ -38,3 +38,9 @@ def upsert_match(db, r, surfaces):
         r.get("event_status"), 1 if r.get("statistics") else 0, 1 if r.get("pointbypoint") else 0,
         json.dumps(r)))
     return True
+
+
+def ensure_tables_snapshot(db):
+    db.execute("""CREATE TABLE IF NOT EXISTS player_tables(asof TEXT, tour TEXT, surface TEXT, player_key TEXT, name TEXT,
+                  matches INTEGER, service_pts REAL, return_pts REAL, hold REAL, opp_hold REAL, bp_save REAL, bp_conv REAL,
+                  PRIMARY KEY(asof, tour, surface, player_key))""")

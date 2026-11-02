@@ -19,7 +19,7 @@ def connect(path):
 
 
 def tick(bf, db, hours_ahead, max_markets):
-    now = dt.datetime.utcnow()
+    now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
     markets = bf.list_markets("2", "MATCH_ODDS", max_results=max_markets)
     keep = []
     for m in markets:
@@ -50,7 +50,7 @@ def main():
     while True:
         try:
             n, rows = tick(bf, db, a.hours_ahead, a.max_markets)
-            print(dt.datetime.utcnow().isoformat(timespec="seconds"), f"markets={n} price_rows={rows}", flush=True)
+            print(dt.datetime.now(dt.timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds"), f"markets={n} price_rows={rows}", flush=True)
         except Exception as e:
             print("tick error:", type(e).__name__, str(e)[:160], flush=True)
         if a.once:

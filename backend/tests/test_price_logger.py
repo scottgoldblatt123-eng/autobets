@@ -6,8 +6,8 @@ import tennis_price_logger as pl
 
 class Fake:
     def list_markets(self, *a, **k):
-        soon = (dt.datetime.utcnow() + dt.timedelta(hours=1)).isoformat() + "Z"
-        late = (dt.datetime.utcnow() + dt.timedelta(hours=40)).isoformat() + "Z"
+        soon = (dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) + dt.timedelta(hours=1)).isoformat() + "Z"
+        late = (dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) + dt.timedelta(hours=40)).isoformat() + "Z"
         return [{"market_id": "1.1", "event": "A v B", "competition": "X", "start": soon, "runners": {"1": "A", "2": "B"}},
                 {"market_id": "1.2", "event": "C v D", "competition": "X", "start": late, "runners": {"3": "C", "4": "D"}}]
 
