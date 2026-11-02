@@ -58,3 +58,17 @@ def test_token_required_outside_demo(monkeypatch):
     c = TestClient(create_app(Engine.demo()))
     assert c.get("/api/markets").status_code == 401
     assert c.get("/api/markets", headers={"X-Auth": "s3cret"}).status_code == 200
+
+
+def test_close_nearly_level_position_is_a_message_not_an_error(client):
+    st = client.get(f"/api/state?ids={MID}").json()
+    sel = st["markets"][MID]["selections"]["101"]
+    client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": sel["backs"][0][0], "size": 1})
+    r = client.post(f"/api/markets/{MID}/close/101")
+    assert r.status_code == 200 and r.json()["closed"] is False
+
+
+def test_open_orders_list_excludes_matched(client):
+    st = client.get(f"/api/state?ids={MID}").json()
+    client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": st["markets"][MID]["selections"]["101"]["backs"][0][0], "size": 5})
+    assert client.get(f"/api/state?ids={MID}").json()["orders"] == []

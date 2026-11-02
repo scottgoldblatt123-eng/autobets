@@ -1,0 +1,40 @@
+import type { Side } from './maths'
+
+export interface Sel { backs: [number, number][]; lays: [number, number][]; traded: [number, number][]; last: number | null }
+export interface MarketState {
+  name: string; event: string; competition: string; start: string | null; in_play: boolean
+  runners: Record<string, string>; selections: Record<string, Sel>; positions: Record<string, { win: number; lose: number }>
+}
+export interface Order {
+  order_id: string; market_id: string; selection_id: string; side: Side; price: number; size: number
+  matched: number; avg_price: number; remaining: number; status: string
+}
+export interface State { mode: string; markets: Record<string, MarketState>; orders: Order[]; totals: { exposure: number; open_pnl: number }; warnings: string[] }
+export interface MarketInfo { market_id: string; name: string; event: string; competition: string; start: string | null; runners: Record<string, string>; in_play?: boolean }
+
+let token = ''
+try { token = localStorage.getItem('autobets.token') ?? '' } catch { /* storage unavailable */ }
+export const setToken = (t: string) => { token = t; try { localStorage.setItem('autobets.token', t) } catch { /* ignore */ } }
+
+async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const r = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', 'X-Auth': token, ...(init.headers ?? {}) } })
+  if (!r.ok) {
+    let msg = r.statusText
+    try { const j = await r.json(); msg = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail) } catch { /* not json */ }
+    throw Object.assign(new Error(msg), { status: r.status })
+  }
+  return r.json() as Promise<T>
+}
+
+export const api = {
+  ping: () => call<{ needs_token: boolean; mode: string }>('/api/ping'),
+  markets: (sport: string) => call<MarketInfo[]>(`/api/markets?sport=${sport}`),
+  state: (ids: string[]) => call<State>(`/api/state?ids=${ids.join(',')}`),
+  place: (b: { market_id: string; selection_id: string; side: Side; price: number; size: number }) =>
+    call<{ order: Order; warnings: string[] }>('/api/orders', { method: 'POST', body: JSON.stringify(b) }),
+  cancel: (id: string) => call<Order>(`/api/orders/${id}`, { method: 'DELETE' }),
+  cancelAll: (market: string, selection?: string, side?: Side) =>
+    call<{ cancelled: number }>(`/api/markets/${market}/cancel-all?${new URLSearchParams({ ...(selection ? { selection_id: selection } : {}), ...(side ? { side } : {}) })}`, { method: 'POST' }),
+  close: (market: string, selection: string) =>
+    call<{ closed: boolean; reason?: string; locked_profit?: number }>(`/api/markets/${market}/close/${selection}`, { method: 'POST' }),
+}

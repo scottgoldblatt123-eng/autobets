@@ -81,7 +81,12 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     @app.post("/api/markets/{market_id}/close/{selection_id}")
     def close(market_id: str, selection_id: str, _=Depends(auth)):
-        return engine.close_position(market_id, selection_id)
+        try:
+            return engine.close_position(market_id, selection_id)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+        except RuntimeError as e:
+            raise HTTPException(502, str(e))
 
     dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     if dist.exists():

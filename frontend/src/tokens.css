@@ -1,0 +1,68 @@
+/* AutoBets Design System — generated from tokens.json */
+:root, [data-theme="dark"] {
+  --bg: #0e1217;
+  --surface: #151b22;
+  --surface-raised: #1d252e;
+  --border: #2c3642;
+  --border-strong: #5b6877;
+  --text: #e6ebf0;
+  --text-muted: #9aa7b4;
+  --brand: #2ec4b6;
+  --on-brand: #05201d;
+  --back: #7ab8f5;
+  --on-back: #0a1a2b;
+  --lay: #f4a3b8;
+  --on-lay: #2a0a14;
+  --profit: #4fd18b;
+  --loss: #ff7a7a;
+  --warn: #f5b942;
+  --warn-fill: #f5b942;
+  --on-warn: #2a1c00;
+  --live-fill: #e5484d;
+  --on-live: #ffffff;
+  --info: #7ab8f5;
+}
+[data-theme="light"] {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --surface-raised: #f8fafb;
+  --border: #d5dce3;
+  --border-strong: #7b8794;
+  --text: #14202b;
+  --text-muted: #4a5866;
+  --brand: #0f766e;
+  --on-brand: #ffffff;
+  --back: #bfdcfb;
+  --on-back: #0b2540;
+  --lay: #fbc4d1;
+  --on-lay: #3a0b1a;
+  --profit: #0a7d44;
+  --loss: #b3261e;
+  --warn: #8a5a00;
+  --warn-fill: #f5b942;
+  --on-warn: #2a1c00;
+  --live-fill: #c62828;
+  --on-live: #ffffff;
+  --info: #1f5fa8;
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.display { font-family: var(--font-sans); font-size: 28px; font-weight: 700; line-height: 1.15; }
+.title { font-family: var(--font-sans); font-size: 18px; font-weight: 600; line-height: 1.3; }
+.body { font-family: var(--font-sans); font-size: 14px; font-weight: 400; line-height: 1.45; }
+.label { font-family: var(--font-sans); font-size: 12px; font-weight: 600; line-height: 1.3; }
+.caption { font-family: var(--font-sans); font-size: 12px; font-weight: 400; line-height: 1.35; }
+.num { font-family: var(--font-mono); font-size: 13px; font-weight: 500; line-height: 1.2; }
+.num-lg { font-family: var(--font-mono); font-size: 24px; font-weight: 600; line-height: 1.1; }

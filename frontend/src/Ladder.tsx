@@ -1,0 +1,86 @@
+import { useMemo } from 'react'
+import type { MarketState, Order } from './api'
+import { hedge, money, type Position, type Side } from './maths'
+import { nearest, move, window } from './ticks'
+
+export interface Props {
+  market: MarketState; marketId: string; selectionId: string; orders: Order[]
+  ticksShown: number; offset: number; active: boolean
+  onClick: (side: Side, price: number) => void
+  onCancelAt: (price: number) => void
+  onWheel: (dir: number) => void
+  onHover: () => void
+  onCancelAll: () => void
+  onClose: () => void
+  onRemove: () => void
+  onRecentre: () => void
+}
+
+const fmtSize = (s: number) => (s >= 1000 ? (s / 1000).toFixed(1) + 'k' : s.toFixed(0))
+
+export default function Ladder(p: Props) {
+  const sel = p.market.selections[p.selectionId]
+  const name = p.market.runners[p.selectionId] ?? p.selectionId
+  const pos: Position | undefined = p.market.positions[p.selectionId]
+  const mine = p.orders.filter(o => o.selection_id === p.selectionId)
+
+  const view = useMemo(() => {
+    if (!sel) return null
+    const bestBack = sel.backs[0]?.[0], bestLay = sel.lays[0]?.[0]
+    const ref = sel.last ?? (bestBack && bestLay ? (bestBack + bestLay) / 2 : bestBack ?? bestLay ?? 2)
+    const centre = move(nearest(ref), p.offset)
+    const rows = window(centre, p.ticksShown, p.ticksShown)
+    const back = new Map(sel.backs), lay = new Map(sel.lays), traded = new Map(sel.traded)
+    const maxTraded = Math.max(1, ...rows.map(r => traded.get(r) ?? 0))
+    return { rows, back, lay, traded, maxTraded, ltp: sel.last, bestBack, bestLay }
+  }, [sel, p.offset, p.ticksShown])
+
+  if (!sel || !view) return <div className="ladder"><div className="ladder-head"><b>{name}</b> · no data</div></div>
+  const open = pos && (Math.abs(pos.win) > 0.004 || Math.abs(pos.lose) > 0.004)
+
+  return (
+    <div className={'ladder' + (p.active ? ' active' : '')} onMouseEnter={p.onHover}
+         onWheel={e => { p.onWheel(e.deltaY > 0 ? -1 : 1) }}>
+      <div className="ladder-head">
+        <div className="ladder-title">
+          <b>{name}</b>
+          <span className="muted">{p.market.event} · {p.market.name}{p.market.in_play ? ' · ● in play' : ''}</span>
+        </div>
+        <button className="icon" title="Remove ladder" onClick={p.onRemove}>✕</button>
+      </div>
+      <div className="ladder-pos">
+        {open ? (<>
+          <span title="Profit if this selection wins" className={pos!.win >= 0 ? 'gain' : 'loss'}>win {money(pos!.win)}</span>
+          <span title="Profit if this selection loses" className={pos!.lose >= 0 ? 'gain' : 'loss'}>lose {money(pos!.lose)}</span>
+        </>) : <span className="muted">no position</span>}
+        <span className="spacer" />
+        <button className="sm" onClick={p.onClose} disabled={!open} title="Close position (C)">Close</button>
+        <button className="sm" onClick={p.onCancelAll} disabled={!mine.length} title="Cancel all unmatched">Cancel</button>
+        <button className="sm" onClick={p.onRecentre} title="Recentre (Enter)">⌖</button>
+      </div>
+      <div className="grid head">
+        <div>Green</div><div>Vol</div><div>Back</div><div>Price</div><div>Lay</div><div>Mine</div>
+      </div>
+      <div className="rows">
+        {view.rows.map(price => {
+          const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
+          const here = mine.filter(o => o.price === price)
+          const green = open ? hedge(pos!, price) : null
+          const isLtp = view.ltp === price
+          return (
+            <div key={price} className={'grid lrow' + (isLtp ? ' ltp' : '')}>
+              <div className={'cell green ' + (green ? (green.locked >= 0 ? 'gain' : 'loss') : '')}>{green ? green.locked.toFixed(2) : ''}</div>
+              <div className="cell vol"><i style={{ width: `${(t / view.maxTraded) * 100}%` }} />{t ? <span>{fmtSize(t)}</span> : null}</div>
+              <button className="cell back" onClick={() => p.onClick('BACK', price)} title={`Back at ${price}`}>{b ? fmtSize(b) : ''}</button>
+              <div className="cell price">{price.toFixed(2)}</div>
+              <button className="cell lay" onClick={() => p.onClick('LAY', price)} title={`Lay at ${price}`}>{l ? fmtSize(l) : ''}</button>
+              <button className="cell mine" onClick={() => here.length && p.onCancelAt(price)} title={here.length ? 'Cancel these orders' : ''}>
+                {here.map(o => <span key={o.order_id} className={'chip ' + o.side.toLowerCase()}>{o.side[0]}{o.remaining.toFixed(0)}</span>)}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

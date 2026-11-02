@@ -1,0 +1,16 @@
+[Unit]
+Description=AutoBets API and Manual Trading screen (practice mode)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/autobets/app/backend
+Environment=AUTOBETS_MODE=practice
+EnvironmentFile=/opt/autobets/secrets/api.env
+ExecStart=/opt/autobets/venv/bin/uvicorn --factory autobets.api.app:create_app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

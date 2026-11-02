@@ -88,7 +88,7 @@ class Engine:
                                for sid, s in b.selections.items()},
                 "positions": {sid: {"win": p.win, "lose": p.lose} for sid, p in pos.get(b.market_id, {}).items()},
             }
-        orders = [self._order(o) for o in self.ex.open_orders() if o.request.market_id in ids]
+        orders = [self._order(o) for o in self.ex.open_orders() if o.status in OPEN and o.request.market_id in ids]
         allpos = [p for m in pos.values() for p in m.values()]
         exposure = round(sum(-min(p.win, p.lose, 0) for p in allpos), 2)
         return {"mode": self.mode, "t": time.time(), "markets": markets, "orders": orders,
@@ -147,5 +147,7 @@ class Engine:
             return {"closed": False, "reason": "no price available to hedge at"}
         price = levels[0].price
         h = pnl.hedge(p, price)
+        if h is None or h[1] < 1.0:
+            return {"closed": False, "reason": "position is level to within the £1 minimum stake"}
         res = self.place(market_id, selection_id, h[0].value, price, h[1])
         return {"closed": True, "locked_profit": h[2], **res}

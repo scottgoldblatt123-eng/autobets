@@ -57,3 +57,26 @@ def test_list_markets_shape():
             "runners": [{"selectionId": 1, "runnerName": "A"}, {"selectionId": 2, "runnerName": "B"}]}]
     m = BetfairAdapter("k", "u", "p", Fake([LOGIN_OK, (200, cat)])).list_markets("1")
     assert m[0]["event"] == "A v B" and m[0]["runners"] == {"1": "A", "2": "B"}
+
+
+def test_practice_engine_on_betfair_shaped_data():
+    """The practice engine works against the real adapter's response shapes: catalogue, depth book, traded volume."""
+    from autobets.api.engine import Engine
+    cat = [{"marketId": "1.1", "marketName": "Match Odds", "marketStartTime": "2026-11-02T18:00:00.000Z",
+            "event": {"name": "A v B"}, "competition": {"name": "Cup"},
+            "runners": [{"selectionId": 10, "runnerName": "A"}, {"selectionId": 11, "runnerName": "B"}]}]
+    book = {"marketId": "1.1", "inplay": False, "runners": [
+        {"selectionId": 10, "lastPriceTraded": 3.4, "ex": {"availableToBack": [{"price": 3.35, "size": 120.5}, {"price": 3.3, "size": 40}],
+                                                         "availableToLay": [{"price": 3.4, "size": 80}], "tradedVolume": [{"price": 3.4, "size": 900}]}},
+        {"selectionId": 11, "ex": {"availableToBack": [], "availableToLay": []}}]}
+    fake = Fake([LOGIN_OK, (200, cat), (200, [book]), (200, [book]), (200, [book])])
+    eng = Engine(BetfairAdapter("k", "u", "p", fake), "practice")
+    ms = eng.markets("tennis")
+    assert ms[0]["runners"] == {"10": "A", "11": "B"}
+    st = eng.state(["1.1"])
+    sel = st["markets"]["1.1"]["selections"]["10"]
+    assert sel["backs"][0] == [3.35, 120.5] and sel["traded"] == [[3.4, 900]]
+    r = eng.place("1.1", "10", "BACK", 3.35, 10)
+    assert r["order"]["status"] == "MATCHED"
+    assert eng.state(["1.1"])["markets"]["1.1"]["positions"]["10"]["lose"] == -10
+    assert not any("order" in url for url, _ in fake.calls)       # nothing was ever sent to the order endpoints
