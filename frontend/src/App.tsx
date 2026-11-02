@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, setToken, type MarketInfo, type State } from './api'
+import MarketPanel from './MarketPanel'
 import Ladder from './Ladder'
-import { money, orderSize, type Side } from './maths'
+import { hedge, money, orderSize, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
@@ -30,6 +31,8 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [active, setActive] = useState('')
   const [pending, setPending] = useState<Pending | null>(null)
+  const [menu, setMenu] = useState<{ l: LadderRef; price: number; x: number; y: number } | null>(null)
+  const seenEvt = useRef(Date.now() / 1000)
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'warn' | 'err' } | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const inFlight = useRef(false)
@@ -75,6 +78,10 @@ export default function App() {
     return () => window.clearInterval(t)
   }, [ready, refresh, ids.length])
 
+  useEffect(() => {
+    for (const e of state?.events ?? []) if (e.t > seenEvt.current) { seenEvt.current = e.t; say(e.text, e.text.includes('FAILED') ? 'err' : 'ok') }
+  }, [state, say])
+
   const stake = settings.presets[settings.stakeIdx] ?? settings.presets[0]
 
   const submit = useCallback(async (p: Pending) => {
@@ -97,7 +104,33 @@ export default function App() {
     else submit(p)
   }
 
+  const hedgeAt = (l: LadderRef, price: number) => {
+    const m = state?.markets[l.marketId]
+    const pos = m?.positions[l.selectionId]
+    const h = pos ? hedge(pos, price) : null
+    if (!h) return say('Position is already level', 'warn')
+    if (h.stake < 1) return say('Hedge would be under the £1 minimum stake', 'warn')
+    const p: Pending = { marketId: l.marketId, selectionId: l.selectionId, side: h.side, price, size: h.stake, runner: m?.runners[l.selectionId] ?? l.selectionId }
+    if (settings.confirmAbove > 0 && h.stake >= settings.confirmAbove) setPending(p)
+    else submit(p)
+  }
+  const addTrigger = async (l: LadderRef, price: number) => {
+    setMenu(null)
+    try {
+      const t = await api.addTrigger({ market_id: l.marketId, selection_id: l.selectionId, price })
+      say(`${t.label === 'stop loss' ? 'Stop loss' : 'Take profit'} set: greens up when the price reaches ${price.toFixed(2)} (locks ${money(t.locked)})`)
+      refresh()
+    } catch (e) { say((e as Error).message, 'err') }
+  }
+  const greenMarket = async (marketId: string, hard: boolean) => {
+    const r = await api.green(marketId, hard).catch(e => { say(e.message, 'err'); return null })
+    if (r) say(r.greened ? `${hard ? 'Hard close' : 'Green up'} done — locked ${money(r.locked ?? 0)}${r.level ? '' : ' (not fully level)'}${r.cancelled ? `, cancelled ${r.cancelled}` : ''}` : (r.cancelled ? `Cancelled ${r.cancelled}; ` : '') + (r.reason ?? 'nothing to do'), r.greened ? 'ok' : 'warn')
+    refresh()
+  }
+
   const cancelAt = async (l: LadderRef, price: number) => {
+    const trg = state?.triggers.filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId && t.price === price) ?? []
+    await Promise.all(trg.map(t => api.delTrigger(t.id).catch(e => say(e.message, 'err'))))
     const here = state?.orders.filter(o => o.market_id === l.marketId && o.selection_id === l.selectionId && o.price === price) ?? []
     await Promise.all(here.map(o => api.cancel(o.order_id).catch(e => say(e.message, 'err'))))
     refresh()
@@ -128,7 +161,7 @@ export default function App() {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       const l = ladders.find(x => keyOf(x) === active)
-      if (e.key === 'Escape') { setPending(null); setShowSettings(false) }
+      if (e.key === 'Escape') { setPending(null); setShowSettings(false); setMenu(null) }
       else if (e.key === 'Enter') setCentres({})
       else if (['1', '2', '3', '4'].includes(e.key)) setSettings(s => (Number(e.key) - 1 < s.presets.length ? { ...s, stakeIdx: Number(e.key) - 1 } : s))
       else if (l && e.key.toLowerCase() === 'z') cancelAll(l, 'BACK')
@@ -195,6 +228,7 @@ export default function App() {
             <span className="spacer" />
             <span className="muted small">Hover a ladder · Z cancel back · X cancel lay · C close · Enter recentre · wheel scrolls</span>
           </div>
+          {ids.map(id => state?.markets[id] && <MarketPanel key={id} marketId={id} market={state.markets[id]} onGreen={h => greenMarket(id, h)} />)}
           {ladders.length === 0 && <div className="empty muted">Pick a market on the left to open its ladders (up to {MAX_LADDERS}).</div>}
           <div className="ladders" style={{ gridTemplateColumns: `repeat(${Math.max(1, ladders.length)}, minmax(230px, 1fr))` }}>
             {ladders.map(l => {
@@ -205,6 +239,8 @@ export default function App() {
                   orders={(state?.orders ?? []).filter(o => o.market_id === l.marketId)} ticksShown={settings.ticksShown}
                   centre={centres[k] ?? null} autoCentre={settings.autoCentre} active={active === k}
                   onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
+                  triggers={(state?.triggers ?? []).filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId)}
+                  onHedge={price => hedgeAt(l, price)} onContext={(price, x, y) => setMenu({ l, price, x, y })}
                   onClick={(side, price) => click(l, side, price)} onCancelAt={price => cancelAt(l, price)}
                   onWheel={d => setCentres(o => (o[k] == null ? o : { ...o, [k]: move(o[k]!, d) }))} onHover={() => setActive(k)}
                   onCancelAll={() => cancelAll(l)} onClose={() => closePos(l)}
@@ -252,6 +288,24 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {menu && (() => {
+        const m = state?.markets[menu.l.marketId], pos = m?.positions[menu.l.selectionId]
+        const h = pos ? hedge(pos, menu.price) : null
+        const runner = m?.runners[menu.l.selectionId] ?? ''
+        const here = (state?.triggers ?? []).filter(t => t.market_id === menu.l.marketId && t.selection_id === menu.l.selectionId && t.price === menu.price)
+        return (
+          <div className="overlay clear" onClick={() => setMenu(null)} onContextMenu={e => { e.preventDefault(); setMenu(null) }}>
+            <div className="menu" style={{ left: Math.min(menu.x, window.innerWidth - 290), top: Math.min(menu.y, window.innerHeight - 140) }} onClick={e => e.stopPropagation()}>
+              <div className="muted small">{runner} · {menu.price.toFixed(2)}</div>
+              {h
+                ? <button onClick={() => addTrigger(menu.l, menu.price)}>{h.locked >= 0 ? 'Take profit' : 'Stop loss'}: green up when price reaches {menu.price.toFixed(2)} <b className={h.locked >= 0 ? 'gain' : 'loss'}>({money(h.locked)})</b></button>
+                : <div className="muted small pad">{pos ? 'Position is level — nothing to protect' : 'No position on this selection'}</div>}
+              {here.length > 0 && <button onClick={async () => { await Promise.all(here.map(t => api.delTrigger(t.id))); setMenu(null); refresh() }}>Remove stop / take profit here</button>}
+            </div>
+          </div>
+        )
+      })()}
 
       {toast && <div className={'toast ' + toast.kind} role="status">{toast.text}</div>}
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import type { MarketState, Order } from './api'
+import type { MarketState, Order, Trigger } from './api'
 import { hedge, money, type Position, type Side } from './maths'
 import { nearest, window } from './ticks'
 
@@ -7,6 +7,9 @@ export interface Props {
   market: MarketState; marketId: string; selectionId: string; orders: Order[]
   ticksShown: number; centre: number | null; autoCentre: boolean; active: boolean
   onSetCentre: (c: number) => void
+  triggers: Trigger[]
+  onHedge: (price: number) => void
+  onContext: (price: number, x: number, y: number) => void
   onClick: (side: Side, price: number) => void
   onCancelAt: (price: number) => void
   onWheel: (dir: number) => void
@@ -76,16 +79,20 @@ export default function Ladder(p: Props) {
           const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
           const here = mine.filter(o => o.price === price)
           const green = open ? hedge(pos!, price) : null
+          const trg = p.triggers.filter(t => t.price === price)
           const isLtp = view.ltp === price
           return (
-            <div key={price} className={'grid lrow' + (isLtp ? ' ltp' : '')}>
-              <div className={'cell green ' + (green ? (green.locked >= 0 ? 'gain' : 'loss') : '')}>{green ? green.locked.toFixed(2) : ''}</div>
+            <div key={price} className={'grid lrow' + (isLtp ? ' ltp' : '')} onContextMenu={e => { e.preventDefault(); p.onContext(price, e.clientX, e.clientY) }}>
+              <button className={'cell green ' + (green ? (green.locked >= 0 ? 'gain' : 'loss') : '')} disabled={!green}
+                      onClick={() => green && p.onHedge(price)} title={green ? `Hedge here: ${green.side} £${green.stake.toFixed(2)} at ${price.toFixed(2)}, locks ${money(green.locked)}` : ''}>
+                {green ? green.locked.toFixed(2) : ''}</button>
               <div className="cell vol"><i style={{ width: `${(t / view.maxTraded) * 100}%` }} />{t ? <span>{fmtSize(t)}</span> : null}</div>
               <button className="cell back" onClick={() => p.onClick('BACK', price)} title={`Back at ${price}`}>{b ? fmtSize(b) : ''}</button>
               <div className="cell price">{price.toFixed(2)}</div>
               <button className="cell lay" onClick={() => p.onClick('LAY', price)} title={`Lay at ${price}`}>{l ? fmtSize(l) : ''}</button>
-              <button className="cell mine" onClick={() => here.length && p.onCancelAt(price)} title={here.length ? 'Cancel these orders' : ''}>
+              <button className="cell mine" onClick={() => (here.length || trg.length) && p.onCancelAt(price)} title={here.length || trg.length ? 'Cancel the orders / stops here' : ''}>
                 {here.map(o => <span key={o.order_id} className={'chip ' + o.side.toLowerCase()}>{o.side[0]}{o.remaining.toFixed(0)}</span>)}
+                {trg.map(t => <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} title={`${t.label}: greens up when the price reaches ${t.price.toFixed(2)} (click to remove)`}>{t.label === 'stop loss' ? 'SL' : 'TP'}</span>)}
               </button>
             </div>
           )

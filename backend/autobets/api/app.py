@@ -17,11 +17,13 @@ from .engine import Engine
 def make_engine() -> Engine:
     mode = os.environ.get("AUTOBETS_MODE", "demo")
     if mode == "demo":
-        return Engine.demo()
+        e = Engine.demo(); e.start_background(); return e
     if mode == "practice":
         from ..exchange.betfair import BetfairAdapter
         bf = BetfairAdapter.from_env_file(os.environ.get("AUTOBETS_BETFAIR_ENV", "/opt/autobets/secrets/betfair.env"))
-        return Engine(bf, "practice", os.environ.get("AUTOBETS_JOURNAL", "/opt/autobets/data/journal.db"))
+        e = Engine(bf, "practice", os.environ.get("AUTOBETS_JOURNAL", "/opt/autobets/data/journal.db"))
+        e.start_background()
+        return e
     raise SystemExit(f"unknown AUTOBETS_MODE {mode!r} (live mode is not built yet)")
 
 
@@ -32,6 +34,12 @@ class OrderIn(BaseModel):
     price: float
     size: float
     persistence: str = "KEEP"
+
+
+class TriggerIn(BaseModel):
+    market_id: str
+    selection_id: str
+    price: float
 
 
 def create_app(engine: Engine | None = None) -> FastAPI:
@@ -93,6 +101,24 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             raise HTTPException(422, str(e))
         except RuntimeError as e:
             raise HTTPException(502, str(e))
+
+    @app.post("/api/markets/{market_id}/green")
+    def green(market_id: str, hard: bool = False, _=Depends(auth)):
+        try:
+            return engine.green_market(market_id, hard)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    @app.post("/api/triggers")
+    def add_trigger(t: TriggerIn, _=Depends(auth)):
+        try:
+            return engine.add_trigger(t.market_id, t.selection_id, t.price)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    @app.delete("/api/triggers/{trigger_id}")
+    def del_trigger(trigger_id: str, _=Depends(auth)):
+        return {"cancelled": engine.cancel_trigger(trigger_id)}
 
     dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     if dist.exists():

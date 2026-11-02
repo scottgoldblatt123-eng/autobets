@@ -82,3 +82,68 @@ def test_exchange_errors_become_502_with_a_message(monkeypatch):
     c = TestClient(create_app(eng))
     r = c.get("/api/markets?sport=tennis")
     assert r.status_code == 502 and "login failed" in r.json()["detail"]
+
+
+def _back(client, size=20):
+    st = client.get(f"/api/state?ids={MID}").json()
+    price = st["markets"][MID]["selections"]["101"]["backs"][0][0]
+    client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": price, "size": size})
+
+
+def test_state_has_market_outcomes_and_green_plan(client):
+    _back(client)
+    m = client.get(f"/api/state?ids={MID}").json()["markets"][MID]
+    assert m["outcomes"]["101"] > 0 > m["outcomes"]["102"]
+    assert m["green"]["level"] and m["green"]["bets"]
+
+
+def test_green_market_levels_outcomes(client):
+    _back(client)
+    r = client.post(f"/api/markets/{MID}/green").json()
+    assert r["greened"] and r["placed"]
+    o = client.get(f"/api/state?ids={MID}").json()["markets"][MID]["outcomes"]
+    assert abs(o["101"] - o["102"]) < 1.0                    # levelled, within a tick of price movement between calls
+
+
+def test_hard_close_cancels_resting_orders_first(client):
+    _back(client)
+    client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": 60.0, "size": 5})
+    assert client.get(f"/api/state?ids={MID}").json()["orders"]
+    r = client.post(f"/api/markets/{MID}/green?hard=true").json()
+    assert r["cancelled"] == 1 and r["greened"]
+    assert client.get(f"/api/state?ids={MID}").json()["orders"] == []
+
+
+def test_trigger_needs_a_position_and_fires_and_greens(client):
+    r = client.post("/api/triggers", json={"market_id": MID, "selection_id": "101", "price": 1.5})
+    assert r.status_code == 422 and "no position" in r.json()["detail"]
+    _back(client)
+    st = client.get(f"/api/state?ids={MID}").json()["markets"][MID]["selections"]["101"]
+    ltp = st["last"]
+    r = client.post("/api/triggers", json={"market_id": MID, "selection_id": "101", "price": ltp})
+    assert r.status_code == 422                                # the current price
+    below = round(max(1.02, ltp - 0.5), 2)
+    t = client.post("/api/triggers", json={"market_id": MID, "selection_id": "101", "price": below}).json()
+    assert t["direction"] == "le" and t["label"] in ("take profit", "stop loss")
+    assert [x["id"] for x in client.get(f"/api/state?ids={MID}").json()["triggers"]] == [t["id"]]
+    assert client.delete(f"/api/triggers/{t['id']}").json()["cancelled"] is True
+    assert client.get(f"/api/state?ids={MID}").json()["triggers"] == []
+
+
+def test_trigger_logic_directly():
+    from autobets.api.engine import Engine
+    e = Engine.demo()
+    st = e.state([MID])
+    sel = st["markets"][MID]["selections"]["101"]
+    e.place(MID, "101", "BACK", sel["backs"][0][0], 20)
+    ltp = e.ex.get_book(MID).selections["101"].last_traded
+    t = e.add_trigger(MID, "101", ticks_move(ltp, 2))      # above the price -> 'ge'
+    assert t["direction"] == "ge"
+    e.ex.get_book(MID).selections["101"].last_traded = ticks_move(ltp, 3)   # price moves through it
+    e._check_triggers()
+    assert e.triggers == {} and "fired" in e.events[-1]["text"].lower()
+
+
+def ticks_move(p, n):
+    from autobets import ticks
+    return ticks.move(p, n)
