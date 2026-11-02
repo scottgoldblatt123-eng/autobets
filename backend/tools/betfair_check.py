@@ -44,10 +44,12 @@ def main():
         ctx = ssl.create_default_context()
         ctx.load_cert_chain(env["BETFAIR_CERT"], env["BETFAIR_KEY"])
         res, ms = post("https://identitysso-cert.betfair.com/api/certlogin", {"username": user, "password": pw}, hdr, ctx=ctx)
-        token, status, how = res.get("sessionToken"), res.get("loginStatus"), "certificate login"
+        token, how = res.get("sessionToken"), "certificate login"
+        status = f'{res.get("loginStatus") or res}'
     else:
         res, ms = post("https://identitysso.betfair.com/api/login", {"username": user, "password": pw}, hdr)
-        token, status, how = res.get("token"), res.get("status") or res.get("error") or res, "interactive login"
+        token, how = res.get("token"), "interactive login"
+        status = f'{res.get("status")} / reason: {res.get("error") or res.get("http_error") or "none given"}'
     print(f"Login ({how}): {status}  [{ms:.0f} ms]")
     if not token:
         sys.exit("No session token. If the status mentions a security code or 2FA, we will switch to certificate login.")
