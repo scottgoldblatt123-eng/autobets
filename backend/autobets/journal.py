@@ -10,7 +10,7 @@ INTENT, SENT, CONFIRMED, FAILED, UNKNOWN = "INTENT", "SENT", "CONFIRMED", "FAILE
 
 class Journal:
     def __init__(self, path: str = ":memory:") -> None:
-        self.db = sqlite3.connect(path)
+        self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.execute("""CREATE TABLE IF NOT EXISTS orders(
             client_ref TEXT PRIMARY KEY, exchange_id TEXT, state TEXT NOT NULL,
             market_id TEXT, selection_id TEXT, side TEXT, price REAL, size REAL,

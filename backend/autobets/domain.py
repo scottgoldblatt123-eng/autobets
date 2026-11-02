@@ -84,6 +84,7 @@ class SelectionBook:
     backs: list[PriceLevel] = field(default_factory=list)   # best first (highest)
     lays: list[PriceLevel] = field(default_factory=list)    # best first (lowest)
     last_traded: float | None = None
+    traded: dict = field(default_factory=dict)             # price -> matched volume (full-depth reads only)
 
 
 @dataclass

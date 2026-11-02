@@ -24,7 +24,8 @@ _INDEX = {p: i for i, p in enumerate(LADDER)}
 
 
 def is_valid(price: float) -> bool:
-    return round(price, 2) in _INDEX
+    r = round(price, 2)
+    return abs(price - r) < 1e-9 and r in _INDEX      # 1.015 is not a price
 
 
 def nearest(price: float) -> float:

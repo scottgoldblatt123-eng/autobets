@@ -105,10 +105,19 @@ class BetfairAdapter(ExchangeAdapter):
             raise ExchangeError(f"unknown market {market_id}")
         return self.parse_book(res[0])
 
-    def get_books(self, market_ids: list[str]) -> list[MarketBook]:
-        """Best offers for several markets in one call (kept to <= 40 per call by the caller: Betfair data-weight limit)."""
-        res = self._call("listMarketBook", {"marketIds": market_ids, "priceProjection": {"priceData": ["EX_BEST_OFFERS"]}})
+    def get_books(self, market_ids: list[str], depth: bool = False) -> list[MarketBook]:
+        """Several markets in one call. Top-of-book by default (<= 40 markets per call: Betfair data-weight limit);
+        depth=True adds all offers and traded volume for ladders (keep to <= 5 markets per call)."""
+        data = ["EX_ALL_OFFERS", "EX_TRADED"] if depth else ["EX_BEST_OFFERS"]
+        res = self._call("listMarketBook", {"marketIds": market_ids, "priceProjection": {"priceData": data}})
         return [self.parse_book(r) for r in res]
+
+    def market_info(self, market_ids: list[str]) -> dict[str, dict]:
+        res = self._call("listMarketCatalogue", {"filter": {"marketIds": market_ids}, "maxResults": str(len(market_ids)),
+                         "marketProjection": ["EVENT", "COMPETITION", "MARKET_START_TIME", "RUNNER_DESCRIPTION"]})
+        return {m["marketId"]: {"market_id": m["marketId"], "name": m.get("marketName", ""), "start": m.get("marketStartTime"),
+                "event": m.get("event", {}).get("name", ""), "competition": m.get("competition", {}).get("name", ""),
+                "runners": {str(r["selectionId"]): r["runnerName"] for r in m.get("runners", [])}} for m in res}
 
     @staticmethod
     def parse_book(raw: dict) -> MarketBook:
@@ -120,6 +129,7 @@ class BetfairAdapter(ExchangeAdapter):
                 backs=[PriceLevel(x["price"], x["size"]) for x in ex.get("availableToBack", [])],
                 lays=[PriceLevel(x["price"], x["size"]) for x in ex.get("availableToLay", [])],
                 last_traded=r.get("lastPriceTraded"),
+                traded={x["price"]: x["size"] for x in ex.get("tradedVolume", [])},
             )
         return book
 
