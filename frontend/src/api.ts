@@ -27,6 +27,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  mode: () => call<{ mode: string }>('/api/mode'),
   ping: () => call<{ needs_token: boolean; mode: string }>('/api/ping'),
   markets: (sport: string) => call<MarketInfo[]>(`/api/markets?sport=${sport}`),
   state: (ids: string[]) => call<State>(`/api/state?ids=${ids.join(',')}`),

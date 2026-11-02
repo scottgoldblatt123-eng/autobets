@@ -16,7 +16,8 @@ function loadSettings(): Settings {
 }
 
 export default function App() {
-  const [ready, setReady] = useState<'checking' | 'token' | 'ok'>('checking')
+  const [ready, setReady] = useState<'checking' | 'token' | 'ok' | 'error'>('checking')
+  const [bootError, setBootError] = useState('')
   const [tokenInput, setTokenInput] = useState('')
   const [mode, setMode] = useState('')
   const [sport, setSport] = useState<'tennis' | 'football'>('tennis')
@@ -45,18 +46,19 @@ export default function App() {
       const p = await api.ping()
       setMode(p.mode)
       if (!p.needs_token) return setReady('ok')
-      await api.markets('tennis')             // fails with 401 when the stored token is missing or wrong
+      await api.mode()                        // authenticated, no exchange call: 401 means the token is missing or wrong
       setReady('ok')
     } catch (e) {
-      setReady((e as { status?: number }).status === 401 ? 'token' : 'checking')
-      if ((e as { status?: number }).status !== 401) say('Cannot reach the server', 'err')
+      if ((e as { status?: number }).status === 401) { setReady('token'); return }
+      setBootError((e as Error).message || 'Cannot reach the server')
+      setReady('error')
     }
   }, [say])
   useEffect(() => { boot() }, [boot])
 
   useEffect(() => {
     if (ready !== 'ok') return
-    api.markets(sport).then(setMarkets).catch(e => say(e.message, 'err'))
+    api.markets(sport).then(setMarkets).catch(e => { setMarkets([]); say(e.message, 'err') })
   }, [ready, sport, say])
 
   const ids = Array.from(new Set(ladders.map(l => l.marketId)))
@@ -137,6 +139,10 @@ export default function App() {
   })
 
   if (ready === 'checking') return <div className="center muted">Connecting…</div>
+  if (ready === 'error') return (
+    <div className="center"><div className="card"><h3>Cannot start</h3><p className="loss">{bootError}</p>
+      <div className="row"><button className="primary" onClick={() => { setReady('checking'); boot() }}>Try again</button></div></div></div>
+  )
   if (ready === 'token') return (
     <div className="center">
       <form className="card" onSubmit={e => { e.preventDefault(); setToken(tokenInput); setReady('checking'); boot() }}>

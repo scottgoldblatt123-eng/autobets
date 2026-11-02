@@ -72,3 +72,13 @@ def test_open_orders_list_excludes_matched(client):
     st = client.get(f"/api/state?ids={MID}").json()
     client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": st["markets"][MID]["selections"]["101"]["backs"][0][0], "size": 5})
     assert client.get(f"/api/state?ids={MID}").json()["orders"] == []
+
+
+def test_exchange_errors_become_502_with_a_message(monkeypatch):
+    from autobets.exchange.base import ExchangeError
+    monkeypatch.delenv("AUTOBETS_TOKEN", raising=False)
+    eng = Engine.demo()
+    eng.feed.list_markets = lambda *a, **k: (_ for _ in ()).throw(ExchangeError("login failed: INVALID_USERNAME_OR_PASSWORD"))
+    c = TestClient(create_app(eng))
+    r = c.get("/api/markets?sport=tennis")
+    assert r.status_code == 502 and "login failed" in r.json()["detail"]

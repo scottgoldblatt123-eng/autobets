@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from ..exchange.base import ExchangeError
 from .engine import Engine
 
 
@@ -39,6 +40,11 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     if not token and engine.mode != "demo":
         raise SystemExit("AUTOBETS_TOKEN must be set outside demo mode")
     app = FastAPI(title="AutoBets")
+
+    @app.exception_handler(ExchangeError)
+    async def exchange_error(_request, exc):          # exchange problems are shown to the user, not a bare 500
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=502, content={"detail": f"Exchange error: {exc}"})
 
     def auth(x_auth: str = Header(default="")):
         if token and not hmac.compare_digest(x_auth, token):
