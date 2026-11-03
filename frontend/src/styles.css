@@ -35,8 +35,8 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .ladder-title { display: flex; flex-direction: column; min-width: 0; } .ladder-title span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ladder-pos span { white-space: nowrap; }
 .ladder-pos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 2px 10px 8px; font-variant-numeric: tabular-nums; font-size: 13px; }
-.grid { display: grid; grid-template-columns: 46px 30px 1fr 54px 1fr 30px 1fr; }
-.with-total .grid { grid-template-columns: 46px 30px 1fr 54px 1fr 30px 1fr 1fr; }
+.grid { display: grid; grid-template-columns: 46px 52px 1fr 54px 1fr 52px 1fr; }
+.with-total .grid { grid-template-columns: 46px 52px 1fr 54px 1fr 52px 1fr 1fr; }
 .grid.head { font-size: 11px; color: var(--text-muted); text-align: center; padding: 3px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .lrow { border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
 .lrow.ltp .price { outline: 2px solid var(--text); outline-offset: -2px; }
@@ -152,7 +152,7 @@ body.dragging { cursor: row-resize; user-select: none; }
 .stakes .chipbtn.tiny { padding: 1px 6px; border-radius: var(--radius-sm); min-width: 26px; }
 .stakes input { width: 52px; margin-left: auto; padding: 1px 6px; font-size: 12px; text-align: center; border-radius: var(--radius-sm); flex: none; }
 .stakes input.on { border-color: var(--brand); background: var(--brand); color: var(--on-brand); font-weight: 600; } .stakes input.bad { border-color: var(--loss); color: var(--loss); }
-.pnl-right .grid { grid-template-columns: 30px 1fr 54px 1fr 30px 1fr 46px; } .pnl-right.with-total .grid { grid-template-columns: 30px 1fr 54px 1fr 30px 1fr 1fr 46px; }
+.pnl-right .grid { grid-template-columns: 52px 1fr 54px 1fr 52px 1fr 46px; } .pnl-right.with-total .grid { grid-template-columns: 52px 1fr 54px 1fr 52px 1fr 1fr 46px; }
 .pnl-right .cell.green { order: 99; }
 
 .card.scroll { max-height: 88vh; overflow-y: auto; } .card h4 { margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 3px; }
@@ -184,3 +184,7 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 
 .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 10px 10px; flex: none; } .panels .opanel { margin: 0; min-width: 0; }
 .sidetag { padding: 0 6px; border-radius: 3px; font-size: 11px; } .sidetag.back { background: var(--back); color: var(--on-back); } .sidetag.lay { background: var(--lay); color: var(--on-lay); }
+
+.chip.sum { font-weight: 700; padding: 1px 5px; } .chip.sum sup { font-size: 9px; margin-left: 2px; }
+.cell.recent.waiting { position: relative; } .waitbox { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; background: var(--surface); font-size: 11px; white-space: nowrap; overflow: hidden; } .waitbox em { color: var(--text-muted); font-style: normal; }
+.chartwrap.tiny > * { visibility: hidden; }

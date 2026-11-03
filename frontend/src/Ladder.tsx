@@ -31,6 +31,7 @@ export default function Ladder(p: Props) {
   const card = useRef<HTMLDivElement>(null), rowsEl = useRef<HTMLDivElement>(null), chartEl = useRef<HTMLDivElement>(null)
   /** How many price rows fit in this ladder's card, measured, so the ladder never needs a scrollbar of its own. */
   const [fit, setFit] = useState(61)
+  const [chartH, setChartH] = useState(999)
   const er = Math.max(MIN_ROWS, Math.min(p.rows > 0 ? p.rows : Math.floor(fit * 0.7), fit, 61))   // rows actually shown: 0 = fit automatically, leaving room for the chart
   useLayoutEffect(() => {
     const el = card.current; if (!el) return
@@ -40,7 +41,7 @@ export default function Ladder(p: Props) {
       const total = Math.max(el.clientHeight, el.scrollHeight)
       const chrome = total - rowsH - chartH
       const n = Math.floor((el.clientHeight - chrome) / (rowsH / er))
-      setFit(f => (f === n ? f : Math.max(MIN_ROWS, n)))
+      setFit(f => (f === n ? f : Math.max(MIN_ROWS, n))); setChartH(chartH_ => (chartH_ === chartH ? chartH_ : chartH))
     }
     const ro = new ResizeObserver(measure); ro.observe(el); measure()
     return () => ro.disconnect()
@@ -60,6 +61,9 @@ export default function Ladder(p: Props) {
   const name = p.market.runners[p.selectionId] ?? p.selectionId
   const pos: Position | undefined = p.market.positions[p.selectionId]
   const mine = p.orders.filter(o => o.selection_id === p.selectionId)
+  /** The net position in words, when it is a plain back or a plain lay (a lay: you keep the stake if it loses, pay out if it wins). */
+  const plain = pos && pos.win < -0.004 && pos.lose > 0.004 ? { side: 'LAY' as const, stake: pos.lose, price: 1 - pos.win / pos.lose, tip: `You have laid £${pos.lose.toFixed(2)}: you keep it if this runner loses, and pay ${money(pos.win).replace('-', '')} if it wins.` }
+    : pos && pos.win > 0.004 && pos.lose < -0.004 ? { side: 'BACK' as const, stake: -pos.lose, price: 1 + pos.win / -pos.lose, tip: `You have backed £${(-pos.lose).toFixed(2)}: you win ${money(pos.win)} if this runner wins, and lose the stake if it loses.` } : null
 
   const ref = useMemo(() => {
     if (!sel) return null
@@ -115,6 +119,7 @@ export default function Ladder(p: Props) {
       </div>
       <div className="ladder-pos">
         {open ? (<>
+          {plain && <b className={'sidetag ' + plain.side.toLowerCase()} title={plain.tip}>{plain.side} £{plain.stake.toFixed(2)} @ {plain.price.toFixed(2)}</b>}
           <span title="Profit if this selection wins" className={pos!.win >= 0 ? 'gain' : 'loss'}>win {money(pos!.win)}</span>
           <span title="Profit if this selection loses" className={pos!.lose >= 0 ? 'gain' : 'loss'}>lose {money(pos!.lose)}</span>
         </>) : <span className="muted">no position</span>}
@@ -138,6 +143,9 @@ export default function Ladder(p: Props) {
           const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
           const here = mine.filter(o => o.price === price)
           const hereB = here.filter(o => o.side === 'BACK'), hereL = here.filter(o => o.side === 'LAY')
+          const sum = (os: Order[]) => os.reduce((a, o) => a + o.remaining, 0)
+          const fmtSum = (os: Order[]) => '£' + (Math.abs(sum(os) - Math.round(sum(os))) < 0.005 ? sum(os).toFixed(0) : sum(os).toFixed(2))
+          const ids = (os: Order[]) => os.map(o => o.order_id).join(',')
           const hg = open ? hedge(pos!, price) : null
           const green = hg && p.pnlBasis === 'market' && p.market.outcomes ? { ...hg, locked: marketAfter(p.market.outcomes, p.selectionId, hg.side, hg.stake, price) } : hg
           const trg = p.triggers.filter(t => t.price === price)
@@ -147,23 +155,24 @@ export default function Ladder(p: Props) {
           return (
             <div key={price} className={'grid lrow' + (isLtp ? ' ltp' : '')}
                  onDragOver={e => { if (e.dataTransfer.types.includes('text/order')) e.preventDefault() }}
-                 onDrop={e => { const id = e.dataTransfer.getData('text/order'); if (id && mine.some(o => o.order_id === id)) { e.preventDefault(); p.onMoveOrder(id, price) } }}
+                 onDrop={e => { const got = e.dataTransfer.getData('text/order'); const ok = got.split(',').filter(id => id && mine.some(o => o.order_id === id)); if (ok.length) { e.preventDefault(); ok.forEach(id => p.onMoveOrder(id, price)) } }}
                  onContextMenu={e => { e.preventDefault(); p.onContext(price, e.clientX, e.clientY) }}>
               <button className={'cell green ' + (green ? (green.locked >= 0 ? 'gain' : 'loss') : '')} disabled={!green}
                       onClick={() => green && p.onHedge(price)} title={green ? `Hedge here: ${green.side} £${green.stake.toFixed(2)} at ${price.toFixed(2)}, locks ${money(green.locked)} ${p.pnlBasis === 'market' ? 'across the whole market' : 'on this runner'}` : ''}>
                 {green ? green.locked.toFixed(2) : ''}</button>
-              <div className="cell minecol" onClick={cancel} title={hereB.length ? 'Your back bets here: click to cancel, drag to another price' : ''}>
-                {hereB.map(o => <span key={o.order_id} className="chip back draggable" draggable onDragStart={e => { e.dataTransfer.setData('text/order', o.order_id); e.dataTransfer.effectAllowed = 'move' }}>{o.remaining.toFixed(0)}</span>)}</div>
+              <div className="cell minecol" onClick={cancel} title={hereB.length ? `${hereB.length} unmatched BACK bet${hereB.length > 1 ? 's' : ''} waiting at ${price.toFixed(2)}, ${fmtSum(hereB)} in all (click to cancel, drag to move)` : ''}>
+                {hereB.length > 0 && <span className="chip back draggable sum" draggable onDragStart={e => { e.dataTransfer.setData('text/order', ids(hereB)); e.dataTransfer.effectAllowed = 'move' }}>{fmtSum(hereB)}{hereB.length > 1 && <sup>×{hereB.length}</sup>}</span>}</div>
               <button className={'cell back' + (b ? '' : backZone ? ' zone' : ' none')} onClick={() => p.onClick('BACK', price)} title={`Back at ${price}`}>{b ? fmtSize(b) : ''}</button>
               <div className={'cell price' + (isLtp ? ' last' : '')}>{price.toFixed(2)}</div>
               <button className={'cell lay' + (l ? '' : layZone ? ' zone' : ' none')} onClick={() => p.onClick('LAY', price)} title={`Lay at ${price}`}>{l ? fmtSize(l) : ''}</button>
-              <div className="cell minecol" onClick={cancel} title={hereL.length || trg.length ? 'Your lay bets / stops here: click to cancel, drag a bet to another price' : ''}>
-                {hereL.map(o => <span key={o.order_id} className="chip lay draggable" draggable onDragStart={e => { e.dataTransfer.setData('text/order', o.order_id); e.dataTransfer.effectAllowed = 'move' }}>{o.remaining.toFixed(0)}</span>)}
+              <div className="cell minecol" onClick={cancel} title={hereL.length ? `${hereL.length} unmatched LAY bet${hereL.length > 1 ? 's' : ''} waiting at ${price.toFixed(2)}, ${fmtSum(hereL)} in all (click to cancel, drag to move)` : trg.length ? 'Your stop / take-profit here (click to cancel)' : ''}>
+                {hereL.length > 0 && <span className="chip lay draggable sum" draggable onDragStart={e => { e.dataTransfer.setData('text/order', ids(hereL)); e.dataTransfer.effectAllowed = 'move' }}>{fmtSum(hereL)}{hereL.length > 1 && <sup>×{hereL.length}</sup>}</span>}
                 {trg.map(t => <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} title={`${t.label}: greens up when the price reaches ${t.price.toFixed(2)} (click to remove)`}>{t.label === 'stop loss' ? 'SL' : 'TP'}</span>)}</div>
-              <div className="cell recent" title={`Matched here: £${(view.rs.get(price) ?? 0).toFixed(0)} in the last ${sel.recent?.short_s ?? 0}s, £${(view.rl.get(price) ?? 0).toFixed(0)} in the last ${Math.round((sel.recent?.long_s ?? 0) / 60)} min${sel.recent && sel.recent.long_span < sel.recent.long_s ? ` (only ${Math.round(sel.recent.long_span)}s of history so far)` : ''}`}>
+              <div className={'cell recent' + (here.length ? ' waiting' : '')} title={`Matched here: £${(view.rs.get(price) ?? 0).toFixed(0)} in the last ${sel.recent?.short_s ?? 0}s, £${(view.rl.get(price) ?? 0).toFixed(0)} in the last ${Math.round((sel.recent?.long_s ?? 0) / 60)} min${sel.recent && sel.recent.long_span < sel.recent.long_s ? ` (only ${Math.round(sel.recent.long_span)}s of history so far)` : ''}`}>
                 <i className="long" style={{ width: `${((view.rl.get(price) ?? 0) / view.maxRecent) * 100}%` }} />
                 <i className="short" style={{ width: `${((view.rs.get(price) ?? 0) / view.maxRecent) * 100}%` }} />
                 {(view.rs.get(price) ?? 0) > 0 ? <span>{fmtSize(view.rs.get(price)!)}</span> : null}
+                {here.length > 0 && <span className="waitbox">{hereL.length > 0 && <b className="sidetag lay">LAY {fmtSum(hereL)}</b>}{hereB.length > 0 && <b className="sidetag back">BACK {fmtSum(hereB)}</b>}<em>waiting</em></span>}
               </div>
               {p.showTotal && <div className="cell vol" title="Total matched at this price"><i style={{ width: `${(t / view.maxTraded) * 100}%` }} />{t ? <span>{fmtSize(t)}</span> : null}</div>}
             </div>
@@ -175,7 +184,7 @@ export default function Ladder(p: Props) {
           : <>£{share.volume.toLocaleString('en-GB')} <span className="muted">({share.pct.toFixed(1)}%)</span></>}
       </div>
       {p.showChart && <div className="dragbar" onPointerDown={startDrag} title="Drag down for more price rows, up for a bigger chart"><i /></div>}
-      {p.showChart && <div className="chartwrap" ref={chartEl}><PriceChart marketId={p.marketId} selectionId={p.selectionId} /></div>}
+      {p.showChart && <div className={'chartwrap' + (chartH < 56 ? ' tiny' : '')} ref={chartEl}><PriceChart marketId={p.marketId} selectionId={p.selectionId} /></div>}
     </div>
   )
 }
