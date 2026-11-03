@@ -7,7 +7,7 @@ import { nearest, window as tickWindow } from './ticks'
 export interface Props {
   market: MarketState; marketId: string; selectionId: string; orders: Order[]
   presets: number[]; stakeText: string; defaultStake: number; stakeBad: boolean; onStakeText: (t: string) => void; pnlSide: 'left' | 'right'
-  rows: number; onRows: (n: number) => void; womLevels: number; showChart: boolean; showTotal: boolean; centre: number | null; autoCentre: boolean; active: boolean
+  reverse: boolean; rows: number; onRows: (n: number) => void; womLevels: number; showChart: boolean; showTotal: boolean; centre: number | null; autoCentre: boolean; active: boolean
   onSetCentre: (c: number) => void
   triggers: Trigger[]
   onHedge: (price: number) => void
@@ -56,17 +56,21 @@ export default function Ladder(p: Props) {
     if (!sel || ref == null) return null
     const centre = p.autoCentre || p.centre == null ? nearest(ref) : p.centre
     const above = Math.floor((p.rows - 1) / 2)
-    const rows = tickWindow(centre, above, p.rows - 1 - above)
+    let rows = tickWindow(centre, above, p.rows - 1 - above)           // highest price first
+    if (p.reverse) rows = [...rows].reverse()                            // reversed ladder: lowest price at the top
     const back = new Map(sel.backs), lay = new Map(sel.lays), traded = new Map(sel.traded)
     const maxTraded = Math.max(1, ...rows.map(r => traded.get(r) ?? 0))
     const ltp = sel.last
-    const away = ltp == null ? '' : ltp > rows[0] ? '▲' : ltp < rows[rows.length - 1] ? '▼' : ''
+    const hi = Math.max(...rows), lo = Math.min(...rows)
+    const away = ltp == null ? '' : ltp > hi ? '▲' : ltp < lo ? '▼' : ''
     const rs = new Map(sel.recent?.short ?? []), rl = new Map(sel.recent?.long ?? [])
     const maxRecent = Math.max(1, ...rows.map(r => rl.get(r) ?? 0))
     return { rows, back, lay, traded, maxTraded, ltp, away, rs, rl, maxRecent }
-  }, [sel, ref, p.centre, p.autoCentre, p.rows])
+  }, [sel, ref, p.centre, p.autoCentre, p.rows, p.reverse])
   const wom = useMemo(() => (sel ? weightOfMoney(sel.backs, sel.lays, p.womLevels) : null), [sel, p.womLevels])
   const share = useMemo(() => matchedShare(sel?.traded ?? [], Object.values(p.market.selections).map(s => s.traded)), [sel, p.market.selections])
+
+  const noVolume = Object.values(p.market.selections).every(s => s.traded.length === 0)
 
   if (!sel || !view) return <div className="ladder"><div className="ladder-head"><b>{name}</b> · no data</div></div>
   const open = pos && (Math.abs(pos.win) > 0.004 || Math.abs(pos.lose) > 0.004)
@@ -77,7 +81,7 @@ export default function Ladder(p: Props) {
 
   return (
     <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '') + (p.pnlSide === 'right' ? ' pnl-right' : '')} onMouseEnter={p.onHover}
-         onWheel={e => { p.onWheel(e.deltaY > 0 ? -1 : 1) }}>
+         onWheel={e => { p.onWheel((e.deltaY > 0 ? -1 : 1) * (p.reverse ? -1 : 1)) }}>
       <div className="ladder-head">
         <div className="ladder-title"><b>{name}</b></div>
         <span className={'pnl ' + (level > 0.004 ? 'gain' : level < -0.004 ? 'loss' : 'muted')} title="Worst case on this runner (the smaller of 'win' and 'lose')">{money(level).replace('+', '')}</span>
@@ -138,7 +142,8 @@ export default function Ladder(p: Props) {
         })}
       </div>
       <div className="foot" title="Matched on this runner, and its share of everything matched in the market">
-        £{share.volume.toLocaleString('en-GB')} <span className="muted">({share.pct.toFixed(1)}%)</span>
+        {noVolume ? <span className="muted" title="Betfair is not sending matched volumes for this market (a delayed key may withhold them)">volume not available</span>
+          : <>£{share.volume.toLocaleString('en-GB')} <span className="muted">({share.pct.toFixed(1)}%)</span></>}
       </div>
       {p.showChart && <div className="dragbar" onPointerDown={startDrag} title="Drag down for more price rows, up for a bigger chart"><i /></div>}
       {p.showChart && <div className="chartwrap" ref={chartEl}><PriceChart marketId={p.marketId} selectionId={p.selectionId} /></div>}

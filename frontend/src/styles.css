@@ -157,3 +157,5 @@ body.dragging { cursor: row-resize; user-select: none; }
 
 .card.scroll { max-height: 88vh; overflow-y: auto; } .card h4 { margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 3px; }
 select { font: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; width: 100%; }
+
+.totalpl { padding: 2px 10px; border-radius: var(--radius-pill); font-variant-numeric: tabular-nums; } .totalpl.gain { background: var(--profit); color: #06210f; } .totalpl.loss { background: var(--loss); color: #fff; }
