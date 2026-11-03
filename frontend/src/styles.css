@@ -86,7 +86,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cell.recent span { position: relative; font-size: 11px; font-weight: 600; mix-blend-mode: normal; text-shadow: 0 0 3px var(--surface); }
 .foot { text-align: center; padding: 4px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; border-top: 1px solid var(--border); }
 .chart { border-top: 1px solid var(--border); padding: 4px 8px 6px; } .chart-bar { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
-.chart svg { width: 100%; height: auto; display: block; }
+
 .chart-line { fill: none; stroke: var(--text); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 .chart-band { fill: color-mix(in srgb, var(--info) 18%, transparent); stroke: none; }
 .chart-vol { fill: color-mix(in srgb, var(--text-muted) 55%, transparent); }
@@ -115,3 +115,35 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .mstrip .clock { font-weight: 700; padding: 1px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); } .mstrip .clock.live { background: var(--live-fill); color: var(--on-live); border-color: var(--live-fill); }
 .mstrip .book i { font-style: normal; color: var(--text-muted); font-size: 11px; margin-right: 3px; } .mstrip .book { font-weight: 600; }
 .mpanel { margin-top: 4px; }
+
+/* Market blocks: a market's ladders sit together under one header, as in Geeks Toy */
+main { min-height: 0; }
+.mrow { display: flex; gap: 10px; padding: 10px; flex: 1; min-height: 0; overflow-x: auto; align-items: stretch; }
+.mblock { display: flex; flex-direction: column; min-width: 0; min-height: 0; gap: 6px; }
+.mblock .ladders { flex: 1; min-height: 0; padding: 0; overflow: visible; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+.mblock .ladder { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow-y: auto; }
+.mhead { display: flex; align-items: stretch; gap: 14px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); font-variant-numeric: tabular-nums; }
+.mctl { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.mctl .clock { font-size: 22px; font-weight: 800; letter-spacing: .02em; line-height: 1.1; } .mctl .clock.live { color: var(--live-fill); }
+.mbtnrow { display: flex; align-items: stretch; gap: 0; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); }
+.mbtnrow .book { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2px 8px; font-weight: 700; font-size: 13px; background: var(--surface-raised); }
+.mbtnrow .book i { font-style: normal; font-size: 10px; color: var(--text-muted); font-weight: 500; }
+.bigbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; padding: 4px 14px; border: 0; border-radius: 0; font-variant-numeric: tabular-nums; }
+.bigbtn b { font-size: 18px; line-height: 1.1; } .bigbtn small { font-size: 10px; opacity: .9; letter-spacing: .04em; text-transform: uppercase; }
+.bigbtn.gain { background: var(--profit); color: #06210f; } .bigbtn.loss { background: var(--loss); color: #fff; }
+.bigbtn.idle { background: var(--surface-raised); color: var(--text-muted); } .bigbtn:disabled { opacity: 1; cursor: default; }
+.bigbtn.gain:hover, .bigbtn.loss:hover { filter: brightness(1.1); outline: 2px solid var(--text); outline-offset: -2px; }
+.minfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; justify-content: center; }
+.minfo .outcomes { flex: 0; } .minfo .outcome { padding: 2px 10px; min-width: 100px; }
+.mhead > .icon { align-self: flex-start; }
+.chartwrap { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.chart { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.chart-box { flex: 1; min-height: 0; position: relative; } .chart-box svg { position: absolute; inset: 0; }
+.dragbar { height: 9px; cursor: row-resize; display: grid; place-items: center; border-top: 1px solid var(--border); background: var(--surface-raised); touch-action: none; flex: none; }
+.dragbar i { width: 38px; height: 3px; border-radius: 2px; background: var(--border-strong); } .dragbar:hover i { background: var(--brand); }
+body.dragging { cursor: row-resize; user-select: none; }
+.ladder .rows { flex: none; } .ladder .foot, .ladder .wom, .ladder-head, .ladder-pos { flex: none; }
+
+.ladder-head { gap: 6px; padding: 6px 8px 2px; } .ladder-head .ladder-title { flex: 1; min-width: 0; } .ladder-head .ladder-title b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ladder-pos { padding: 2px 10px 6px; flex-wrap: nowrap; overflow: hidden; }
+.mhead { min-height: 96px; }

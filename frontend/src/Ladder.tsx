@@ -1,12 +1,12 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { MarketState, Order, Trigger } from './api'
 import { hedge, matchedShare, money, weightOfMoney, type Position, type Side } from './maths'
 import PriceChart from './PriceChart'
-import { nearest, window } from './ticks'
+import { nearest, window as tickWindow } from './ticks'
 
 export interface Props {
   market: MarketState; marketId: string; selectionId: string; orders: Order[]
-  ticksShown: number; womLevels: number; showChart: boolean; showTotal: boolean; centre: number | null; autoCentre: boolean; active: boolean
+  rows: number; onRows: (n: number) => void; womLevels: number; showChart: boolean; showTotal: boolean; centre: number | null; autoCentre: boolean; active: boolean
   onSetCentre: (c: number) => void
   triggers: Trigger[]
   onHedge: (price: number) => void
@@ -17,13 +17,27 @@ export interface Props {
   onHover: () => void
   onCancelAll: () => void
   onClose: () => void
-  onRemove: () => void
   onRecentre: () => void
 }
 
 const fmtSize = (s: number) => (s >= 1000 ? (s / 1000).toFixed(1) + 'k' : s.toFixed(0))
 
+const MIN_ROWS = 7, MIN_CHART = 70
+
 export default function Ladder(p: Props) {
+  const card = useRef<HTMLDivElement>(null), rowsEl = useRef<HTMLDivElement>(null), chartEl = useRef<HTMLDivElement>(null)
+  /** Drag the bar under the ladder: down adds price rows and shrinks the chart, up does the reverse. */
+  const startDrag = (e: React.PointerEvent) => {
+    e.preventDefault()
+    const startY = e.clientY, startRows = p.rows
+    const rowH = rowsEl.current && p.rows ? rowsEl.current.clientHeight / p.rows : 23
+    const chrome = card.current && rowsEl.current ? card.current.clientHeight - rowsEl.current.clientHeight - (chartEl.current?.clientHeight ?? 0) : 0
+    const maxRows = card.current ? Math.floor((card.current.clientHeight - chrome - (p.showChart ? MIN_CHART : 0)) / rowH) : 61
+    const move = (ev: PointerEvent) => p.onRows(Math.max(MIN_ROWS, Math.min(Math.max(MIN_ROWS, maxRows), 61, startRows + Math.round((ev.clientY - startY) / rowH))))
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('dragging') }
+    document.body.classList.add('dragging')
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
+  }
   const sel = p.market.selections[p.selectionId]
   const name = p.market.runners[p.selectionId] ?? p.selectionId
   const pos: Position | undefined = p.market.positions[p.selectionId]
@@ -40,7 +54,8 @@ export default function Ladder(p: Props) {
   const view = useMemo(() => {
     if (!sel || ref == null) return null
     const centre = p.autoCentre || p.centre == null ? nearest(ref) : p.centre
-    const rows = window(centre, p.ticksShown, p.ticksShown)
+    const above = Math.floor((p.rows - 1) / 2)
+    const rows = tickWindow(centre, above, p.rows - 1 - above)
     const back = new Map(sel.backs), lay = new Map(sel.lays), traded = new Map(sel.traded)
     const maxTraded = Math.max(1, ...rows.map(r => traded.get(r) ?? 0))
     const ltp = sel.last
@@ -48,7 +63,7 @@ export default function Ladder(p: Props) {
     const rs = new Map(sel.recent?.short ?? []), rl = new Map(sel.recent?.long ?? [])
     const maxRecent = Math.max(1, ...rows.map(r => rl.get(r) ?? 0))
     return { rows, back, lay, traded, maxTraded, ltp, away, rs, rl, maxRecent }
-  }, [sel, ref, p.centre, p.autoCentre, p.ticksShown])
+  }, [sel, ref, p.centre, p.autoCentre, p.rows])
   const wom = useMemo(() => (sel ? weightOfMoney(sel.backs, sel.lays, p.womLevels) : null), [sel, p.womLevels])
   const share = useMemo(() => matchedShare(sel?.traded ?? [], Object.values(p.market.selections).map(s => s.traded)), [sel, p.market.selections])
 
@@ -60,15 +75,14 @@ export default function Ladder(p: Props) {
   const level = open ? Math.min(pos!.win, pos!.lose) : 0
 
   return (
-    <div className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '')} onMouseEnter={p.onHover}
+    <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '')} onMouseEnter={p.onHover}
          onWheel={e => { p.onWheel(e.deltaY > 0 ? -1 : 1) }}>
       <div className="ladder-head">
-        <div className="ladder-title">
-          <b>{name}</b>
-          <span className="muted">{p.market.event} · {p.market.name}{p.market.in_play ? ' · ● in play' : ''}</span>
-        </div>
+        <div className="ladder-title"><b>{name}</b></div>
         <span className={'pnl ' + (level > 0.004 ? 'gain' : level < -0.004 ? 'loss' : 'muted')} title="Worst case on this runner (the smaller of 'win' and 'lose')">{money(level).replace('+', '')}</span>
-        <button className="icon" title="Remove ladder" onClick={p.onRemove}>✕</button>
+        <button className="sm" onClick={p.onClose} disabled={!open} title="Close this runner's position (C)">Close</button>
+        <button className="sm" onClick={p.onCancelAll} disabled={!mine.length} title="Cancel all unmatched orders on this runner">Cancel</button>
+        <button className="sm" onClick={p.onRecentre} title="Recentre (Enter)">⌖</button>
       </div>
       <div className="ladder-pos">
         {open ? (<>
@@ -76,10 +90,6 @@ export default function Ladder(p: Props) {
           <span title="Profit if this selection loses" className={pos!.lose >= 0 ? 'gain' : 'loss'}>lose {money(pos!.lose)}</span>
         </>) : <span className="muted">no position</span>}
         {view.away && <span className="muted" title="The last traded price is outside the visible ladder — recentre (Enter)">{view.away} price {view.ltp?.toFixed(2)}</span>}
-        <span className="spacer" />
-        <button className="sm" onClick={p.onClose} disabled={!open} title="Close position (C)">Close</button>
-        <button className="sm" onClick={p.onCancelAll} disabled={!mine.length} title="Cancel all unmatched">Cancel</button>
-        <button className="sm" onClick={p.onRecentre} title="Recentre (Enter)">⌖</button>
       </div>
       <div className="wom" title={wom ? `Weight of money: ${wom.back}% of the money in the best ${p.womLevels} prices is available to back, ${wom.lay}% to lay. ${wom.back >= wom.lay ? '▲ back side heavier' : '▼ lay side heavier'}` : 'No money in the book'}>
         <span className="bets">{nBack} bets</span>
@@ -88,7 +98,7 @@ export default function Ladder(p: Props) {
         <span className="l">{wom ? wom.lay + '%' : '–'}</span>
         <span className="bets">{nLay} bets</span>
       </div>
-      <div className="rows">
+      <div className="rows" ref={rowsEl}>
         {view.rows.map(price => {
           const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
           const here = mine.filter(o => o.price === price)
@@ -124,7 +134,8 @@ export default function Ladder(p: Props) {
       <div className="foot" title="Matched on this runner, and its share of everything matched in the market">
         £{share.volume.toLocaleString('en-GB')} <span className="muted">({share.pct.toFixed(1)}%)</span>
       </div>
-      {p.showChart && <PriceChart marketId={p.marketId} selectionId={p.selectionId} />}
+      {p.showChart && <div className="dragbar" onPointerDown={startDrag} title="Drag down for more price rows, up for a bigger chart"><i /></div>}
+      {p.showChart && <div className="chartwrap" ref={chartEl}><PriceChart marketId={p.marketId} selectionId={p.selectionId} /></div>}
     </div>
   )
 }

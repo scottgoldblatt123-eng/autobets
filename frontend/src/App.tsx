@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, setToken, type MarketInfo, type State } from './api'
-import MarketPanel, { MarketHeader } from './MarketPanel'
+import MarketHeader from './MarketPanel'
 import Ladder from './Ladder'
 import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
-interface Settings { autoCentre: boolean; ticksShown: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light' }
+interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light' }
 interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string }
 
-const DEFAULTS: Settings = { autoCentre: false, ticksShown: 10, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light' }
+const DEFAULTS: Settings = { autoCentre: false, rows: 21, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light' }
 const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
@@ -151,14 +151,19 @@ export default function App() {
     refresh()
   }
 
+  /** A market's runners are one unit (a tennis match is A and B, a football match is home, draw and away), so they open and close together. */
   const openMarket = (m: MarketInfo) => {
     const want = Object.keys(m.runners).map(selectionId => ({ marketId: m.market_id, selectionId }))
-    setLadders(cur => {
-      const fresh = want.filter(w => !cur.some(c => keyOf(c) === keyOf(w)))
-      const room = MAX_LADDERS - cur.length
-      if (fresh.length > room) say(`Only ${room} ladder slot${room === 1 ? '' : 's'} free — close one to open more`, 'warn')
-      return [...cur, ...fresh.slice(0, Math.max(0, room))]
-    })
+    if (ladders.some(l => l.marketId === m.market_id)) return say('That market is already open', 'warn')
+    if (want.length > MAX_LADDERS - ladders.length) return say(`${m.event} needs ${want.length} ladders but only ${MAX_LADDERS - ladders.length} slot${MAX_LADDERS - ladders.length === 1 ? ' is' : 's are'} free — close a market first`, 'warn')
+    setLadders(cur => [...cur, ...want])
+  }
+  const closeMarket = async (marketId: string) => {
+    const m = state?.markets[marketId]
+    const risk = (state?.triggers ?? []).filter(t => t.market_id === marketId).length + (state?.orders ?? []).filter(o => o.market_id === marketId).length
+    const pos = m?.outcomes && Math.max(...Object.values(m.outcomes)) - Math.min(...Object.values(m.outcomes)) > 0.004
+    if ((risk || pos) && !window.confirm(`Close this market's ladders? ${pos ? 'You still have a position. ' : ''}${risk ? 'Unmatched orders and stops stay active. ' : ''}`)) return
+    setLadders(cur => cur.filter(l => l.marketId !== marketId))
   }
 
   useEffect(() => {
@@ -173,6 +178,7 @@ export default function App() {
       else if (l && e.key.toLowerCase() === 'z') cancelAll(l, 'BACK')
       else if (l && e.key.toLowerCase() === 'x') cancelAll(l, 'LAY')
       else if (l && e.key.toLowerCase() === 'c') closePos(l)
+      else if (l && e.key.toLowerCase() === 'g') greenMarket(l.marketId, true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -239,26 +245,35 @@ export default function App() {
             <span className="muted">Lay by</span>
             {(['stake', 'liability'] as const).map(b => <button key={b} className={'chipbtn' + (settings.layBasis === b ? ' on' : '')} onClick={() => setSettings(s => ({ ...s, layBasis: b }))}>{b === 'stake' ? 'Stake' : 'Liability'}</button>)}
             <span className="spacer" />
-            <span className="muted small">S stake box · Hover a ladder · Z cancel back · X cancel lay · C close · Enter recentre · wheel scrolls</span>
+            <span className="muted small">S stake box · Hover a ladder · Z cancel back · X cancel lay · C close runner · G hard close market · Enter recentre · wheel scrolls</span>
           </div>
-          {ids.map(id => state?.markets[id] && <div key={id}><MarketHeader market={state.markets[id]} /><MarketPanel marketId={id} market={state.markets[id]} onGreen={h => greenMarket(id, h)} /></div>)}
           {ladders.length === 0 && <div className="empty muted">Pick a market on the left to open its ladders (up to {MAX_LADDERS}).</div>}
-          <div className="ladders" style={{ gridTemplateColumns: `repeat(${Math.max(1, ladders.length)}, minmax(290px, 1fr))` }}>
-            {ladders.map(l => {
-              const k = keyOf(l), m = state?.markets[l.marketId]
-              if (!m) return <div key={k} className="ladder"><div className="ladder-head muted">Loading…</div></div>
+          <div className="mrow">
+            {ids.map(id => {
+              const group = ladders.filter(l => l.marketId === id), m = state?.markets[id]
+              const orders = (state?.orders ?? []).filter(o => o.market_id === id)
               return (
-                <Ladder key={k} market={m} marketId={l.marketId} selectionId={l.selectionId}
-                  orders={(state?.orders ?? []).filter(o => o.market_id === l.marketId)} ticksShown={settings.ticksShown} womLevels={settings.womLevels} showChart={settings.showChart} showTotal={settings.showTotal}
-                  centre={centres[k] ?? null} autoCentre={settings.autoCentre} active={active === k}
-                  onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
-                  triggers={(state?.triggers ?? []).filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId)}
-                  onHedge={price => hedgeAt(l, price)} onContext={(price, x, y) => setMenu({ l, price, x, y })}
-                  onClick={(side, price) => click(l, side, price)} onCancelAt={price => cancelAt(l, price)}
-                  onWheel={d => setCentres(o => (o[k] == null ? o : { ...o, [k]: move(o[k]!, d) }))} onHover={() => setActive(k)}
-                  onCancelAll={() => cancelAll(l)} onClose={() => closePos(l)}
-                  onRemove={() => setLadders(cur => cur.filter(x => keyOf(x) !== k))}
-                  onRecentre={() => setCentres(o => ({ ...o, [k]: null }))} />
+                <div key={id} className="mblock" style={{ flex: `${group.length} 1 ${group.length * 290}px` }}>
+                  {m ? <MarketHeader marketId={id} market={m} openOrders={orders.length} onGreen={() => greenMarket(id, true)} onClose={() => closeMarket(id)} /> : <div className="mhead muted">Loading…</div>}
+                  <div className="ladders" style={{ gridTemplateColumns: `repeat(${group.length}, minmax(0, 1fr))` }}>
+                    {group.map(l => {
+                      const k = keyOf(l)
+                      if (!m) return <div key={k} className="ladder"><div className="ladder-head muted">Loading…</div></div>
+                      return (
+                        <Ladder key={k} market={m} marketId={l.marketId} selectionId={l.selectionId}
+                          orders={orders} rows={settings.rows} onRows={n => setSettings(s => ({ ...s, rows: n }))} womLevels={settings.womLevels} showChart={settings.showChart} showTotal={settings.showTotal}
+                          centre={centres[k] ?? null} autoCentre={settings.autoCentre} active={active === k}
+                          onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
+                          triggers={(state?.triggers ?? []).filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId)}
+                          onHedge={price => hedgeAt(l, price)} onContext={(price, x, y) => setMenu({ l, price, x, y })}
+                          onClick={(side, price) => click(l, side, price)} onCancelAt={price => cancelAt(l, price)}
+                          onWheel={d => setCentres(o => (o[k] == null ? o : { ...o, [k]: move(o[k]!, d) }))} onHover={() => setActive(k)}
+                          onCancelAll={() => cancelAll(l)} onClose={() => closePos(l)}
+                          onRecentre={() => setCentres(o => ({ ...o, [k]: null }))} />
+                      )
+                    })}
+                  </div>
+                </div>
               )
             })}
           </div>
@@ -285,8 +300,8 @@ export default function App() {
             <h3>Ladder settings</h3>
             <label className="check"><input type="checkbox" checked={settings.autoCentre} onChange={e => setSettings(s => ({ ...s, autoCentre: e.target.checked }))} />
               Auto-recentre on the price (off: the ladder stays put until you press Enter or ⌖)</label>
-            <label>Ticks shown each side of the price
-              <input type="number" min={4} max={30} value={settings.ticksShown} onChange={e => setSettings(s => ({ ...s, ticksShown: Math.max(4, Math.min(30, Number(e.target.value) || 10)) }))} />
+            <label>Price rows shown (you can also drag the bar under a ladder)
+              <input type="number" min={7} max={61} value={settings.rows} onChange={e => setSettings(s => ({ ...s, rows: Math.max(7, Math.min(61, Number(e.target.value) || 21)) }))} />
             </label>
             <label className="check"><input type="checkbox" checked={settings.showChart} onChange={e => setSettings(s => ({ ...s, showChart: e.target.checked }))} />
               Show the price chart under each ladder</label>
