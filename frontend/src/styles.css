@@ -176,3 +176,6 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 .chip.draggable { cursor: grab; } .chip.trig { cursor: pointer; }
 .mbtnrow .caret { border: 0; border-radius: 0; background: var(--surface-raised); padding: 0 6px; font-size: 12px; border-left: 1px solid var(--border); }
 .gmenu { position: fixed; left: 300px; top: 150px; width: 330px; } .gmenu .row { display: flex; gap: 6px; } .gmenu .row input { flex: 1; }
+
+.switch { margin-left: 6px; width: 34px; padding: 0 2px; font-size: 12px; border-radius: var(--radius-sm); cursor: pointer; }
+.keybox { width: 80px; text-align: center; cursor: pointer; }

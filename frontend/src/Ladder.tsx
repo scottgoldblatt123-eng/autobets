@@ -20,6 +20,7 @@ export interface Props {
   onCancelAll: () => void
   onClose: () => void
   onRecentre: () => void
+  runners: Record<string, string>; openIds: string[]; onSwitch: (selectionId: string) => void
 }
 
 const fmtSize = (s: number) => (s >= 1000 ? (s / 1000).toFixed(1) + 'k' : s.toFixed(0))
@@ -86,7 +87,13 @@ export default function Ladder(p: Props) {
     <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '') + (p.pnlSide === 'right' ? ' pnl-right' : '') + (blocked ? ' blocked' : '')} onMouseEnter={p.onHover}
          onWheel={e => { p.onWheel((e.deltaY > 0 ? -1 : 1) * (p.reverse ? -1 : 1)) }}>
       <div className="ladder-head">
-        <div className="ladder-title"><b>{name}</b></div>
+        <div className="ladder-title"><b>{name}</b>
+          {Object.keys(p.runners).length > 1 && (
+            <select className="switch" value="" onChange={e => e.target.value && p.onSwitch(e.target.value)} title="Switch this ladder to another runner in the market">
+              <option value="">⇄</option>
+              {Object.entries(p.runners).filter(([id]) => id !== p.selectionId).map(([id, n]) => <option key={id} value={id}>{n}{p.openIds.includes(id) ? ' (swap)' : ''}</option>)}
+            </select>)}
+        </div>
         <span className={'pnl ' + (level > 0.004 ? 'gain' : level < -0.004 ? 'loss' : 'muted')} title="Worst case on this runner (the smaller of 'win' and 'lose')">{money(level).replace('+', '')}</span>
         <button className="sm" onClick={p.onClose} disabled={!open} title="Close this runner's position (C)">Close</button>
         <button className="sm" onClick={p.onCancelAll} disabled={!mine.length} title="Cancel all unmatched orders on this runner">Cancel</button>
