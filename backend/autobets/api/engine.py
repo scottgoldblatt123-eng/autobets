@@ -515,6 +515,92 @@ class Engine:
         self._log(f"{'Hard close' if hard else 'Green up'} on {self._info.get(market_id, {}).get('event', market_id)}: locked £{plan['locked']:.2f}", "order")
         return {"greened": True, "cancelled": cancelled, "locked": plan["locked"], "level": plan["level"], "placed": placed}
 
+    # ---- dutching and bookmaking ---------------------------------------------
+    def _plan_inputs(self, market_id: str):
+        self.ex.refresh(self.feed.get_books([market_id], depth=False))
+        book = self.ex.get_book(market_id)
+        pos = self.positions().get(market_id, {})
+        full = {sid: pos.get(sid, Position()) for sid in book.selections}
+        cur = pnl.market_outcomes(full)
+        backs = {k: (v.backs[0].price if v.backs else None) for k, v in book.selections.items()}
+        lays = {k: (v.lays[0].price if v.lays else None) for k, v in book.selections.items()}
+        return book, cur, backs, lays
+
+    def _decorate(self, market_id: str, plan: dict, cur: dict) -> dict:
+        after = dict(cur)
+        for b in plan["bets"]:
+            after = pnl._apply(after, b["selection_id"], Side(b["side"]), b["price"], b["stake"])
+            b["runner"] = self._name(market_id, b["selection_id"])
+        plan["before"] = cur
+        plan["after"] = {i: round(v, 2) for i, v in after.items()}
+        plan["total_stake"] = round(sum(b["stake"] for b in plan["bets"]), 2)
+        for b in plan["dropped"]:
+            b["runner"] = self._name(market_id, b["selection_id"])
+        return plan
+
+    @locked
+    def dutch_preview(self, market_id: str, selection_ids: list[str], side: str, total: float, prices: dict[str, float] | None = None) -> dict:
+        """Spread `total` over the chosen runners so each returns the same. Prices default to the best available (back price for a back, lay price for a lay)."""
+        book, cur, backs, lays = self._plan_inputs(market_id)
+        if total < 1.0:
+            raise ValueError("the total stake must be at least £1")
+        if len(selection_ids) < 2:
+            raise ValueError("pick at least two runners to dutch")
+        use: dict[str, float] = {}
+        for sid in selection_ids:
+            if sid not in book.selections:
+                raise ValueError(f"unknown runner {sid}")
+            pr = (prices or {}).get(sid) or (backs.get(sid) if side == "BACK" else lays.get(sid))
+            if not pr:
+                raise ValueError(f"no {'back' if side == 'BACK' else 'lay'} price available on {self._name(market_id, sid)}")
+            if not ticks.is_valid(pr):
+                raise ValueError(f"{pr} is not a valid Betfair price")
+            use[sid] = pr
+        plan = pnl.dutch_plan(Side(side), use, total)
+        return self._decorate(market_id, plan, cur)
+
+    @locked
+    def dutch_place(self, market_id: str, selection_ids: list[str], side: str, total: float, prices: dict[str, float] | None = None) -> dict:
+        plan = self.dutch_preview(market_id, selection_ids, side, total, prices)
+        return self._place_plan(market_id, plan, f"Dutch {side} £{plan['total_stake']:.2f}")
+
+    @locked
+    def book_preview(self, market_id: str, targets: dict[str, float]) -> dict:
+        """The bets that make each runner's outcome the profit you name, from where the market is now."""
+        book, cur, backs, lays = self._plan_inputs(market_id)
+        for sid in targets:
+            if sid not in book.selections:
+                raise ValueError(f"unknown runner {sid}")
+        plan = pnl.book_plan(cur, {k: float(targets[k]) for k in targets}, backs, lays)
+        out = self._decorate(market_id, {**plan, "bets": plan["bets"], "dropped": plan["dropped"]}, cur)
+        out["after"] = plan["after"]
+        return out
+
+    @locked
+    def book_place(self, market_id: str, targets: dict[str, float]) -> dict:
+        plan = self.book_preview(market_id, targets)
+        if plan.get("error"):
+            raise ValueError(plan["error"])
+        return self._place_plan(market_id, plan, "Book")
+
+    def _place_plan(self, market_id: str, plan: dict, label: str) -> dict:
+        if plan.get("error"):
+            raise ValueError(plan["error"])
+        if not plan["bets"]:
+            raise ValueError("nothing to place: every bet is under the £1 minimum stake, or the market is already where you want it")
+        self._require_open(market_id)
+        placed = []
+        for b in plan["bets"]:
+            try:
+                r = self.place(market_id, b["selection_id"], b["side"], b["price"], b["stake"])
+                placed.append({**b, "status": r["order"]["status"], "order_id": r["order"]["order_id"]})
+            except Exception as ex:          # noqa: BLE001  (one leg failing must not hide the legs already placed)
+                placed.append({**b, "status": "FAILED", "error": str(ex)})
+        failed = [p for p in placed if p["status"] in ("FAILED", "REJECTED")]
+        self._log(f"{label} on {self._info.get(market_id, {}).get('event', market_id)}: {len(placed) - len(failed)} of {len(placed)} bets placed"
+                  + (f", {len(failed)} FAILED" if failed else ""), "order")
+        return {"placed": placed, "failed": len(failed), "after": plan["after"]}
+
     # ---- triggers ----------------------------------------------------------
     @locked
     def add_trigger(self, market_id: str, selection_id: str, price: float) -> dict:

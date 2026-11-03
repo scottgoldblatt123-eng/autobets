@@ -29,6 +29,19 @@ def make_engine() -> Engine:
     raise SystemExit(f"unknown AUTOBETS_MODE {mode!r} (live mode is not built yet)")
 
 
+class DutchIn(BaseModel):
+    market_id: str
+    selection_ids: list[str]
+    side: str = "BACK"
+    total: float
+    prices: dict[str, float] | None = None
+
+
+class BookIn(BaseModel):
+    market_id: str
+    targets: dict[str, float]
+
+
 class OrderIn(BaseModel):
     market_id: str
     selection_id: str
@@ -78,6 +91,14 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     def auth(x_auth: str = Header(default="")):
         if token and not hmac.compare_digest(x_auth, token):
             raise HTTPException(401, "bad token")
+
+    def _call(fn):
+        try:
+            return fn()
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+        except RuntimeError as e:
+            raise HTTPException(502, str(e))
 
     @app.get("/api/mode")
     def mode(_=Depends(auth)):
@@ -165,6 +186,22 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             return engine.green_market(market_id, hard, max(0.05, min(pct, 1.0)))
         except ValueError as e:
             raise HTTPException(422, str(e))
+
+    @app.post("/api/dutch/preview")
+    def dutch_preview(b: DutchIn, _=Depends(auth)):
+        return _call(lambda: engine.dutch_preview(b.market_id, b.selection_ids, b.side, b.total, b.prices))
+
+    @app.post("/api/dutch")
+    def dutch(b: DutchIn, _=Depends(auth)):
+        return _call(lambda: engine.dutch_place(b.market_id, b.selection_ids, b.side, b.total, b.prices))
+
+    @app.post("/api/book/preview")
+    def book_preview(b: BookIn, _=Depends(auth)):
+        return _call(lambda: engine.book_preview(b.market_id, b.targets))
+
+    @app.post("/api/book")
+    def book(b: BookIn, _=Depends(auth)):
+        return _call(lambda: engine.book_place(b.market_id, b.targets))
 
     @app.post("/api/market-triggers")
     def add_market_trigger(t: MarketTriggerIn, _=Depends(auth)):

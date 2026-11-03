@@ -4,6 +4,7 @@ import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
 import MatchedPanel from './MatchedPanel'
 import InfoPanel from './InfoPanel'
+import TradePanel from './TradePanel'
 import Ladder from './Ladder'
 import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
@@ -373,6 +374,7 @@ export default function App() {
           {ids.length > 0 && <div className="panels"><OrdersPanel orders={state?.orders ?? []} markets={state?.markets ?? {}} onEdit={editOrder} onCancel={cancelOrder}
             onCancelAll={cancelEverything} onPersistAll={persistAll} onPersist={persistOne} />
             <MatchedPanel bets={state?.matched_bets ?? []} markets={state?.markets ?? {}} />
+            <TradePanel marketId={ladders.find(x => keyOf(x) === active)?.marketId ?? ladders[0]?.marketId ?? null} market={state?.markets[ladders.find(x => keyOf(x) === active)?.marketId ?? ladders[0]?.marketId ?? '']} say={say} refresh={refresh} />
             <InfoPanel markets={state?.markets ?? {}} active={(() => { const l = ladders.find(x => keyOf(x) === active) ?? ladders[0]; return l ? { marketId: l.marketId, selectionId: l.selectionId } : null })()} /></div>}
         </main>
       </div>

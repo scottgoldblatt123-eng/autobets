@@ -11,6 +11,9 @@ export interface MarketState {
 export interface Trigger { id: string; market_id: string; selection_id: string; price: number; direction: 'le' | 'ge'; label: string; locked: number }
 export interface MarketTrigger { id: string; market_id: string; level: number; direction: 'ge' | 'le'; label: string }
 export interface MatchedBet { order_id: string; market_id: string; selection_id: string; side: 'BACK' | 'LAY'; price: number; asked: number; size: number; source: string; t: number; if_wins: number; if_loses: number }
+export interface PlanBet { selection_id: string; runner: string; side: Side; price: number; stake: number }
+export interface Plan { bets: PlanBet[]; dropped: PlanBet[]; before: Record<string, number>; after: Record<string, number>; total_stake: number; error?: string; book?: number }
+export interface PlanResult { placed: (PlanBet & { status: string; error?: string })[]; failed: number; after: Record<string, number> }
 export interface Evt { t: number; text: string; trigger: string }
 export interface Order {
   order_id: string; market_id: string; selection_id: string; side: Side; price: number; size: number
@@ -45,6 +48,10 @@ export const api = {
     call<{ order: Order; warnings: string[] }>(`/api/orders/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
   persist: (b: { persistence: string; market_ids?: string[]; order_id?: string }) =>
     call<{ changed: number }>('/api/orders-persistence', { method: 'POST', body: JSON.stringify(b) }),
+  dutchPreview: (b: { market_id: string; selection_ids: string[]; side: Side; total: number; prices?: Record<string, number> }) => call<Plan>('/api/dutch/preview', { method: 'POST', body: JSON.stringify(b) }),
+  dutch: (b: { market_id: string; selection_ids: string[]; side: Side; total: number; prices?: Record<string, number> }) => call<PlanResult>('/api/dutch', { method: 'POST', body: JSON.stringify(b) }),
+  bookPreview: (b: { market_id: string; targets: Record<string, number> }) => call<Plan>('/api/book/preview', { method: 'POST', body: JSON.stringify(b) }),
+  book: (b: { market_id: string; targets: Record<string, number> }) => call<PlanResult>('/api/book', { method: 'POST', body: JSON.stringify(b) }),
   log: (n = 100) => call<LogEntry[]>(`/api/log?n=${n}`),
   cancel: (id: string) => call<Order>(`/api/orders/${id}`, { method: 'DELETE' }),
   cancelAll: (market: string, selection?: string, side?: Side) =>

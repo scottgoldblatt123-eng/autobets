@@ -190,3 +190,7 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 .chartwrap.tiny > * { visibility: hidden; }
 
 .infopanel .ohead { flex-wrap: wrap; } .obody .totrow td { border-top: 2px solid var(--border-strong); } .obody .pad { padding: 8px; }
+
+.tradebody { padding: 4px 8px; } .trow { display: flex; align-items: center; gap: 8px; padding: 4px 0; flex-wrap: wrap; } .trow .spacer { flex: 1; }
+.tradepanel .stakein { width: 78px; } .tradepanel td input[type=checkbox] { width: auto; }
+.tradepanel { max-height: 280px; }

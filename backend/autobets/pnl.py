@@ -89,3 +89,59 @@ def green_plan(outcomes: dict[str, float], backs: dict[str, float | None], lays:
         if best is None or (cand["level"], cand["locked"]) > (best["level"], best["locked"]):
             best = cand
     return best
+
+
+def dutch_plan(side: Side, prices: dict[str, float], total: float, min_stake: float = 1.0) -> dict:
+    """Split `total` across the chosen selections so that every one of them returns the same.
+
+    Stake_i = total * (1/p_i) / sum(1/p). For backs, whichever selected runner wins pays the same; for lays (the same split) it costs the same.
+    Stakes under the minimum are reported in `dropped` rather than placed."""
+    inv = sum(1.0 / p for p in prices.values())
+    if not prices or inv <= 0:
+        return {"bets": [], "dropped": [], "error": "pick at least one runner"}
+    bets, dropped = [], []
+    for sid, p in prices.items():
+        stake = round(total * (1.0 / p) / inv, 2)
+        (bets if stake >= min_stake else dropped).append({"selection_id": sid, "side": side.value, "price": p, "stake": stake})
+    return {"bets": bets, "dropped": dropped, "book": round(inv * 100, 2), "error": ""}
+
+
+def book_plan(outcomes: dict[str, float], targets: dict[str, float], backs: dict[str, float | None], lays: dict[str, float | None],
+              min_stake: float = 1.0) -> dict:
+    """Bets that move every outcome of a market from where it is to the target profit you name for each runner (bookmaking).
+
+    A bet x_j on runner j (positive = back stake, negative = lay stake) at price p_j changes the outcome if j wins by x_j*p_j - S, where S is the
+    sum of all x. So the change d_j = target_j - outcome_j needs x_j = (d_j + S)/p_j, and S = sum(d_j/p_j) / (1 - sum(1/p_j)). Back prices are used
+    for backs and lay prices for lays, so the signs are settled by iterating until they stop changing."""
+    ids = list(outcomes)
+    if set(targets) != set(ids):
+        return {"bets": [], "dropped": [], "after": dict(outcomes), "error": "give a target for every runner"}
+    d = {j: targets[j] - outcomes[j] for j in ids}
+    sign = {j: (1 if d[j] >= 0 else -1) for j in ids}          # start: back where more profit is wanted, lay where less
+    x: dict[str, float] = {}
+    p: dict[str, float] = {}
+    for _ in range(12):
+        for j in ids:
+            pr = backs.get(j) if sign[j] > 0 else lays.get(j)
+            if not pr:
+                return {"bets": [], "dropped": [], "after": dict(outcomes), "error": "no price available on one of the runners"}
+            p[j] = pr
+        inv = sum(1.0 / p[j] for j in ids)
+        if abs(1.0 - inv) < 1e-6:
+            return {"bets": [], "dropped": [], "after": dict(outcomes), "error": "these prices make a book of exactly 100%, so these targets cannot be reached with bets on these prices"}
+        S = sum(d[j] / p[j] for j in ids) / (1.0 - inv)
+        x = {j: (d[j] + S) / p[j] for j in ids}
+        new = {j: (sign[j] if abs(x[j]) < 0.005 else (1 if x[j] > 0 else -1)) for j in ids}       # a bet of ~nothing keeps its side
+        if new == sign:
+            break
+        sign = new
+    bets, dropped = [], []
+    for j in ids:
+        if abs(x[j]) < 0.005:
+            continue
+        b = {"selection_id": j, "side": "BACK" if x[j] > 0 else "LAY", "price": p[j], "stake": round(abs(x[j]), 2)}
+        (bets if b["stake"] >= min_stake else dropped).append(b)
+    after = dict(outcomes)
+    for b in bets:
+        after = _apply(after, b["selection_id"], Side(b["side"]), b["price"], b["stake"])
+    return {"bets": bets, "dropped": dropped, "after": {i: round(v, 2) for i, v in after.items()}, "error": ""}
