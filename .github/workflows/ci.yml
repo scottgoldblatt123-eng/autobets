@@ -33,7 +33,11 @@ jobs:
           if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
             echo "::notice::Auto-deploy is not set up yet (missing DEPLOY_* secrets)"; exit 0
           fi
+          HOST=$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]'); USER_=$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')
+          # pin the server's key: take its type and key from the secret, whatever spaces or host text were pasted around it
+          KT=$(printf '%s' "$DEPLOY_KNOWN_HOSTS" | tr -s '[:space:]' '\n' | grep -m1 '^ssh-' ); KV=$(printf '%s' "$DEPLOY_KNOWN_HOSTS" | tr -s '[:space:]' '\n' | grep -A1 -m1 '^ssh-' | tail -1)
+          if [ -z "$KT" ] || [ -z "$KV" ] || [ "$KT" = "$KV" ]; then echo "::error::DEPLOY_KNOWN_HOSTS does not look like an ssh host key line"; exit 1; fi
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key; chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" deploy
+          printf '%s %s %s\n' "$HOST" "$KT" "$KV" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$USER_@$HOST" deploy
