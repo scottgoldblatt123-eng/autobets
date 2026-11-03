@@ -35,6 +35,18 @@ class OrderIn(BaseModel):
     price: float
     size: float
     persistence: str = "KEEP"
+    fok_s: float = 0
+
+
+class EditIn(BaseModel):
+    price: float | None = None
+    size: float | None = None
+
+
+class PersistIn(BaseModel):
+    persistence: str
+    market_ids: list[str] | None = None
+    order_id: str | None = None
 
 
 class TriggerIn(BaseModel):
@@ -88,11 +100,39 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     @app.post("/api/orders")
     def place(o: OrderIn, _=Depends(auth)):
         try:
-            return engine.place(o.market_id, o.selection_id, o.side, o.price, o.size, o.persistence)
+            return engine.place(o.market_id, o.selection_id, o.side, o.price, o.size, o.persistence, o.fok_s)
         except ValueError as e:
             raise HTTPException(422, str(e))
         except RuntimeError as e:
             raise HTTPException(502, str(e))
+
+    @app.patch("/api/orders/{order_id}")
+    def edit(order_id: str, e: EditIn, _=Depends(auth)):
+        try:
+            return engine.edit_order(order_id, e.price, e.size)
+        except ValueError as ex:
+            raise HTTPException(422, str(ex))
+
+    @app.post("/api/orders-persistence")
+    def persistence(p: PersistIn, _=Depends(auth)):
+        try:
+            return {"changed": engine.set_persistence(p.persistence, p.market_ids, p.order_id)}
+        except ValueError as ex:
+            raise HTTPException(422, str(ex))
+
+    @app.get("/api/log")
+    def log(n: int = 100, _=Depends(auth)):
+        return engine.activity(max(1, min(n, 300)))
+
+    @app.post("/api/demo/status")
+    def demo_status(market_id: str, status: str = "OPEN", in_play: bool | None = None, _=Depends(auth)):
+        """Demo only: make a market suspended / closed / in play, to try the screen's handling of it."""
+        if engine.mode != "demo":
+            raise HTTPException(404, "demo mode only")
+        engine.feed.status[market_id] = status.upper()
+        if in_play is not None:
+            engine.feed.in_play[market_id] = in_play
+        return {"ok": True}
 
     @app.delete("/api/orders/{order_id}")
     def cancel(order_id: str, _=Depends(auth)):

@@ -159,3 +159,15 @@ body.dragging { cursor: row-resize; user-select: none; }
 select { font: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; width: 100%; }
 
 .totalpl { padding: 2px 10px; border-radius: var(--radius-pill); font-variant-numeric: tabular-nums; } .totalpl.gain { background: var(--profit); color: #06210f; } .totalpl.loss { background: var(--loss); color: #fff; }
+
+/* suspended / closed markets */
+.blockedbar { background: var(--live-fill); color: var(--on-live); text-align: center; font-weight: 800; letter-spacing: .08em; padding: 4px; flex: none; }
+.ladder.blocked .rows { opacity: .45; pointer-events: none; filter: grayscale(.6); }
+.statustag { background: var(--live-fill); color: var(--on-live); font-weight: 800; font-size: 11px; letter-spacing: .06em; padding: 1px 8px; border-radius: var(--radius-pill); }
+/* unmatched bets panel */
+.opanel { flex: none; margin: 0 10px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); max-height: 160px; display: flex; flex-direction: column; }
+.ohead { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); } .opanel.shut .ohead { border-bottom: 0; }
+.obody { overflow: auto; } .obody table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.obody th { text-align: left; font-weight: 500; color: var(--text-muted); padding: 3px 8px; position: sticky; top: 0; background: var(--surface); } .obody td { padding: 2px 8px; border-top: 1px solid var(--border); }
+.obody .num { white-space: nowrap; } .obody button.tick { padding: 0 6px; margin: 0 4px; } .stakein { width: 70px; padding: 1px 6px; font-size: 12px; text-align: right; }
+.obody select { width: auto; padding: 1px 4px; font-size: 12px; }

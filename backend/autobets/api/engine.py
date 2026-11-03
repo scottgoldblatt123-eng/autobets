@@ -52,11 +52,17 @@ class Engine:
         self._info: dict[str, dict] = {}
         self.triggers: dict[str, Trigger] = {}
         self.events: list[dict] = []
+        self.log: list[dict] = []                      # activity log: everything the engine did, newest last
+        self.fok: dict[str, float] = {}                # order_id -> time after which any unmatched part is cancelled
         self._trigger_ids = itertools.count(1)
         self._bg: threading.Thread | None = None
         self._markets_cache: dict[str, tuple[float, list]] = {}
         self.tracker = Tracker()
         self.prices_db, self._seeded = prices_db, set()      # logged history for the chart (price logger database)
+
+    def _log(self, text: str, kind: str = "info") -> None:
+        self.log.append({"t": time.time(), "kind": kind, "text": text})
+        del self.log[:-300]
 
     @classmethod
     def demo(cls) -> "Engine":
@@ -110,9 +116,9 @@ class Engine:
             mi = info.get(b.market_id, {})
             markets[b.market_id] = {
                 "name": mi.get("name", ""), "event": mi.get("event", ""), "competition": mi.get("competition", ""),
-                "start": mi.get("start"), "in_play": b.in_play, "runners": mi.get("runners", {}),
+                "start": mi.get("start"), "in_play": b.in_play, "status": b.status, "runners": mi.get("runners", {}),
                 "selections": {sid: {"backs": [[l.price, l.size] for l in s.backs], "lays": [[l.price, l.size] for l in s.lays],
-                                     "traded": sorted([p, v] for p, v in s.traded.items()), "last": s.last_traded,
+                                     "traded": sorted([p, v] for p, v in s.traded.items()), "last": s.last_traded, "status": s.status,
                                      "recent": self.tracker.recent(b.market_id, sid, s.traded, now, short_s, long_s)}
                                for sid, s in b.selections.items()},
                 "positions": {sid: {"win": p.win, "lose": p.lose} for sid, p in pos.get(b.market_id, {}).items()},
@@ -127,6 +133,7 @@ class Engine:
                                       {k: (v.lays[0].price if v.lays else None) for k, v in sels.items()})
                 m["green"] = plan
         self._check_triggers()
+        self._check_fok()
         orders = [self._order(o) for o in self.ex.open_orders() if o.status in OPEN and o.request.market_id in ids]
         allpos = [p for m in pos.values() for p in m.values()]
         exposure = round(sum(-min(p.win, p.lose, 0) for p in allpos), 2)
@@ -135,6 +142,10 @@ class Engine:
                 "warnings": self.service.warnings[-3:],
                 "triggers": [t.__dict__ for t in self.triggers.values() if t.market_id in ids],
                 "events": self.events[-5:]}
+
+    @locked
+    def activity(self, n: int = 100) -> list[dict]:
+        return self.log[-n:]
 
     @locked
     def busy(self) -> dict:
@@ -150,17 +161,19 @@ class Engine:
         r = o.request
         return {"order_id": o.order_id, "market_id": r.market_id, "selection_id": r.selection_id, "side": r.side.value,
                 "price": r.price, "size": r.size, "matched": o.matched, "avg_price": o.avg_price,
-                "remaining": o.remaining, "status": o.status.value, "source": r.source}
+                "remaining": o.remaining, "status": o.status.value, "source": r.source,
+                "persistence": r.persistence.value, "placed_at": o.placed_at}
 
     # ---- actions --------------------------------------------------------
     @locked
-    def place(self, market_id: str, selection_id: str, side: str, price: float, size: float, persistence: str = "KEEP") -> dict:
+    def place(self, market_id: str, selection_id: str, side: str, price: float, size: float, persistence: str = "KEEP", fok_s: float = 0) -> dict:
         if not ticks.is_valid(price):
             raise ValueError(f"{price} is not a valid Betfair price")
         if size < 1.0:
             raise ValueError("minimum stake is £1")
         self.service.warnings.clear()
         self.ex.refresh(self.feed.get_books([market_id], depth=True))       # match against the freshest prices
+        self._require_open(market_id, selection_id)
         req = OrderRequest(market_id, selection_id, Side(side), price, size, persistence=Persistence(persistence), source="manual")
         try:
             order = self.service.place(req)
@@ -168,11 +181,82 @@ class Engine:
             raise ValueError(str(e))
         if order is None:
             raise RuntimeError("order outcome unknown; it will be reconciled")
+        if fok_s and order.status in OPEN:
+            self.fok[order.order_id] = time.time() + fok_s
+        self._log(f"{side} £{size:.2f} @ {price:.2f} on {self._name(market_id, selection_id)}: {order.status.value.lower()}"
+                  + (f" (£{order.matched:.2f} matched)" if order.matched and order.status is not Status.MATCHED else ""), "order")
         return {"order": self._order(order), "warnings": list(self.service.warnings)}
+
+    def _name(self, market_id: str, selection_id: str) -> str:
+        return self._info.get(market_id, {}).get("runners", {}).get(selection_id, selection_id)
+
+    def _require_open(self, market_id: str, selection_id: str | None = None) -> None:
+        """Betfair refuses orders on a suspended or closed market and on a removed runner; say so before sending anything."""
+        book = self.ex.get_book(market_id)
+        if book.status != "OPEN":
+            raise ValueError(f"the market is {book.status.lower()} - orders cannot be placed or hedged right now")
+        sel = book.selections.get(selection_id) if selection_id else None
+        if sel is not None and sel.status != "ACTIVE":
+            raise ValueError(f"{self._name(market_id, selection_id)} is {sel.status.lower()} in this market")
+
+    @locked
+    def edit_order(self, order_id: str, price: float | None = None, size: float | None = None) -> dict:
+        """Change an unmatched order's price and/or stake. The unmatched remainder is cancelled and re-placed (as Betfair's own
+        'replace' does), keeping its at-the-off setting. Anything already matched is untouched."""
+        o = self.ex.get_order(order_id)
+        if o.status not in OPEN:
+            raise ValueError("that order is no longer open")
+        r = o.request
+        new_price = r.price if price is None else price
+        new_size = o.remaining if size is None else size
+        if not ticks.is_valid(new_price):
+            raise ValueError(f"{new_price} is not a valid Betfair price")
+        if new_size < 1.0:
+            raise ValueError("minimum stake is £1")
+        self.ex.refresh(self.feed.get_books([r.market_id], depth=True))
+        self._require_open(r.market_id, r.selection_id)
+        self.ex.cancel_order(order_id)
+        deadline = self.fok.pop(order_id, None)
+        res = self.place(r.market_id, r.selection_id, r.side.value, new_price, new_size, r.persistence.value)
+        if deadline:
+            self.fok[res["order"]["order_id"]] = deadline
+        self._log(f"Changed {r.side.value} order on {self._name(r.market_id, r.selection_id)} to £{new_size:.2f} @ {new_price:.2f}", "order")
+        return res
+
+    @locked
+    def set_persistence(self, persistence: str, market_ids: list[str] | None = None, order_id: str | None = None) -> int:
+        """What happens to unmatched bets when the match goes in play: KEEP, CANCEL (lapse) or TAKE_SP."""
+        p = Persistence(persistence)
+        n = 0
+        for o in self.ex.open_orders():
+            r = o.request
+            if o.status in OPEN and (order_id in (None, o.order_id)) and (not market_ids or r.market_id in market_ids):
+                self.ex.set_persistence(o.order_id, p); n += 1
+        if n:
+            self._log(f"At the off: {n} unmatched bet{'s' if n != 1 else ''} set to {persistence.replace('_', ' ').lower()}", "order")
+        return n
+
+    def _check_fok(self) -> None:
+        now = time.time()
+        for oid, deadline in list(self.fok.items()):
+            try:
+                o = self.ex.get_order(oid)
+            except Exception:
+                self.fok.pop(oid, None); continue
+            if o.status not in OPEN:
+                self.fok.pop(oid, None)
+            elif now >= deadline:
+                left = o.remaining
+                self.ex.cancel_order(oid); self.fok.pop(oid, None)
+                msg = f"Fill-or-kill: cancelled the unmatched £{left:.2f} of the {o.request.side.value} @ {o.request.price:.2f} on {self._name(o.request.market_id, o.request.selection_id)}"
+                self.events.append({"t": now, "text": msg, "trigger": ""}); self._log(msg, "order")
 
     @locked
     def cancel(self, order_id: str) -> dict:
-        return self._order(self.ex.cancel_order(order_id))
+        o = self.ex.cancel_order(order_id)
+        self.fok.pop(order_id, None)
+        self._log(f"Cancelled {o.request.side.value} @ {o.request.price:.2f} on {self._name(o.request.market_id, o.request.selection_id)}", "order")
+        return self._order(o)
 
     @locked
     def cancel_many(self, market_id: str, selection_id: str | None = None, side: str | None = None) -> int:
@@ -180,12 +264,16 @@ class Engine:
         for o in self.ex.open_orders():
             r = o.request
             if o.status in OPEN and r.market_id == market_id and (selection_id in (None, r.selection_id)) and (side in (None, r.side.value)):
-                self.ex.cancel_order(o.order_id); n += 1
+                self.ex.cancel_order(o.order_id); self.fok.pop(o.order_id, None); n += 1
+        if n:
+            self._log(f"Cancelled {n} unmatched bet{'s' if n != 1 else ''}", "order")
         return n
 
     @locked
     def close_position(self, market_id: str, selection_id: str) -> dict:
         p = self.positions().get(market_id, {}).get(selection_id, Position())
+        if self.ex.get_book(market_id).status != "OPEN":
+            return {"closed": False, "reason": f"the market is {self.ex.get_book(market_id).status.lower()}; nothing can be placed right now"}
         book = self.ex.get_book(market_id).selections[selection_id]
         # hedge at the price available right now on the side the hedge needs
         probe = pnl.hedge(p, (book.backs[0].price if book.backs else 2.0))
@@ -207,8 +295,10 @@ class Engine:
     @locked
     def green_market(self, market_id: str, hard: bool = False) -> dict:
         """Equalise every outcome of the market at the prices available now. hard=True first cancels unmatched orders."""
-        cancelled = self.cancel_many(market_id) if hard else 0
         self.ex.refresh(self.feed.get_books([market_id], depth=False))
+        if self.ex.get_book(market_id).status != "OPEN":
+            return {"greened": False, "cancelled": 0, "reason": f"the market is {self.ex.get_book(market_id).status.lower()}; nothing can be placed right now"}
+        cancelled = self.cancel_many(market_id) if hard else 0
         book = self.ex.get_book(market_id)
         pos = self.positions().get(market_id, {})
         full = {sid: pos.get(sid, Position()) for sid in book.selections}
@@ -220,6 +310,7 @@ class Engine:
         for b in plan["bets"]:
             r = self.place(market_id, b["selection_id"], b["side"], b["price"], b["stake"])
             placed.append({**b, "status": r["order"]["status"]})
+        self._log(f"{'Hard close' if hard else 'Green up'} on {self._info.get(market_id, {}).get('event', market_id)}: locked £{plan['locked']:.2f}", "order")
         return {"greened": True, "cancelled": cancelled, "locked": plan["locked"], "level": plan["level"], "placed": placed}
 
     # ---- triggers ----------------------------------------------------------
@@ -256,8 +347,8 @@ class Engine:
             except Exception:
                 continue
             ltp = sel.last_traded
-            if ltp is None:
-                continue
+            if ltp is None or self.ex.get_book(t.market_id).status != "OPEN":
+                continue                      # a suspended market cannot be traded: the stop waits and fires when it reopens
             if (t.direction == "le" and ltp <= t.price + 1e-9) or (t.direction == "ge" and ltp >= t.price - 1e-9):
                 self.triggers.pop(t.id, None)
                 try:
@@ -265,7 +356,7 @@ class Engine:
                     msg = f"{t.label.capitalize()} fired at {t.price:.2f}: " + (f"closed, locked £{res.get('locked_profit', 0):.2f}" if res.get("closed") else res.get("reason", "nothing to close"))
                 except Exception as e:           # never let a failed trigger break the loop; say so loudly
                     msg = f"{t.label.capitalize()} at {t.price:.2f} FAILED to close: {e}"
-                self.events.append({"t": time.time(), "text": msg, "trigger": t.id})
+                self.events.append({"t": time.time(), "text": msg, "trigger": t.id}); self._log(msg, "trigger")
 
     @locked
     def check_triggers_now(self) -> None:

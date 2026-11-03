@@ -21,15 +21,16 @@ class SimulatedExchange(ExchangeAdapter):
         self.fail_next_place = False       # test hook: simulate a lost response
 
     # ---- market control (test and replay side) -------------------------
-    def set_book(self, market_id: str, selections: dict[str, dict], in_play: bool = False) -> None:
+    def set_book(self, market_id: str, selections: dict[str, dict], in_play: bool = False, status: str = "OPEN") -> None:
         """selections: {sel_id: {"backs": [(price, size)...], "lays": [(price, size)...]}}"""
-        book = MarketBook(market_id, in_play)
+        book = MarketBook(market_id, in_play, status=status)
         for sid, s in selections.items():
             book.selections[sid] = SelectionBook(
                 sid,
                 backs=sorted((PriceLevel(p, z) for p, z in s.get("backs", [])), key=lambda l: -l.price),
                 lays=sorted((PriceLevel(p, z) for p, z in s.get("lays", [])), key=lambda l: l.price),
                 last_traded=s.get("last"),
+                status=s.get("status", "ACTIVE"),
             )
         self._books[market_id] = book
         self._match_resting(market_id)
@@ -37,6 +38,9 @@ class SimulatedExchange(ExchangeAdapter):
     def go_in_play(self, market_id: str) -> None:
         """At the off: CANCEL-persistence orders lapse, TAKE_SP converts, KEEP stays."""
         self._books[market_id].in_play = True
+        self._at_the_off(market_id)
+
+    def _at_the_off(self, market_id: str) -> None:
         for o in self._orders.values():
             r = o.request
             if r.market_id != market_id or o.status not in (Status.UNMATCHED, Status.PARTIAL):
@@ -77,6 +81,11 @@ class SimulatedExchange(ExchangeAdapter):
         if req.market_id not in self._books:
             order.status = Status.REJECTED
             return order
+        book = self._books[req.market_id]
+        sel = book.selections.get(req.selection_id)
+        if book.status != "OPEN" or (sel is not None and sel.status != "ACTIVE"):
+            order.status = Status.REJECTED            # Betfair refuses orders on a suspended or closed market and on removed runners
+            return order
         self._match(order)
         return order
 
@@ -84,6 +93,12 @@ class SimulatedExchange(ExchangeAdapter):
         o = self.get_order(order_id)
         if o.status in (Status.UNMATCHED, Status.PARTIAL):
             o.status = Status.CANCELLED
+        return o
+
+    def set_persistence(self, order_id: str, persistence: Persistence) -> Order:
+        o = self.get_order(order_id)
+        if o.status in (Status.UNMATCHED, Status.PARTIAL):
+            o.request.persistence = persistence
         return o
 
     def replace_order(self, order_id: str, new_price: float) -> Order:
@@ -112,6 +127,8 @@ class SimulatedExchange(ExchangeAdapter):
     # ---- matching -------------------------------------------------------
     def _match(self, o: Order) -> None:
         r = o.request
+        if self._books[r.market_id].status != "OPEN":
+            return                                   # nothing matches while a market is suspended
         sel = self._books[r.market_id].selections.get(r.selection_id)
         if sel is None:
             o.status = Status.REJECTED

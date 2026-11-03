@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, setToken, type MarketInfo, type State } from './api'
 import MarketHeader, { marketFigure } from './MarketPanel'
+import OrdersPanel from './OrdersPanel'
 import Ladder from './Ladder'
 import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
-interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light'; pnlSide: 'left' | 'right'; reverse: boolean; shortS: number; longS: number }
+interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light'; pnlSide: 'left' | 'right'; reverse: boolean; persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP'; fokS: number; shortS: number; longS: number }
 interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string }
 
-const DEFAULTS: Settings = { autoCentre: false, rows: 21, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', reverse: false, shortS: 60, longS: 300 }
+const DEFAULTS: Settings = { autoCentre: false, rows: 21, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', reverse: false, persistence: 'CANCEL', fokS: 0, shortS: 60, longS: 300 }
 const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
@@ -97,7 +98,7 @@ export default function App() {
 
   const submit = useCallback(async (p: Pending) => {
     try {
-      const r = await api.place({ market_id: p.marketId, selection_id: p.selectionId, side: p.side, price: p.price, size: p.size })
+      const r = await api.place({ market_id: p.marketId, selection_id: p.selectionId, side: p.side, price: p.price, size: p.size, persistence: settings.persistence, fok_s: settings.fokS || undefined })
       const o = r.order
       const text = `${p.runner}: ${p.side} £${p.size.toFixed(2)} @ ${p.price.toFixed(2)} — ${o.status === 'MATCHED' ? 'matched' : o.status === 'PARTIAL' ? `part matched £${o.matched.toFixed(2)}` : o.status === 'UNMATCHED' ? 'waiting (unmatched)' : o.status.toLowerCase()}`
       say(text, o.status === 'REJECTED' ? 'err' : r.warnings.length ? 'warn' : 'ok')
@@ -108,6 +109,7 @@ export default function App() {
 
   const click = (l: LadderRef, side: Side, price: number) => {
     const m = state?.markets[l.marketId]
+    if (m && m.status && m.status !== 'OPEN') return say(`The market is ${m.status.toLowerCase()} — bets cannot be placed`, 'warn')
     const sf = stakeFor(l)
     if (sf.bad) return say('The stake box needs an amount of £1 or more (or clear it to use the default)', 'err')
     const size = orderSize(side, price, sf.amount, settings.layBasis)
@@ -148,6 +150,22 @@ export default function App() {
     await Promise.all(here.map(o => api.cancel(o.order_id).catch(e => say(e.message, 'err'))))
     refresh()
   }
+  const editOrder = async (id: string, b: { price?: number; size?: number }) => {
+    try { const r = await api.edit(id, b); say(`Changed to £${r.order.size.toFixed(2)} @ ${r.order.price.toFixed(2)} — ${r.order.status === 'MATCHED' ? 'matched' : r.order.status.toLowerCase()}`) }
+    catch (e) { say((e as Error).message, 'err') }
+    refresh()
+  }
+  const cancelOrder = async (id: string) => { await api.cancel(id).catch(e => say(e.message, 'err')); refresh() }
+  const cancelEverything = async () => {
+    for (const id of ids) await api.cancelAll(id).catch(e => say(e.message, 'err'))
+    say('Cancelled all unmatched bets'); refresh()
+  }
+  const persistAll = async (persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP') => {
+    const r = await api.persist({ persistence, market_ids: ids }).catch(e => { say(e.message, 'err'); return null })
+    if (r) say(`${r.changed} bet${r.changed === 1 ? '' : 's'} set to ${persistence === 'TAKE_SP' ? 'take SP' : persistence.toLowerCase()} at the off`)
+    refresh()
+  }
+  const persistOne = async (id: string, persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP') => { await api.persist({ persistence, order_id: id }).catch(e => say(e.message, 'err')); refresh() }
   const cancelAll = async (l: LadderRef, side?: Side) => {
     const r = await api.cancelAll(l.marketId, l.selectionId, side).catch(e => { say(e.message, 'err'); return null })
     if (r) say(r.cancelled ? `Cancelled ${r.cancelled}` : 'Nothing to cancel', r.cancelled ? 'ok' : 'warn')
@@ -299,6 +317,8 @@ export default function App() {
               )
             })}
           </div>
+          {ids.length > 0 && <OrdersPanel orders={state?.orders ?? []} markets={state?.markets ?? {}} onEdit={editOrder} onCancel={cancelOrder}
+            onCancelAll={cancelEverything} onPersistAll={persistAll} onPersist={persistOne} />}
         </main>
       </div>
 
@@ -362,6 +382,14 @@ export default function App() {
                 const v = e.target.value.split(',').map(x => Number(x.trim())).filter(x => x >= 1).slice(0, 8)
                 if (v.length) setSettings(s => ({ ...s, presets: v, stakeIdx: Math.min(s.stakeIdx, v.length - 1) }))
               }} />
+            </label>
+            <label>Unmatched bets when the match starts (new bets)
+              <select value={settings.persistence} onChange={e => setSettings(s => ({ ...s, persistence: e.target.value as 'KEEP' | 'CANCEL' | 'TAKE_SP' }))}>
+                <option value="CANCEL">Cancel them (safest)</option><option value="KEEP">Keep them in play</option><option value="TAKE_SP">Take the Starting Price (not simulated in practice)</option>
+              </select>
+            </label>
+            <label>Fill or kill: cancel any unmatched part after this many seconds (0 = off)
+              <input type="number" min={0} max={600} value={settings.fokS} onChange={e => setSettings(s => ({ ...s, fokS: Math.max(0, Math.min(600, Number(e.target.value) || 0)) }))} />
             </label>
             <label>Lay stakes are entered as
               <select value={settings.layBasis} onChange={e => setSettings(s => ({ ...s, layBasis: e.target.value as 'stake' | 'liability' }))}><option value="stake">a stake</option><option value="liability">a liability</option></select>

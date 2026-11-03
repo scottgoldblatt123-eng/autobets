@@ -121,7 +121,7 @@ class BetfairAdapter(ExchangeAdapter):
 
     @staticmethod
     def parse_book(raw: dict) -> MarketBook:
-        book = MarketBook(raw["marketId"], in_play=bool(raw.get("inplay")))
+        book = MarketBook(raw["marketId"], in_play=bool(raw.get("inplay")), status=raw.get("status", "OPEN"))
         for r in raw.get("runners", []):
             ex = r.get("ex", {})
             book.selections[str(r["selectionId"])] = SelectionBook(
@@ -130,6 +130,7 @@ class BetfairAdapter(ExchangeAdapter):
                 lays=[PriceLevel(x["price"], x["size"]) for x in ex.get("availableToLay", [])],
                 last_traded=r.get("lastPriceTraded"),
                 traded={x["price"]: x["size"] for x in ex.get("tradedVolume", [])},
+                status=r.get("status", "ACTIVE"),
             )
         return book
 

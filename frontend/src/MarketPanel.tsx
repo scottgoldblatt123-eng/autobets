@@ -59,6 +59,7 @@ export default function MarketHeader({ market, openOrders, onGreen, onClose }: P
     <div className="mhead">
       <div className="mctl">
         <span className={'clock' + (market.in_play ? ' live' : '')}>{countdown(market.start, market.in_play, now) || '—'}</span>
+        {market.status && market.status !== 'OPEN' && <span className="statustag">{market.status === 'SUSPENDED' ? 'SUSPENDED' : market.status === 'CLOSED' ? 'CLOSED' : market.status}</span>}
         <div className="mbtnrow">
           <span className="book" title="Back book: add up 1/price of the best back prices. Over 100% is normal."><i>Back</i>{book(s => s.backs[0]?.[0])}</span>
           <button className={'bigbtn ' + state} disabled={!enabled} onClick={onGreen} title={tip}>

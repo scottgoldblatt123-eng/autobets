@@ -1,6 +1,7 @@
 """Core trading types shared by every exchange adapter."""
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -52,6 +53,7 @@ class Order:
     status: Status = Status.UNMATCHED
     matched: float = 0.0
     avg_price: float = 0.0
+    placed_at: float = field(default_factory=time.time)
 
     @property
     def remaining(self) -> float:
@@ -85,6 +87,7 @@ class SelectionBook:
     lays: list[PriceLevel] = field(default_factory=list)    # best first (lowest)
     last_traded: float | None = None
     traded: dict = field(default_factory=dict)             # price -> matched volume (full-depth reads only)
+    status: str = "ACTIVE"                                 # ACTIVE | REMOVED | WINNER | LOSER | ...
 
 
 @dataclass
@@ -92,3 +95,4 @@ class MarketBook:
     market_id: str
     in_play: bool = False
     selections: dict[str, SelectionBook] = field(default_factory=dict)
+    status: str = "OPEN"                                   # OPEN | SUSPENDED | CLOSED | INACTIVE

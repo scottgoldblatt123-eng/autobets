@@ -24,6 +24,8 @@ class DemoFeed:
     def __init__(self, seed: int = 7) -> None:
         self.t0 = time.time()
         self.seed = seed
+        self.status: dict[str, str] = {}        # demo control: market_id -> OPEN | SUSPENDED | CLOSED
+        self.in_play: dict[str, bool] = {}      # demo control: override a market's in-play flag
 
     def list_markets(self, sport: str = "tennis", **_):
         return [{"market_id": m, "name": v["name"], "event": v["event"], "competition": v["competition"], "start": None,
@@ -44,7 +46,7 @@ class DemoFeed:
         for mid in ids:
             if mid not in MARKETS:
                 continue
-            b = MarketBook(mid, in_play=MARKETS[mid]["in_play"])
+            b = MarketBook(mid, in_play=self.in_play.get(mid, MARKETS[mid]["in_play"]), status=self.status.get(mid, "OPEN"))
             for i, sid in enumerate(MARKETS[mid]["runners"]):
                 ltp = ticks.nearest(self._price(mid, i, now))
                 rng = random.Random(f"{mid}-{sid}-{int(now // 3)}")

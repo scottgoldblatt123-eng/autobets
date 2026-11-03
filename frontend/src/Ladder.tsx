@@ -71,6 +71,8 @@ export default function Ladder(p: Props) {
   const share = useMemo(() => matchedShare(sel?.traded ?? [], Object.values(p.market.selections).map(s => s.traded)), [sel, p.market.selections])
 
   const noVolume = Object.values(p.market.selections).every(s => s.traded.length === 0)
+  const mstatus = p.market.status ?? 'OPEN', rstatus = sel?.status ?? 'ACTIVE'
+  const blocked = mstatus !== 'OPEN' || rstatus !== 'ACTIVE'
 
   if (!sel || !view) return <div className="ladder"><div className="ladder-head"><b>{name}</b> · no data</div></div>
   const open = pos && (Math.abs(pos.win) > 0.004 || Math.abs(pos.lose) > 0.004)
@@ -80,7 +82,7 @@ export default function Ladder(p: Props) {
   const level = open ? Math.min(pos!.win, pos!.lose) : 0
 
   return (
-    <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '') + (p.pnlSide === 'right' ? ' pnl-right' : '')} onMouseEnter={p.onHover}
+    <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '') + (p.pnlSide === 'right' ? ' pnl-right' : '') + (blocked ? ' blocked' : '')} onMouseEnter={p.onHover}
          onWheel={e => { p.onWheel((e.deltaY > 0 ? -1 : 1) * (p.reverse ? -1 : 1)) }}>
       <div className="ladder-head">
         <div className="ladder-title"><b>{name}</b></div>
@@ -102,12 +104,13 @@ export default function Ladder(p: Props) {
                value={p.stakeText} onChange={e => p.onStakeText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur() }} />
       </div>
       <div className="wom" title={wom ? `Weight of money: ${wom.back}% of the money in the best ${p.womLevels} prices is available to back, ${wom.lay}% to lay. ${wom.back >= wom.lay ? '▲ back side heavier' : '▼ lay side heavier'}` : 'No money in the book'}>
-        <span className="bets">{nBack} bets</span>
+        <span className="bets">{nBack} bet{nBack === 1 ? "" : "s"}</span>
         <span className="b">{wom ? wom.back + '%' : '–'}</span>
         <span className="arrow">{wom ? (wom.back >= wom.lay ? '▲' : '▼') : ''}</span>
         <span className="l">{wom ? wom.lay + '%' : '–'}</span>
-        <span className="bets">{nLay} bets</span>
+        <span className="bets">{nLay} bet{nLay === 1 ? "" : "s"}</span>
       </div>
+      {blocked && <div className="blockedbar">{rstatus !== 'ACTIVE' ? `Runner ${rstatus.toLowerCase()}` : mstatus === 'SUSPENDED' ? 'SUSPENDED' : mstatus === 'CLOSED' ? 'MARKET CLOSED' : mstatus}</div>}
       <div className="rows" ref={rowsEl}>
         {view.rows.map(price => {
           const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
