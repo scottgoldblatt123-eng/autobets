@@ -48,3 +48,9 @@ export function parseStake(text: string): number | null {
   const v = Math.round(Number(t) * 100) / 100
   return v >= 1 ? v : null
 }
+
+/** Whole-market worst case if `stake` is placed on one runner at `price`: the figure the market P&L column shows. */
+export function marketAfter(outcomes: Record<string, number>, selectionId: string, side: Side, stake: number, price: number): number {
+  const vals = Object.entries(outcomes).map(([id, v]) => v + (side === 'BACK' ? (id === selectionId ? stake * (price - 1) : -stake) : (id === selectionId ? -stake * (price - 1) : stake)))
+  return r2(Math.min(...vals))
+}

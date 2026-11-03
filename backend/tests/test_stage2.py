@@ -102,3 +102,18 @@ def test_partial_green_hedges_part_of_the_way(eng):
     half = eng2.green_market.__wrapped__(eng2, MID, False, 0.5)
     assert half["greened"] and half["level"] is False
     assert half["placed"][0]["stake"] == pytest.approx(full["placed"][0]["stake"] * 0.5, abs=0.02)
+
+
+def test_matched_bets_listed_with_side_and_outcomes():
+    from autobets.api.app import make_engine
+    import os
+    os.environ["AUTOBETS_MODE"] = "demo"
+    e = make_engine()
+    mid = "1.900001"
+    sel = e.state([mid])["markets"][mid]["selections"]["101"]
+    e.place(mid, "101", "LAY", sel["lays"][0][0], 10)
+    e.place(mid, "101", "BACK", sel["backs"][0][0], 10)
+    mb = e.state([mid])["matched_bets"]
+    assert {b["side"] for b in mb} == {"LAY", "BACK"}
+    lay = next(b for b in mb if b["side"] == "LAY")
+    assert lay["if_loses"] == 10 and lay["if_wins"] < 0

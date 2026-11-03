@@ -1,6 +1,8 @@
 """Simulated exchange: deterministic matching against a book you control. No network, no money."""
 from __future__ import annotations
 
+import time
+
 import itertools
 
 from .. import ticks
@@ -121,6 +123,9 @@ class SimulatedExchange(ExchangeAdapter):
         oid = self._by_ref.get(client_ref)
         return self._orders[oid] if oid else None
 
+    def all_orders(self) -> list[Order]:
+        return list(self._orders.values())
+
     def fills(self) -> list[Fill]:
         return list(self._fills)
 
@@ -147,6 +152,7 @@ class SimulatedExchange(ExchangeAdapter):
             o.matched = round(o.matched + take, 2)
             o.avg_price = round(total / o.matched, 4)
             self._fills.append(Fill(o.order_id, lvl.price, take))
+            o.last_fill_at = time.time()
         sel.backs = [l for l in sel.backs if l.size > 0]
         sel.lays = [l for l in sel.lays if l.size > 0]
         o.status = (Status.MATCHED if o.remaining <= 0

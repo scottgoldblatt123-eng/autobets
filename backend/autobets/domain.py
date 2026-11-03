@@ -54,6 +54,7 @@ class Order:
     matched: float = 0.0
     avg_price: float = 0.0
     placed_at: float = field(default_factory=time.time)
+    last_fill_at: float = 0.0
 
     @property
     def remaining(self) -> float:

@@ -57,3 +57,14 @@ describe('stake box, weight of money, matched share', () => {
     expect(matchedShare(a, [a, b])).toEqual({ volume: 6200, pct: 48.1 })
   })
 })
+
+import { marketAfter } from './maths'
+describe('marketAfter', () => {
+  it('a back of 10 at 2.0 on A in a two-runner market', () => {
+    expect(marketAfter({ A: 0, B: 0 }, 'A', 'BACK', 10, 2)).toBe(-10)
+  })
+  it('hedging a lay position evenly locks the same on both outcomes', () => {
+    // lay 10 @ 2.0 on A: A wins -10, B wins +10. Backing 10 @ 2.0 on A locks 0.
+    expect(marketAfter({ A: -10, B: 10 }, 'A', 'BACK', 10, 2)).toBe(0)
+  })
+})

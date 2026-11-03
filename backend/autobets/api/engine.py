@@ -173,7 +173,25 @@ class Engine:
                 "warnings": self.service.warnings[-3:],
                 "triggers": [{k: v for k, v in t.__dict__.items() if k not in ("cancel",)} for t in self.triggers.values() if t.market_id in ids],
                 "market_triggers": [t.__dict__ for t in self.mtriggers.values() if t.market_id in ids],
+                "matched_bets": self.matched_bets(ids),
                 "events": self.events[-5:]}
+
+    @locked
+    def matched_bets(self, ids: list[str], n: int = 200) -> list[dict]:
+        """Every bet with something matched on it (newest first), with what each would win or lose on its own."""
+        out = []
+        for o in self.ex.all_orders():
+            r = o.request
+            if r.market_id not in ids or o.matched <= 0:
+                continue
+            back = r.side.value == "BACK"
+            win = o.matched * (o.avg_price - 1) * (1 if back else -1)
+            lose = -o.matched if back else o.matched
+            out.append({"order_id": o.order_id, "market_id": r.market_id, "selection_id": r.selection_id, "side": r.side.value,
+                        "price": o.avg_price, "size": o.matched, "source": r.source, "t": o.last_fill_at or o.placed_at,
+                        "if_wins": round(win, 2), "if_loses": round(lose, 2)})
+        out.sort(key=lambda x: -x["t"])
+        return out[:n]
 
     @locked
     def activity(self, n: int = 100) -> list[dict]:

@@ -179,3 +179,8 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 
 .switch { margin-left: 6px; width: 34px; padding: 0 2px; font-size: 12px; border-radius: var(--radius-sm); cursor: pointer; }
 .keybox { width: 80px; text-align: center; cursor: pointer; }
+
+.chartwrap { overflow: hidden; }
+
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 10px 10px; flex: none; } .panels .opanel { margin: 0; min-width: 0; }
+.sidetag { padding: 0 6px; border-radius: 3px; font-size: 11px; } .sidetag.back { background: var(--back); color: var(--on-back); } .sidetag.lay { background: var(--lay); color: var(--on-lay); }

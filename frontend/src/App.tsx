@@ -2,16 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, setToken, type MarketInfo, type State } from './api'
 import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
+import MatchedPanel from './MatchedPanel'
 import Ladder from './Ladder'
 import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
-interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light'; pnlSide: 'left' | 'right'; reverse: boolean; persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP'; fokS: number; offsetTicks: number; stopTicks: number; stakeMode: 'fixed' | 'pct'; bank: number; sepLay: boolean; layText: string; clickMode: 'single' | 'double'; keys: Record<string, string>; shortS: number; longS: number }
+interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light'; pnlSide: 'left' | 'right'; pnlBasis: 'runner' | 'market'; reverse: boolean; persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP'; fokS: number; offsetTicks: number; stopTicks: number; stakeMode: 'fixed' | 'pct'; bank: number; sepLay: boolean; layText: string; clickMode: 'single' | 'double'; keys: Record<string, string>; shortS: number; longS: number }
 interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string; entry?: boolean }
 
 const KEYS: Record<string, string> = { stakeBox: 's', cancelBack: 'z', cancelLay: 'x', closeRunner: 'c', hardClose: 'g', reverse: 'r', recentre: 'Enter' }
-const DEFAULTS: Settings = { autoCentre: false, rows: 21, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', reverse: false, persistence: 'CANCEL', fokS: 0, offsetTicks: 0, stopTicks: 0, stakeMode: 'fixed', bank: 1000, sepLay: false, layText: '', clickMode: 'single', keys: KEYS, shortS: 60, longS: 300 }
+const DEFAULTS: Settings = { autoCentre: false, rows: 0, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', pnlBasis: 'runner', reverse: false, persistence: 'CANCEL', fokS: 0, offsetTicks: 0, stopTicks: 0, stakeMode: 'fixed', bank: 1000, sepLay: false, layText: '', clickMode: 'single', keys: KEYS, shortS: 60, longS: 300 }
 const KEY_LABELS: Record<string, string> = { stakeBox: 'Jump to the stake box', cancelBack: 'Cancel back bets (hovered ladder)', cancelLay: 'Cancel lay bets (hovered ladder)', closeRunner: 'Close the hovered runner', hardClose: 'Hard close the market', reverse: 'Reverse the ladders', recentre: 'Recentre all ladders' }
 const keyName = (k: string) => (k.length === 1 ? k.toUpperCase() : k)
 export function resolveStakeText(t: string, bank: number, mode: 'fixed' | 'pct'): number | null {
@@ -25,7 +26,8 @@ const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
 
 function loadSettings(): Settings {
-  try { const s = JSON.parse(localStorage.getItem('autobets.settings') ?? '{}'); return { ...DEFAULTS, ...s, keys: { ...KEYS, ...(s.keys ?? {}) } } } catch { return DEFAULTS }
+  try { const s = JSON.parse(localStorage.getItem('autobets.settings') ?? '{}'); if (s.rows === 21) delete s.rows
+    return { ...DEFAULTS, ...s, keys: { ...KEYS, ...(s.keys ?? {}) } } } catch { return DEFAULTS }
 }
 
 export default function App() {
@@ -101,6 +103,7 @@ export default function App() {
   const stake = typed ?? presetStake0(settings.presets[settings.stakeIdx] ?? settings.presets[0])
   function presetStake0(v: number) { return settings.stakeMode === 'pct' ? Math.round(settings.bank * v) / 100 : v }
   const stakeBox = useRef<HTMLInputElement>(null)
+  const [ladderRows, setLadderRows] = useState<Record<string, number>>({})      // each ladder is resized on its own; blank = the setting
   const [ladderStake, setLadderStake] = useState<Record<string, string>>({})     // each ladder can have its own stake; empty = use the toolbar stake
   /** One stake entry: £ amount, or a percentage of the bank ("2%"), or in % mode a bare number is a percentage. */
   const resolveStake = (t: string) => resolveStakeText(t, settings.bank, settings.stakeMode)
@@ -324,6 +327,8 @@ export default function App() {
             <span className="muted">Lay by</span>
             {(['stake', 'liability'] as const).map(b => <button key={b} className={'chipbtn' + (settings.layBasis === b ? ' on' : '')} onClick={() => setSettings(s => ({ ...s, layBasis: b }))}>{b === 'stake' ? 'Stake' : 'Liability'}</button>)}
             <span className="sep" />
+            <button className={'chipbtn on'} onClick={() => setSettings(s => ({ ...s, pnlBasis: s.pnlBasis === 'runner' ? 'market' : 'runner' }))}
+                    title="What the profit and loss column on the ladders shows: this runner only, or the whole market">P&amp;L: {settings.pnlBasis === 'runner' ? 'runner' : 'market'}</button>
             <span className="muted" title="After a bet matches, place the closing bet this many ticks away (0 = off)">Offset</span>
             <input type="number" min={0} max={50} className="tickin" value={settings.offsetTicks || ''} placeholder="0" onChange={e => setSettings(s => ({ ...s, offsetTicks: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))} />
             <span className="muted" title="Stop loss: if the price moves this many ticks against a matched bet, close the position (0 = off)">Stop</span>
@@ -347,7 +352,7 @@ export default function App() {
                       if (!m) return <div key={k} className="ladder"><div className="ladder-head muted">Loading…</div></div>
                       return (
                         <Ladder key={k} market={m} marketId={l.marketId} selectionId={l.selectionId}
-                          orders={orders} presets={settings.presets} stakeText={ladderStake[k] ?? ''} defaultStake={stake} stakeBad={stakeFor(l).bad} onStakeText={t => setLadderStake(o => ({ ...o, [k]: t }))} pnlSide={settings.pnlSide} reverse={settings.reverse} rows={settings.rows} onRows={n => setSettings(s => ({ ...s, rows: n }))} womLevels={settings.womLevels} showChart={settings.showChart} showTotal={settings.showTotal}
+                          orders={orders} presets={settings.presets} stakeText={ladderStake[k] ?? ''} defaultStake={stake} stakeBad={stakeFor(l).bad} onStakeText={t => setLadderStake(o => ({ ...o, [k]: t }))} pnlSide={settings.pnlSide} pnlBasis={settings.pnlBasis} reverse={settings.reverse} rows={ladderRows[k] ?? settings.rows} onRows={n => setLadderRows(o => ({ ...o, [k]: n }))} womLevels={settings.womLevels} showChart={settings.showChart} showTotal={settings.showTotal}
                           centre={centres[k] ?? null} autoCentre={settings.autoCentre} active={active === k}
                           onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
                           triggers={(state?.triggers ?? []).filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId)}
@@ -364,8 +369,9 @@ export default function App() {
               )
             })}
           </div>
-          {ids.length > 0 && <OrdersPanel orders={state?.orders ?? []} markets={state?.markets ?? {}} onEdit={editOrder} onCancel={cancelOrder}
-            onCancelAll={cancelEverything} onPersistAll={persistAll} onPersist={persistOne} />}
+          {ids.length > 0 && <div className="panels"><OrdersPanel orders={state?.orders ?? []} markets={state?.markets ?? {}} onEdit={editOrder} onCancel={cancelOrder}
+            onCancelAll={cancelEverything} onPersistAll={persistAll} onPersist={persistOne} />
+            <MatchedPanel bets={state?.matched_bets ?? []} markets={state?.markets ?? {}} /></div>}
         </main>
       </div>
 
@@ -428,8 +434,12 @@ export default function App() {
             <h4>Layout</h4>
             <label className="check"><input type="checkbox" checked={settings.autoCentre} onChange={e => setSettings(s => ({ ...s, autoCentre: e.target.checked }))} />
               Auto-recentre on the price (off: the ladder stays put until you press Enter or ⌖)</label>
-            <label>Price rows shown (you can also drag the bar under a ladder)
-              <input type="number" min={7} max={61} value={settings.rows} onChange={e => setSettings(s => ({ ...s, rows: Math.max(7, Math.min(61, Number(e.target.value) || 21)) }))} />
+            <label>Price rows shown (0 = fit the window and leave room for the chart; you can also drag the bar under a ladder)
+              <input type="number" min={0} max={61} value={settings.rows} onChange={e => setSettings(s => ({ ...s, rows: Math.max(0, Math.min(61, Number(e.target.value) || 0)) }))} />
+            </label>
+            <label>The profit and loss column shows
+              <select value={settings.pnlBasis} onChange={e => setSettings(s => ({ ...s, pnlBasis: e.target.value as 'runner' | 'market' }))}>
+                <option value="runner">this runner only (what hedging it would lock)</option><option value="market">the whole market (worst case across every runner after hedging)</option></select>
             </label>
             <label>Profit and loss column (the hedge figures) sits on the
               <select value={settings.pnlSide} onChange={e => setSettings(s => ({ ...s, pnlSide: e.target.value as 'left' | 'right' }))}>
@@ -510,7 +520,7 @@ export default function App() {
         )
       })()}
 
-      {toast && <div className={'toast ' + toast.kind} role="status">{toast.text}</div>}
+      {toast && <div className={'toast ' + toast.kind} role="status">{toast.text.split(/\b(BACK|LAY)\b/).map((t, i) => t === 'BACK' || t === 'LAY' ? <b key={i} className={'sidetag ' + t.toLowerCase()}>{t}</b> : t)}</div>}
     </div>
   )
 }

@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { MarketState, Order, Trigger } from './api'
-import { hedge, matchedShare, money, weightOfMoney, type Position, type Side } from './maths'
+import { hedge, marketAfter, matchedShare, money, weightOfMoney, type Position, type Side } from './maths'
 import PriceChart from './PriceChart'
 import { nearest, window as tickWindow } from './ticks'
 
 export interface Props {
   market: MarketState; marketId: string; selectionId: string; orders: Order[]
-  presets: number[]; stakeText: string; defaultStake: number; stakeBad: boolean; onStakeText: (t: string) => void; pnlSide: 'left' | 'right'
+  presets: number[]; stakeText: string; defaultStake: number; stakeBad: boolean; onStakeText: (t: string) => void; pnlSide: 'left' | 'right'; pnlBasis: 'runner' | 'market'
   reverse: boolean; rows: number; onRows: (n: number) => void; womLevels: number; showChart: boolean; showTotal: boolean; centre: number | null; autoCentre: boolean; active: boolean
   onSetCentre: (c: number) => void
   triggers: Trigger[]
@@ -25,18 +25,33 @@ export interface Props {
 
 const fmtSize = (s: number) => (s >= 1000 ? (s / 1000).toFixed(1) + 'k' : s.toFixed(0))
 
-const MIN_ROWS = 7, MIN_CHART = 70
+const MIN_ROWS = 7
 
 export default function Ladder(p: Props) {
   const card = useRef<HTMLDivElement>(null), rowsEl = useRef<HTMLDivElement>(null), chartEl = useRef<HTMLDivElement>(null)
-  /** Drag the bar under the ladder: down adds price rows and shrinks the chart, up does the reverse. */
+  /** How many price rows fit in this ladder's card, measured, so the ladder never needs a scrollbar of its own. */
+  const [fit, setFit] = useState(61)
+  const er = Math.max(MIN_ROWS, Math.min(p.rows > 0 ? p.rows : Math.floor(fit * 0.7), fit, 61))   // rows actually shown: 0 = fit automatically, leaving room for the chart
+  useLayoutEffect(() => {
+    const el = card.current; if (!el) return
+    const measure = () => {
+      const rowsH = rowsEl.current?.clientHeight ?? 0, chartH = chartEl.current?.clientHeight ?? 0
+      if (!rowsH) return
+      const total = Math.max(el.clientHeight, el.scrollHeight)
+      const chrome = total - rowsH - chartH
+      const n = Math.floor((el.clientHeight - chrome) / (rowsH / er))
+      setFit(f => (f === n ? f : Math.max(MIN_ROWS, n)))
+    }
+    const ro = new ResizeObserver(measure); ro.observe(el); measure()
+    return () => ro.disconnect()
+  })
+  /** Drag the bar under the ladder: down adds price rows and shrinks the chart (right down to no chart), up does the reverse. */
   const startDrag = (e: React.PointerEvent) => {
     e.preventDefault()
-    const startY = e.clientY, startRows = p.rows
-    const rowH = rowsEl.current && p.rows ? rowsEl.current.clientHeight / p.rows : 23
-    const chrome = card.current && rowsEl.current ? card.current.clientHeight - rowsEl.current.clientHeight - (chartEl.current?.clientHeight ?? 0) : 0
-    const maxRows = card.current ? Math.floor((card.current.clientHeight - chrome - (p.showChart ? MIN_CHART : 0)) / rowH) : 61
-    const move = (ev: PointerEvent) => p.onRows(Math.max(MIN_ROWS, Math.min(Math.max(MIN_ROWS, maxRows), 61, startRows + Math.round((ev.clientY - startY) / rowH))))
+    const startY = e.clientY, startRows = er
+    const rowH = rowsEl.current && er ? rowsEl.current.clientHeight / er : 23
+    const maxRows = fit
+    const move = (ev: PointerEvent) => p.onRows(Math.max(MIN_ROWS, Math.min(maxRows, 61, startRows + Math.round((ev.clientY - startY) / rowH))))
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('dragging') }
     document.body.classList.add('dragging')
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
@@ -57,8 +72,8 @@ export default function Ladder(p: Props) {
   const view = useMemo(() => {
     if (!sel || ref == null) return null
     const centre = p.autoCentre || p.centre == null ? nearest(ref) : p.centre
-    const above = Math.floor((p.rows - 1) / 2)
-    let rows = tickWindow(centre, above, p.rows - 1 - above)           // highest price first
+    const above = Math.floor((er - 1) / 2)
+    let rows = tickWindow(centre, above, er - 1 - above)           // highest price first
     if (p.reverse) rows = [...rows].reverse()                            // reversed ladder: lowest price at the top
     const back = new Map(sel.backs), lay = new Map(sel.lays), traded = new Map(sel.traded)
     const maxTraded = Math.max(1, ...rows.map(r => traded.get(r) ?? 0))
@@ -68,7 +83,7 @@ export default function Ladder(p: Props) {
     const rs = new Map(sel.recent?.short ?? []), rl = new Map(sel.recent?.long ?? [])
     const maxRecent = Math.max(1, ...rows.map(r => rl.get(r) ?? 0))
     return { rows, back, lay, traded, maxTraded, ltp, away, rs, rl, maxRecent }
-  }, [sel, ref, p.centre, p.autoCentre, p.rows, p.reverse])
+  }, [sel, ref, p.centre, p.autoCentre, er, p.reverse])
   const wom = useMemo(() => (sel ? weightOfMoney(sel.backs, sel.lays, p.womLevels) : null), [sel, p.womLevels])
   const share = useMemo(() => matchedShare(sel?.traded ?? [], Object.values(p.market.selections).map(s => s.traded)), [sel, p.market.selections])
 
@@ -84,8 +99,7 @@ export default function Ladder(p: Props) {
   const level = open ? Math.min(pos!.win, pos!.lose) : 0
 
   return (
-    <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '') + (p.pnlSide === 'right' ? ' pnl-right' : '') + (blocked ? ' blocked' : '')} onMouseEnter={p.onHover}
-         onWheel={e => { p.onWheel((e.deltaY > 0 ? -1 : 1) * (p.reverse ? -1 : 1)) }}>
+    <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '') + (p.pnlSide === 'right' ? ' pnl-right' : '') + (blocked ? ' blocked' : '')} onMouseEnter={p.onHover}>
       <div className="ladder-head">
         <div className="ladder-title"><b>{name}</b>
           {Object.keys(p.runners).length > 1 && (
@@ -119,12 +133,13 @@ export default function Ladder(p: Props) {
         <span className="bets">{nLay} bet{nLay === 1 ? "" : "s"}</span>
       </div>
       {blocked && <div className="blockedbar">{rstatus !== 'ACTIVE' ? `Runner ${rstatus.toLowerCase()}` : mstatus === 'SUSPENDED' ? 'SUSPENDED' : mstatus === 'CLOSED' ? 'MARKET CLOSED' : mstatus}</div>}
-      <div className="rows" ref={rowsEl}>
+      <div className="rows" ref={rowsEl} onWheel={e => { p.onWheel((e.deltaY > 0 ? -1 : 1) * (p.reverse ? -1 : 1)) }}>
         {view.rows.map(price => {
           const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
           const here = mine.filter(o => o.price === price)
           const hereB = here.filter(o => o.side === 'BACK'), hereL = here.filter(o => o.side === 'LAY')
-          const green = open ? hedge(pos!, price) : null
+          const hg = open ? hedge(pos!, price) : null
+          const green = hg && p.pnlBasis === 'market' && p.market.outcomes ? { ...hg, locked: marketAfter(p.market.outcomes, p.selectionId, hg.side, hg.stake, price) } : hg
           const trg = p.triggers.filter(t => t.price === price)
           const isLtp = view.ltp === price
           const backZone = bestBack != null && price <= bestBack, layZone = bestLay != null && price >= bestLay
@@ -135,7 +150,7 @@ export default function Ladder(p: Props) {
                  onDrop={e => { const id = e.dataTransfer.getData('text/order'); if (id && mine.some(o => o.order_id === id)) { e.preventDefault(); p.onMoveOrder(id, price) } }}
                  onContextMenu={e => { e.preventDefault(); p.onContext(price, e.clientX, e.clientY) }}>
               <button className={'cell green ' + (green ? (green.locked >= 0 ? 'gain' : 'loss') : '')} disabled={!green}
-                      onClick={() => green && p.onHedge(price)} title={green ? `Hedge here: ${green.side} £${green.stake.toFixed(2)} at ${price.toFixed(2)}, locks ${money(green.locked)}` : ''}>
+                      onClick={() => green && p.onHedge(price)} title={green ? `Hedge here: ${green.side} £${green.stake.toFixed(2)} at ${price.toFixed(2)}, locks ${money(green.locked)} ${p.pnlBasis === 'market' ? 'across the whole market' : 'on this runner'}` : ''}>
                 {green ? green.locked.toFixed(2) : ''}</button>
               <div className="cell minecol" onClick={cancel} title={hereB.length ? 'Your back bets here: click to cancel, drag to another price' : ''}>
                 {hereB.map(o => <span key={o.order_id} className="chip back draggable" draggable onDragStart={e => { e.dataTransfer.setData('text/order', o.order_id); e.dataTransfer.effectAllowed = 'move' }}>{o.remaining.toFixed(0)}</span>)}</div>
