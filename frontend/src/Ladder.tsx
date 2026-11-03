@@ -120,8 +120,8 @@ export default function Ladder(p: Props) {
       <div className="ladder-pos">
         {open ? (<>
           {plain && <b className={'sidetag ' + plain.side.toLowerCase()} title={plain.tip}>{plain.side} £{plain.stake.toFixed(2)} @ {plain.price.toFixed(2)}</b>}
-          <span title="Profit if this selection wins" className={pos!.win >= 0 ? 'gain' : 'loss'}>win {money(pos!.win)}</span>
-          <span title="Profit if this selection loses" className={pos!.lose >= 0 ? 'gain' : 'loss'}>lose {money(pos!.lose)}</span>
+          <span title="Profit if this selection wins" className={pos!.win >= 0 ? 'gain' : 'loss'}>if {name.split(' ').pop()} wins {money(pos!.win)}</span>
+          <span title="Profit if this selection loses" className={pos!.lose >= 0 ? 'gain' : 'loss'}>if {name.split(' ').pop()} loses {money(pos!.lose)}</span>
         </>) : <span className="muted">no position</span>}
         {view.away && <span className="muted" title="The last traded price is outside the visible ladder — recentre (Enter)">{view.away} price {view.ltp?.toFixed(2)}</span>}
       </div>

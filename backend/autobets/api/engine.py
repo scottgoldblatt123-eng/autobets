@@ -188,7 +188,7 @@ class Engine:
             win = o.matched * (o.avg_price - 1) * (1 if back else -1)
             lose = -o.matched if back else o.matched
             out.append({"order_id": o.order_id, "market_id": r.market_id, "selection_id": r.selection_id, "side": r.side.value,
-                        "price": o.avg_price, "size": o.matched, "source": r.source, "t": o.last_fill_at or o.placed_at,
+                        "price": o.avg_price, "asked": r.price, "size": o.matched, "source": r.source, "t": o.last_fill_at or o.placed_at,
                         "if_wins": round(win, 2), "if_loses": round(lose, 2)})
         out.sort(key=lambda x: -x["t"])
         return out[:n]

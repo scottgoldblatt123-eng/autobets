@@ -10,7 +10,7 @@ export interface MarketState {
 }
 export interface Trigger { id: string; market_id: string; selection_id: string; price: number; direction: 'le' | 'ge'; label: string; locked: number }
 export interface MarketTrigger { id: string; market_id: string; level: number; direction: 'ge' | 'le'; label: string }
-export interface MatchedBet { order_id: string; market_id: string; selection_id: string; side: 'BACK' | 'LAY'; price: number; size: number; source: string; t: number; if_wins: number; if_loses: number }
+export interface MatchedBet { order_id: string; market_id: string; selection_id: string; side: 'BACK' | 'LAY'; price: number; asked: number; size: number; source: string; t: number; if_wins: number; if_loses: number }
 export interface Evt { t: number; text: string; trigger: string }
 export interface Order {
   order_id: string; market_id: string; selection_id: string; side: Side; price: number; size: number
