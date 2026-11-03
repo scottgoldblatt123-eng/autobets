@@ -42,6 +42,8 @@ jobs:
             echo "::group::Why the connection failed"
             echo "host key you saved (fingerprint):"; ssh-keygen -l -f ~/.ssh/known_hosts 2>&1 || true
             echo "host key the server presents (fingerprint):"; ssh-keyscan -T 10 -t ed25519 "$HOST" 2>/dev/null | ssh-keygen -l -f - 2>&1 || echo "(could not reach the server on port 22)"
+            echo "key GitHub holds (fingerprint; compare with the server):"; ssh-keygen -l -f ~/.ssh/deploy_key 2>&1 || echo "(this does not parse as a private key: re-copy DEPLOY_KEY including the BEGIN and END lines)"
+            echo "key lines in the secret: $(wc -l < ~/.ssh/deploy_key), first: $(head -1 ~/.ssh/deploy_key | cut -c1-35), last: $(tail -1 ~/.ssh/deploy_key | cut -c1-35)"
             echo "host value length: ${#HOST}, user: ${USER_}, saved key part length: ${#KV}"
             grep -iE "Connecting to|Connection (timed|refused|closed)|Permission denied|Offering public key|Authenticat|no hostkey|Server host key|known_hosts" ssh.log | head -20
             echo "::endgroup::"; exit 1
