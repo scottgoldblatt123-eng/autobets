@@ -340,6 +340,13 @@ export default function App() {
             <span className="spacer" />
             <span className="muted small">{keyName(settings.keys.stakeBox)} stake box · Hover a ladder (1–8 sets its stake) · {keyName(settings.keys.cancelBack)} cancel back · {keyName(settings.keys.cancelLay)} cancel lay · {keyName(settings.keys.closeRunner)} close runner · {keyName(settings.keys.hardClose)} hard close market · {keyName(settings.keys.reverse)} reverse ladders · {keyName(settings.keys.recentre)} recentre · wheel scrolls</span>
           </div>
+          {mode === 'demo' && ladders.length > 0 && (() => {
+            const mid = ladders.find(x => keyOf(x) === active)?.marketId ?? ladders[0].marketId
+            const go = (s: string, ip?: boolean) => api.demoStatus(mid, s, ip).then(() => say(`Demo: market ${s.toLowerCase()}${ip === undefined ? '' : ip ? ', in play' : ', pre-match'}`)).catch(e => say(e.message, 'err'))
+            return <div className="toolbar demobar"><span className="muted small">Demo controls for the highlighted market (for testing):</span>
+              <button className="sm" onClick={() => go('SUSPENDED')}>Suspend</button><button className="sm" onClick={() => go('OPEN')}>Reopen</button>
+              <button className="sm" onClick={() => go('CLOSED')}>Close</button><button className="sm" onClick={() => go('OPEN', false)}>Pre-match</button><button className="sm" onClick={() => go('OPEN', true)}>Go in play</button></div>
+          })()}
           {ladders.length === 0 && <div className="empty muted">Pick a market on the left to open its ladders (up to {MAX_LADDERS}).</div>}
           <div className="mrow">
             {ids.map(id => {

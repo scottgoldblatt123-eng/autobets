@@ -52,6 +52,7 @@ export const api = {
   dutch: (b: { market_id: string; selection_ids: string[]; side: Side; total: number; prices?: Record<string, number> }) => call<PlanResult>('/api/dutch', { method: 'POST', body: JSON.stringify(b) }),
   bookPreview: (b: { market_id: string; targets: Record<string, number> }) => call<Plan>('/api/book/preview', { method: 'POST', body: JSON.stringify(b) }),
   book: (b: { market_id: string; targets: Record<string, number> }) => call<PlanResult>('/api/book', { method: 'POST', body: JSON.stringify(b) }),
+  demoStatus: (market_id: string, status: string, in_play?: boolean) => call<{ ok: boolean }>(`/api/demo/status?market_id=${market_id}&status=${status}${in_play === undefined ? '' : `&in_play=${in_play}`}`, { method: 'POST' }),
   log: (n = 100) => call<LogEntry[]>(`/api/log?n=${n}`),
   cancel: (id: string) => call<Order>(`/api/orders/${id}`, { method: 'DELETE' }),
   cancelAll: (market: string, selection?: string, side?: Side) =>

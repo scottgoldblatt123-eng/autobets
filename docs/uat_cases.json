@@ -1,0 +1,1786 @@
+[
+ {
+  "id": "1.1",
+  "section": "Setup and access",
+  "intro": "Before anything else. Demo mode is the safe place to run most of this script.",
+  "title": "Open the app and see the mode badge",
+  "mode": "Either",
+  "steps": [
+   "Open the AutoBets address in a browser."
+  ],
+  "expected": "The header badge reads DEMO \u2014 FAKE PRICES or PRACTICE MODE. It never reads LIVE."
+ },
+ {
+  "id": "1.2",
+  "section": "Setup and access",
+  "intro": "Before anything else. Demo mode is the safe place to run most of this script.",
+  "title": "Token prompt appears when no token is stored",
+  "mode": "Either",
+  "steps": [
+   "Open the app in a private window.",
+   "Do not enter a token."
+  ],
+  "expected": "A token prompt is shown. Nothing else is usable."
+ },
+ {
+  "id": "1.3",
+  "section": "Setup and access",
+  "intro": "Before anything else. Demo mode is the safe place to run most of this script.",
+  "title": "Wrong token is refused",
+  "mode": "Practice",
+  "steps": [
+   "Enter a wrong token and submit."
+  ],
+  "expected": "A clear 'try again' message. No market list loads."
+ },
+ {
+  "id": "1.4",
+  "section": "Setup and access",
+  "intro": "Before anything else. Demo mode is the safe place to run most of this script.",
+  "title": "Right token is accepted and remembered",
+  "mode": "Practice",
+  "steps": [
+   "Enter the right token.",
+   "Reload the page."
+  ],
+  "expected": "Markets load. The token is not asked for again on reload."
+ },
+ {
+  "id": "1.5",
+  "section": "Setup and access",
+  "intro": "Before anything else. Demo mode is the safe place to run most of this script.",
+  "title": "Backend unreachable shows a message, not a blank page",
+  "mode": "Either",
+  "steps": [
+   "Stop the service (or disconnect the network) and reload."
+  ],
+  "expected": "A readable error with a Try again button."
+ },
+ {
+  "id": "2.1",
+  "section": "Markets list and opening ladders",
+  "intro": "The left-hand market list and what opening a market does.",
+  "title": "Tennis and Football tabs list markets",
+  "mode": "Either",
+  "steps": [
+   "Click Tennis, then Football."
+  ],
+  "expected": "Each tab lists its own matches with competition and start time."
+ },
+ {
+  "id": "2.2",
+  "section": "Markets list and opening ladders",
+  "intro": "The left-hand market list and what opening a market does.",
+  "title": "Opening a market opens ALL its runners together",
+  "mode": "Either",
+  "steps": [
+   "Click a tennis match."
+  ],
+  "expected": "Two ladders (A and B) appear in one market block, side by side."
+ },
+ {
+  "id": "2.3",
+  "section": "Markets list and opening ladders",
+  "intro": "The left-hand market list and what opening a market does.",
+  "title": "Football match odds opens three ladders",
+  "mode": "Demo",
+  "steps": [
+   "Click the football match with a draw."
+  ],
+  "expected": "Three ladders open: home, away and the draw, in one block."
+ },
+ {
+  "id": "2.4",
+  "section": "Markets list and opening ladders",
+  "intro": "The left-hand market list and what opening a market does.",
+  "title": "Four-ladder cap with a clear message",
+  "mode": "Demo",
+  "steps": [
+   "Open the football match (3 ladders).",
+   "Open a tennis match (needs 2)."
+  ],
+  "expected": "A message says it needs 2 ladders but only 1 slot is free. Nothing half-opens."
+ },
+ {
+  "id": "2.5",
+  "section": "Markets list and opening ladders",
+  "intro": "The left-hand market list and what opening a market does.",
+  "title": "Opening the same market twice is refused",
+  "mode": "Either",
+  "steps": [
+   "Open a market.",
+   "Click the same market again."
+  ],
+  "expected": "A message says it is already open. No duplicate ladders."
+ },
+ {
+  "id": "2.6",
+  "section": "Markets list and opening ladders",
+  "intro": "The left-hand market list and what opening a market does.",
+  "title": "Closing one market with the X closes all its ladders",
+  "mode": "Either",
+  "steps": [
+   "Click the X at the top right of a market block."
+  ],
+  "expected": "All ladders of that market close together. You cannot close just one runner's ladder."
+ },
+ {
+  "id": "2.7",
+  "section": "Markets list and opening ladders",
+  "intro": "The left-hand market list and what opening a market does.",
+  "title": "Closing a market with a position or open orders asks first",
+  "mode": "Demo",
+  "steps": [
+   "Place a bet and leave an unmatched bet.",
+   "Click the market's X."
+  ],
+  "expected": "A confirm dialog warns about the position and the unmatched orders. Cancel keeps the market open."
+ },
+ {
+  "id": "3.1",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Column order and colours",
+  "mode": "Either",
+  "steps": [
+   "Look at any ladder."
+  ],
+  "expected": "Left to right: P&L column, my back bets, back (blue), price (dark blue), lay (pink), my lay bets, recent volume."
+ },
+ {
+  "id": "3.2",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Back is blue and on the left, lay is pink and on the right",
+  "mode": "Either",
+  "steps": [
+   "Hover each side and read the tooltips."
+  ],
+  "expected": "Left cells say 'Back at x', right cells say 'Lay at x'."
+ },
+ {
+  "id": "3.3",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Back prices sit at or below the best back; lay prices at or above the best lay",
+  "mode": "Either",
+  "steps": [
+   "Compare the blue and pink cells with the price column."
+  ],
+  "expected": "Blue numbers appear on prices up to the best back price; pink numbers from the best lay price upwards; one tick between them when the spread is a tick."
+ },
+ {
+  "id": "3.4",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Tinted empty zones",
+  "mode": "Either",
+  "steps": [
+   "Look at the empty cells beyond the best prices."
+  ],
+  "expected": "Empty cells in the back zone and the lay zone are tinted; cells in between are plain."
+ },
+ {
+  "id": "3.5",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Last traded price is highlighted",
+  "mode": "Either",
+  "steps": [
+   "Find the orange outlined price."
+  ],
+  "expected": "The last traded price row is outlined in orange and updates as the market moves."
+ },
+ {
+  "id": "3.6",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Recent volume column",
+  "mode": "Either",
+  "steps": [
+   "Watch the right-hand bars for a minute."
+  ],
+  "expected": "Bars show volume matched at each price in the short window (solid) and long window (lighter). Numbers appear for the short window."
+ },
+ {
+  "id": "3.7",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Total matched column (optional)",
+  "mode": "Either",
+  "steps": [
+   "Ladder settings \u2192 show the total matched column."
+  ],
+  "expected": "An extra column appears with the total matched at each price. Switching it off removes it."
+ },
+ {
+  "id": "3.8",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Weight of money bar",
+  "mode": "Either",
+  "steps": [
+   "Look at the bar above the ladder."
+  ],
+  "expected": "Blue and pink shares add to 100%, with an arrow showing which side is heavier, and the number of bets each side."
+ },
+ {
+  "id": "3.9",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Footer shows matched volume and market share",
+  "mode": "Practice",
+  "steps": [
+   "Look at the line under the price rows."
+  ],
+  "expected": "It shows \u00a3 matched on that runner and its % of the market. If Betfair sends none it says 'volume not available' (expected on a delayed key)."
+ },
+ {
+  "id": "3.10",
+  "section": "Ladder display",
+  "intro": "How a ladder looks and what each column means (Bet Angel is the reference).",
+  "title": "Light and dark themes",
+  "mode": "Either",
+  "steps": [
+   "Click Dark / Light in the header."
+  ],
+  "expected": "Both themes are readable: colours, price column, chips and panels."
+ },
+ {
+  "id": "4.1",
+  "section": "Ladder movement",
+  "intro": "Scrolling, recentring and reversing the ladder.",
+  "title": "Mouse wheel moves the prices",
+  "mode": "Either",
+  "steps": [
+   "Hover the price rows and use the wheel."
+  ],
+  "expected": "The ladder moves up and down the price ladder one tick per notch."
+ },
+ {
+  "id": "4.2",
+  "section": "Ladder movement",
+  "intro": "Scrolling, recentring and reversing the ladder.",
+  "title": "Wheel outside the price rows does not move prices",
+  "mode": "Either",
+  "steps": [
+   "Hover the chart or the header and use the wheel."
+  ],
+  "expected": "The prices do not move."
+ },
+ {
+  "id": "4.3",
+  "section": "Ladder movement",
+  "intro": "Scrolling, recentring and reversing the ladder.",
+  "title": "Ladder stays put when the price moves (auto-centre off)",
+  "mode": "Demo",
+  "steps": [
+   "Leave auto-centre off.",
+   "Wait for the price to drift."
+  ],
+  "expected": "The ladder holds its position and shows \u25b2 or \u25bc with the price when the market has moved out of view."
+ },
+ {
+  "id": "4.4",
+  "section": "Ladder movement",
+  "intro": "Scrolling, recentring and reversing the ladder.",
+  "title": "Recentre with Enter and the \u2316 button",
+  "mode": "Either",
+  "steps": [
+   "Scroll away, then press Enter.",
+   "Scroll away, then click \u2316 on one ladder."
+  ],
+  "expected": "Enter recentres every ladder; \u2316 recentres just that one."
+ },
+ {
+  "id": "4.5",
+  "section": "Ladder movement",
+  "intro": "Scrolling, recentring and reversing the ladder.",
+  "title": "Auto-centre setting",
+  "mode": "Either",
+  "steps": [
+   "Ladder settings \u2192 auto-recentre on.",
+   "Let the price drift."
+  ],
+  "expected": "The ladder follows the price by itself."
+ },
+ {
+  "id": "4.6",
+  "section": "Ladder movement",
+  "intro": "Scrolling, recentring and reversing the ladder.",
+  "title": "Reverse ladders (R key and button)",
+  "mode": "Either",
+  "steps": [
+   "Press R, then press it again."
+  ],
+  "expected": "Lowest price moves to the top, then back. Back stays on the left and lay on the right; clicking still places the side of the column you clicked."
+ },
+ {
+  "id": "5.1",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Preset stake buttons",
+  "mode": "Either",
+  "steps": [
+   "Click 2, 5, 10, 20 in the toolbar."
+  ],
+  "expected": "The chosen preset is highlighted and used for the next bet."
+ },
+ {
+  "id": "5.2",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Free-form stake box",
+  "mode": "Either",
+  "steps": [
+   "Press S, type 65, press Enter."
+  ],
+  "expected": "The stake box shows 65 and the next bet is \u00a365. Clearing the box goes back to the preset."
+ },
+ {
+  "id": "5.3",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Pound sign and commas accepted",
+  "mode": "Either",
+  "steps": [
+   "Type \u00a31,250 in the stake box."
+  ],
+  "expected": "It is read as \u00a31,250."
+ },
+ {
+  "id": "5.4",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Stakes under \u00a31 are refused",
+  "mode": "Either",
+  "steps": [
+   "Type 0.50 in the stake box and click a price."
+  ],
+  "expected": "A message says the minimum is \u00a31. No bet is placed."
+ },
+ {
+  "id": "5.5",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Invalid text is flagged",
+  "mode": "Either",
+  "steps": [
+   "Type abc in the stake box."
+  ],
+  "expected": "The box turns red with 'min \u00a31'. Clicking a price places nothing."
+ },
+ {
+  "id": "5.6",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Per-ladder stake",
+  "mode": "Either",
+  "steps": [
+   "On one ladder click a stake chip or type in its own stake box.",
+   "Place a bet on each ladder."
+  ],
+  "expected": "Each ladder uses its own stake. A ladder with an empty box uses the toolbar stake."
+ },
+ {
+  "id": "5.7",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Number keys 1\u20138 act on the hovered ladder",
+  "mode": "Either",
+  "steps": [
+   "Hover one ladder and press 3."
+  ],
+  "expected": "That ladder's stake becomes the 3rd preset. The other ladder is unchanged. With no ladder hovered it changes the toolbar stake."
+ },
+ {
+  "id": "5.8",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Lay stake or liability",
+  "mode": "Either",
+  "steps": [
+   "Ladder settings \u2192 lay stakes entered as liability.",
+   "Stake 10, lay at 3.0."
+  ],
+  "expected": "The bet placed is a lay of \u00a35 (liability \u00a310). Switching back to 'a stake' lays \u00a310."
+ },
+ {
+  "id": "5.9",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Confirm large orders",
+  "mode": "Either",
+  "steps": [
+   "Set 'confirm orders of \u00a350 or more'.",
+   "Bet \u00a360."
+  ],
+  "expected": "A confirm card shows side, runner, price and size. Place sends it; Cancel (or Esc) does not."
+ },
+ {
+  "id": "5.10",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Percentage-of-bank stakes",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 stakes as % of bank; bank \u00a3500.",
+   "Look at the preset chips; click a 4% chip and place a bet."
+  ],
+  "expected": "Chips show %; a 4% bet is \u00a320."
+ },
+ {
+  "id": "5.11",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Type 2% in a stake box",
+  "mode": "Either",
+  "steps": [
+   "With bank \u00a3500 type 2% in the stake box."
+  ],
+  "expected": "The next bet is \u00a310, whatever the stake mode."
+ },
+ {
+  "id": "5.12",
+  "section": "Stakes",
+  "intro": "Every way of choosing how much to bet.",
+  "title": "Separate lay stake",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 separate stake for lay bets.",
+   "Enter a lay stake of 20, back stake 10."
+  ],
+  "expected": "A Lay \u00a3 box appears. Back bets use \u00a310, lay bets use \u00a320. Blank lay box uses the back stake."
+ },
+ {
+  "id": "6.1",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "Click blue = BACK, click pink = LAY",
+  "mode": "Either",
+  "steps": [
+   "Click a blue cell, then a pink cell, both with stake \u00a32."
+  ],
+  "expected": "Confirmation says BACK (blue tag) then LAY (pink tag) at the prices you clicked. The Matched bets panel lists them with the same sides."
+ },
+ {
+  "id": "6.2",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "A bet at the best price matches immediately",
+  "mode": "Either",
+  "steps": [
+   "Click the best back price (the highest blue number)."
+  ],
+  "expected": "Status 'matched'. Your position line appears."
+ },
+ {
+  "id": "6.3",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "A bet at a worse price takes the better price",
+  "mode": "Demo",
+  "steps": [
+   "Click a lay cell above the best lay price."
+  ],
+  "expected": "The bet matches at the best lay price, not the price you clicked. The Matched bets panel shows both 'Asked' and 'Matched at'."
+ },
+ {
+  "id": "6.4",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "A bet at a better price waits (unmatched)",
+  "mode": "Demo",
+  "steps": [
+   "Lay at a price well below the best back, or back at a price well above the best lay."
+  ],
+  "expected": "Status 'waiting (unmatched)'. It appears in Unmatched bets and on the ladder."
+ },
+ {
+  "id": "6.5",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "Waiting bets are summed at their price",
+  "mode": "Demo",
+  "steps": [
+   "Place three \u00a310 lays at the same low price."
+  ],
+  "expected": "That row shows '\u00a330 \u00d73' in your own-bets column and 'LAY \u00a330 waiting' over the volume bar; BACK shows blue. Hover shows the count and total."
+ },
+ {
+  "id": "6.6",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "A waiting bet matches when the price reaches it",
+  "mode": "Demo",
+  "steps": [
+   "Wait with a lay waiting just below the market until the price drops to it (or place it one tick away)."
+  ],
+  "expected": "The bet moves from Unmatched bets to Matched bets and your position updates."
+ },
+ {
+  "id": "6.7",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "Price steps follow Betfair's tick sizes",
+  "mode": "Demo",
+  "steps": [
+   "Place a waiting bet near 2.00 and press + or \u2212 repeatedly across 2.00 and across 3.00."
+  ],
+  "expected": "Steps are 0.01 below 2.00, 0.02 from 2.00 to 3.00 and 0.05 from 3.00 to 4.00. Only valid Betfair prices ever appear."
+ },
+ {
+  "id": "6.8",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "Double-click mode",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 clicking \u2192 double click.",
+   "Single-click a price, then double-click one."
+  ],
+  "expected": "A single click places nothing; a double click places one bet."
+ },
+ {
+  "id": "6.9",
+  "section": "Placing and matching bets",
+  "intro": "Clicks, sides, prices and what 'matched' means.",
+  "title": "Toast tags make the side obvious",
+  "mode": "Either",
+  "steps": [
+   "Place a back and a lay."
+  ],
+  "expected": "Each confirmation shows BACK in blue or LAY in pink."
+ },
+ {
+  "id": "7.1",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "Cancel a waiting bet by clicking it on the ladder",
+  "mode": "Demo",
+  "steps": [
+   "Click your own-bet chip."
+  ],
+  "expected": "The bet disappears from the ladder and from Unmatched bets."
+ },
+ {
+  "id": "7.2",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "Drag a waiting bet to a new price",
+  "mode": "Demo",
+  "steps": [
+   "Drag the chip to another price row."
+  ],
+  "expected": "The bet moves to the new price; with several bets at one price they all move."
+ },
+ {
+  "id": "7.3",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "Unmatched panel lists every waiting bet",
+  "mode": "Demo",
+  "steps": [
+   "Place two waiting bets on different runners."
+  ],
+  "expected": "Both appear with side, runner, placed time, price, stake, matched and at-the-off setting."
+ },
+ {
+  "id": "7.4",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "\u00b1 tick buttons change the price",
+  "mode": "Demo",
+  "steps": [
+   "Click + then \u2212 on a waiting bet."
+  ],
+  "expected": "The price moves one valid tick each time; the bet stays waiting."
+ },
+ {
+  "id": "7.5",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "Edit the stake in place",
+  "mode": "Demo",
+  "steps": [
+   "Change the stake in the panel and press Enter."
+  ],
+  "expected": "The waiting amount changes. Anything already matched is untouched."
+ },
+ {
+  "id": "7.6",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "Cancel and Cancel all",
+  "mode": "Demo",
+  "steps": [
+   "Cancel one bet, then press Cancel all."
+  ],
+  "expected": "One bet cancels; then all remaining waiting bets cancel."
+ },
+ {
+  "id": "7.7",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "Cancel back / cancel lay hotkeys",
+  "mode": "Demo",
+  "steps": [
+   "Hover a ladder with a waiting back and lay; press Z, then X."
+  ],
+  "expected": "Z cancels that runner's waiting backs; X cancels its waiting lays."
+ },
+ {
+  "id": "7.8",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "At-the-off setting per bet and for all",
+  "mode": "Demo",
+  "steps": [
+   "Choose Keep / Cancel / Take SP on a bet.",
+   "Use the 'At the off, all' buttons."
+  ],
+  "expected": "The selection changes immediately and is shown in the table."
+ },
+ {
+  "id": "7.9",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "At the off: Cancel lapses the bet",
+  "mode": "Demo",
+  "steps": [
+   "Set a waiting bet to Cancel.",
+   "Use Demo controls \u2192 Go in play."
+  ],
+  "expected": "The waiting bet is cancelled when the market goes in play."
+ },
+ {
+  "id": "7.10",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "At the off: Keep leaves the bet on",
+  "mode": "Demo",
+  "steps": [
+   "Set a waiting bet to Keep.",
+   "Go in play."
+  ],
+  "expected": "The bet stays waiting in play."
+ },
+ {
+  "id": "7.11",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "At the off: Take SP removes the bet (practice does not simulate SP)",
+  "mode": "Demo",
+  "steps": [
+   "Set Take SP and go in play."
+  ],
+  "expected": "The bet leaves the list. (Starting Price is not simulated in practice.)"
+ },
+ {
+  "id": "7.12",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "Default 'at the off' setting",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 unmatched bets when the match starts: choose Cancel / Keep / Take SP; place a waiting bet."
+  ],
+  "expected": "The new bet starts with the chosen setting."
+ },
+ {
+  "id": "7.13",
+  "section": "Waiting bets: cancel, move, edit, persistence",
+  "intro": "Managing unmatched bets (the 'Unmatched bets' panel and the ladder).",
+  "title": "Fill or kill",
+  "mode": "Demo",
+  "steps": [
+   "Settings \u2192 fill or kill 10 seconds.",
+   "Place a waiting bet and wait."
+  ],
+  "expected": "After about 10 seconds the unmatched part is cancelled and the log says so."
+ },
+ {
+  "id": "8.1",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "Position in words",
+  "mode": "Either",
+  "steps": [
+   "Lay \u00a310 on a runner."
+  ],
+  "expected": "The ladder shows a pink 'LAY \u00a310.00 @ price' tag, then 'if <runner> wins -\u00a3x \u00b7 if <runner> loses +\u00a310.00'."
+ },
+ {
+  "id": "8.2",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "Back position wording",
+  "mode": "Either",
+  "steps": [
+   "Back \u00a310 on a runner."
+  ],
+  "expected": "A blue 'BACK \u00a310.00 @ price' tag; profit if it wins, -\u00a310 if it loses."
+ },
+ {
+  "id": "8.3",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "The numbers are right for a lay",
+  "mode": "Either",
+  "steps": [
+   "Lay \u00a310 at 1.50."
+  ],
+  "expected": "If the runner wins you lose \u00a35.00; if it loses you win \u00a310.00."
+ },
+ {
+  "id": "8.4",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "P&L column shows what hedging at each price would lock",
+  "mode": "Either",
+  "steps": [
+   "With a position, read the left column."
+  ],
+  "expected": "For a lay it rises as the price rises; for a back it falls. Green is profit, red is loss."
+ },
+ {
+  "id": "8.5",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "Clicking a P&L figure places the hedge",
+  "mode": "Either",
+  "steps": [
+   "Click a figure in the P&L column."
+  ],
+  "expected": "The hedging bet is placed (side and stake shown in the tooltip), locking that figure."
+ },
+ {
+  "id": "8.6",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "P&L basis: runner or market",
+  "mode": "Demo",
+  "steps": [
+   "Toolbar chip 'P&L: runner' \u2192 market. Compare the column on a 3-runner market."
+  ],
+  "expected": "Runner mode shows this runner's lock; market mode shows the worst case across all runners after that hedge. On a 2-runner market they match."
+ },
+ {
+  "id": "8.7",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "P&L column on the left or right",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 P&L column on the right."
+  ],
+  "expected": "The column moves to the right edge. Clicking behaves the same."
+ },
+ {
+  "id": "8.8",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "Close a runner",
+  "mode": "Either",
+  "steps": [
+   "Press Close on a ladder (or C)."
+  ],
+  "expected": "The runner's position is closed with a hedging bet. The Close button is disabled with no position."
+ },
+ {
+  "id": "8.9",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "Cancel a runner's orders from the ladder",
+  "mode": "Demo",
+  "steps": [
+   "Press Cancel on a ladder with waiting bets."
+  ],
+  "expected": "All that runner's waiting bets cancel."
+ },
+ {
+  "id": "8.10",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "Matched bets panel",
+  "mode": "Either",
+  "steps": [
+   "Place several bets, back and lay."
+  ],
+  "expected": "Each appears newest first with time, side, runner, asked price, matched price, stake, 'Runner wins', 'Runner loses' and who placed it."
+ },
+ {
+  "id": "8.11",
+  "section": "Positions and P&L",
+  "intro": "What the screen says you have and what it is worth.",
+  "title": "Header total P&L and exposure",
+  "mode": "Either",
+  "steps": [
+   "Look at the top right with a position."
+  ],
+  "expected": "A P&L chip and the exposure update as positions change."
+ },
+ {
+  "id": "9.1",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "Clock, status and book percentages",
+  "mode": "Either",
+  "steps": [
+   "Look at a market block header."
+  ],
+  "expected": "Pre-match shows a countdown; in play shows 'In play'. Back and lay book percentages are shown either side of the button."
+ },
+ {
+  "id": "9.2",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "Outcome boxes",
+  "mode": "Either",
+  "steps": [
+   "With a position look at the two (or three) boxes."
+  ],
+  "expected": "One box per runner shows your profit or loss if that runner wins."
+ },
+ {
+  "id": "9.3",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "The big button shows the market P&L",
+  "mode": "Either",
+  "steps": [
+   "Hold a position and watch the button."
+  ],
+  "expected": "Green when the market is at or above \u00a30.00, red below. It always shows the figure, including after it is pressed."
+ },
+ {
+  "id": "9.4",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "Hard close",
+  "mode": "Either",
+  "steps": [
+   "Click the big button (or press G)."
+  ],
+  "expected": "Waiting bets cancel, then the bets that level every outcome are placed. The button then shows the locked figure."
+ },
+ {
+  "id": "9.5",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "Soft green keeping waiting bets",
+  "mode": "Demo",
+  "steps": [
+   "Open the \u25be menu \u2192 green up, keep my unmatched bets."
+  ],
+  "expected": "The market is levelled but waiting bets stay."
+ },
+ {
+  "id": "9.6",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "Partial hedge",
+  "mode": "Demo",
+  "steps": [
+   "Menu \u2192 50%."
+  ],
+  "expected": "About half of the hedge is placed; outcomes are closer but not level; waiting bets stay."
+ },
+ {
+  "id": "9.7",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "Auto-green at a profit level",
+  "mode": "Demo",
+  "steps": [
+   "Menu \u2192 enter a level above the current figure \u2192 Set.",
+   "Wait for the market to reach it."
+  ],
+  "expected": "A chip 'Auto-green at \u00a3x' shows. When the level is reached the market hard-closes. Click the chip to remove it."
+ },
+ {
+  "id": "9.8",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "Right-click the big button",
+  "mode": "Either",
+  "steps": [
+   "Right-click it."
+  ],
+  "expected": "The same menu opens."
+ },
+ {
+  "id": "9.9",
+  "section": "Market block header and the big button",
+  "intro": "The Geeks Toy-style market panel above the ladders.",
+  "title": "Big button with no position",
+  "mode": "Either",
+  "steps": [
+   "Look at the button with nothing matched."
+  ],
+  "expected": "It is greyed out; nothing happens when clicked."
+ },
+ {
+  "id": "10.1",
+  "section": "Stops and take-profit",
+  "intro": "Triggers set from the ladder.",
+  "title": "Right-click a price on a ladder with a position",
+  "mode": "Either",
+  "steps": [
+   "Right-click a price below (or above) the market."
+  ],
+  "expected": "A menu offers 'Stop loss' or 'Take profit' at that price, showing what it would lock."
+ },
+ {
+  "id": "10.2",
+  "section": "Stops and take-profit",
+  "intro": "Triggers set from the ladder.",
+  "title": "A stop shows on the ladder",
+  "mode": "Either",
+  "steps": [
+   "Set one."
+  ],
+  "expected": "An 'SL' or 'TP' marker appears at that price in your own-bets column."
+ },
+ {
+  "id": "10.3",
+  "section": "Stops and take-profit",
+  "intro": "Triggers set from the ladder.",
+  "title": "A trigger fires and greens up",
+  "mode": "Demo",
+  "steps": [
+   "Set a take profit one or two ticks away and wait."
+  ],
+  "expected": "When the last price reaches it, the runner is greened up and the log says so."
+ },
+ {
+  "id": "10.4",
+  "section": "Stops and take-profit",
+  "intro": "Triggers set from the ladder.",
+  "title": "Remove a stop",
+  "mode": "Either",
+  "steps": [
+   "Click its marker, or use the right-click menu 'Remove'."
+  ],
+  "expected": "The marker disappears and it never fires."
+ },
+ {
+  "id": "10.5",
+  "section": "Stops and take-profit",
+  "intro": "Triggers set from the ladder.",
+  "title": "A stop waits while the market is suspended",
+  "mode": "Demo",
+  "steps": [
+   "Set a stop.",
+   "Suspend the market via Demo controls."
+  ],
+  "expected": "It does not fire while suspended; it resumes when the market reopens."
+ },
+ {
+  "id": "11.1",
+  "section": "Offset and stop on entry",
+  "intro": "Bets that place their own closing bet and stop.",
+  "title": "Offset places the closing bet",
+  "mode": "Demo",
+  "steps": [
+   "Toolbar Offset 3.",
+   "Back \u00a310 at the best back."
+  ],
+  "expected": "When it matches, a LAY for the equalising stake is placed 3 ticks away (shown waiting). The log says 'Offset: \u2026'."
+ },
+ {
+  "id": "11.2",
+  "section": "Offset and stop on entry",
+  "intro": "Bets that place their own closing bet and stop.",
+  "title": "Stop is armed on entry",
+  "mode": "Demo",
+  "steps": [
+   "Offset 3 and Stop 4.",
+   "Place a back."
+  ],
+  "expected": "A stop is armed 4 ticks against the entry price (an 'SL' marker). The log says 'Stop armed'."
+ },
+ {
+  "id": "11.3",
+  "section": "Offset and stop on entry",
+  "intro": "Bets that place their own closing bet and stop.",
+  "title": "Stop fires and cancels the offset bet",
+  "mode": "Demo",
+  "steps": [
+   "Let the price move 4 ticks against you."
+  ],
+  "expected": "The position is closed and the waiting offset bet is cancelled."
+ },
+ {
+  "id": "11.4",
+  "section": "Offset and stop on entry",
+  "intro": "Bets that place their own closing bet and stop.",
+  "title": "Offset matching removes the stop",
+  "mode": "Demo",
+  "steps": [
+   "Let the price move 3 ticks in your favour."
+  ],
+  "expected": "The offset bet matches, the position is closed and the stop disappears."
+ },
+ {
+  "id": "11.5",
+  "section": "Offset and stop on entry",
+  "intro": "Bets that place their own closing bet and stop.",
+  "title": "Offset applies to lays as well",
+  "mode": "Demo",
+  "steps": [
+   "Offset 3; lay \u00a310."
+  ],
+  "expected": "A BACK is placed 3 ticks above the lay price."
+ },
+ {
+  "id": "11.6",
+  "section": "Offset and stop on entry",
+  "intro": "Bets that place their own closing bet and stop.",
+  "title": "Offset and stop from settings",
+  "mode": "Either",
+  "steps": [
+   "Set the same values in Ladder settings."
+  ],
+  "expected": "The toolbar boxes show the same numbers (they are one setting)."
+ },
+ {
+  "id": "11.7",
+  "section": "Offset and stop on entry",
+  "intro": "Bets that place their own closing bet and stop.",
+  "title": "Zero means off",
+  "mode": "Either",
+  "steps": [
+   "Set both to 0 and bet."
+  ],
+  "expected": "No extra orders are placed."
+ },
+ {
+  "id": "12.1",
+  "section": "Market states",
+  "intro": "Suspended, closed, removed runners and the start of play.",
+  "title": "Suspended market blocks betting",
+  "mode": "Demo",
+  "steps": [
+   "Demo controls \u2192 Suspend."
+  ],
+  "expected": "A banner says SUSPENDED; ladders dim; clicking places nothing; the status tag shows."
+ },
+ {
+  "id": "12.2",
+  "section": "Market states",
+  "intro": "Suspended, closed, removed runners and the start of play.",
+  "title": "Reopen resumes trading",
+  "mode": "Demo",
+  "steps": [
+   "Demo controls \u2192 Reopen."
+  ],
+  "expected": "The banner clears and bets work again."
+ },
+ {
+  "id": "12.3",
+  "section": "Market states",
+  "intro": "Suspended, closed, removed runners and the start of play.",
+  "title": "Closed market",
+  "mode": "Demo",
+  "steps": [
+   "Demo controls \u2192 Close."
+  ],
+  "expected": "MARKET CLOSED banner; no bets, no green-up."
+ },
+ {
+  "id": "12.4",
+  "section": "Market states",
+  "intro": "Suspended, closed, removed runners and the start of play.",
+  "title": "Hard close refuses on a suspended market",
+  "mode": "Demo",
+  "steps": [
+   "Suspend, then press the big button."
+  ],
+  "expected": "A message explains the market is suspended; nothing is placed."
+ },
+ {
+  "id": "12.5",
+  "section": "Market states",
+  "intro": "Suspended, closed, removed runners and the start of play.",
+  "title": "Going in play",
+  "mode": "Demo",
+  "steps": [
+   "Pre-match \u2192 Go in play."
+  ],
+  "expected": "The header changes to 'In play'; waiting bets follow their at-the-off setting."
+ },
+ {
+  "id": "12.6",
+  "section": "Market states",
+  "intro": "Suspended, closed, removed runners and the start of play.",
+  "title": "Waiting bets do not match while suspended",
+  "mode": "Demo",
+  "steps": [
+   "Place a waiting bet near the market, suspend, wait, reopen."
+  ],
+  "expected": "It does not fill during the suspension."
+ },
+ {
+  "id": "13.1",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "Chart shows price and volume",
+  "mode": "Either",
+  "steps": [
+   "Look under a ladder."
+  ],
+  "expected": "A line for the last price, a band between best back and lay, volume bars, and the last price tag."
+ },
+ {
+  "id": "13.2",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "Time ranges",
+  "mode": "Either",
+  "steps": [
+   "Click 5m, 15m, 1h, 3h."
+  ],
+  "expected": "The window changes; the 'shown' label updates."
+ },
+ {
+  "id": "13.3",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "History backfills for markets the price logger has seen",
+  "mode": "Practice",
+  "steps": [
+   "Open a market the logger already tracks."
+  ],
+  "expected": "The chart opens with earlier history (one point a minute), not empty."
+ },
+ {
+  "id": "13.4",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "Drag the bar to resize",
+  "mode": "Either",
+  "steps": [
+   "Drag the grip under the price rows down, then up."
+  ],
+  "expected": "Down adds price rows and shrinks the chart; up does the reverse."
+ },
+ {
+  "id": "13.5",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "Each ladder resizes on its own",
+  "mode": "Either",
+  "steps": [
+   "Drag the right-hand ladder's bar."
+  ],
+  "expected": "Only that ladder changes."
+ },
+ {
+  "id": "13.6",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "The chart can be shrunk away completely",
+  "mode": "Either",
+  "steps": [
+   "Drag the bar all the way down."
+  ],
+  "expected": "The chart disappears; only the grip remains. Drag back up to restore it."
+ },
+ {
+  "id": "13.7",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "No scrollbar inside a ladder",
+  "mode": "Either",
+  "steps": [
+   "Resize the browser window taller and shorter."
+  ],
+  "expected": "The ladder always fits; it never shows its own scrollbar; chart and rows share the space."
+ },
+ {
+  "id": "13.8",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "Rows setting",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 price rows 0 (auto), then 15."
+  ],
+  "expected": "0 fits the window and leaves room for a chart; 15 fixes the count (capped to what fits)."
+ },
+ {
+  "id": "13.9",
+  "section": "Price chart",
+  "intro": "The chart under each ladder.",
+  "title": "Chart on/off",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 show chart off."
+  ],
+  "expected": "The chart and its drag bar disappear from every ladder."
+ },
+ {
+  "id": "14.1",
+  "section": "Hotkeys",
+  "intro": "Keyboard control.",
+  "title": "Default keys",
+  "mode": "Either",
+  "steps": [
+   "Hover a ladder and try S, Z, X, C, G, R, Enter, 1\u20138."
+  ],
+  "expected": "S stake box; Z cancel backs; X cancel lays; C close runner; G hard close market; R reverse; Enter recentre; 1\u20138 stake presets."
+ },
+ {
+  "id": "14.2",
+  "section": "Hotkeys",
+  "intro": "Keyboard control.",
+  "title": "Keys are ignored while typing in a box",
+  "mode": "Either",
+  "steps": [
+   "Click a text box and type z, x, c."
+  ],
+  "expected": "No bets or cancels happen."
+ },
+ {
+  "id": "14.3",
+  "section": "Hotkeys",
+  "intro": "Keyboard control.",
+  "title": "Rebind a key",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 hotkeys \u2192 click 'Hard close' \u2192 press H."
+  ],
+  "expected": "The box shows H; pressing H now hard-closes; the help line under the toolbar shows H."
+ },
+ {
+  "id": "14.4",
+  "section": "Hotkeys",
+  "intro": "Keyboard control.",
+  "title": "Conflicting keys are refused",
+  "mode": "Either",
+  "steps": [
+   "Try to give two actions the same key."
+  ],
+  "expected": "A message names the action already using that key; nothing changes."
+ },
+ {
+  "id": "14.5",
+  "section": "Hotkeys",
+  "intro": "Keyboard control.",
+  "title": "Reset to defaults restores keys",
+  "mode": "Either",
+  "steps": [
+   "Settings \u2192 Reset to defaults."
+  ],
+  "expected": "Keys return to S, Z, X, C, G, R, Enter."
+ },
+ {
+  "id": "15.1",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Settings dialog opens and closes",
+  "mode": "Either",
+  "steps": [
+   "Click Ladder settings; press Done; reopen; press Esc."
+  ],
+  "expected": "It opens, closes with Done and with Esc."
+ },
+ {
+  "id": "15.2",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Settings are remembered",
+  "mode": "Either",
+  "steps": [
+   "Change a few settings and reload."
+  ],
+  "expected": "They are still set (stored in this browser)."
+ },
+ {
+  "id": "15.3",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Recent volume windows",
+  "mode": "Either",
+  "steps": [
+   "Set short 30s, long 10 minutes."
+  ],
+  "expected": "The recent volume column's tooltip and bars reflect the new windows."
+ },
+ {
+  "id": "15.4",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Weight of money levels",
+  "mode": "Either",
+  "steps": [
+   "Change WoM levels to 1, then 5."
+  ],
+  "expected": "The WoM percentages change."
+ },
+ {
+  "id": "15.5",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Stake presets editable",
+  "mode": "Either",
+  "steps": [
+   "Change the preset list."
+  ],
+  "expected": "The toolbar and per-ladder chips show the new presets; keys 1\u20138 follow."
+ },
+ {
+  "id": "15.6",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Reset to defaults",
+  "mode": "Either",
+  "steps": [
+   "Press Reset to defaults and confirm."
+  ],
+  "expected": "Every setting returns to its default; the Cancel on the confirm leaves things alone."
+ },
+ {
+  "id": "15.7",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Save a layout",
+  "mode": "Either",
+  "steps": [
+   "Name it 'Tennis scalping' and press Save current settings."
+  ],
+  "expected": "It appears in the saved list."
+ },
+ {
+  "id": "15.8",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Load a layout",
+  "mode": "Either",
+  "steps": [
+   "Change settings, then press Load on the saved layout."
+  ],
+  "expected": "Settings return to what was saved."
+ },
+ {
+  "id": "15.9",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Delete a layout",
+  "mode": "Either",
+  "steps": [
+   "Delete it and confirm."
+  ],
+  "expected": "It disappears."
+ },
+ {
+  "id": "15.10",
+  "section": "Ladder settings and saved layouts",
+  "intro": "Every option in the settings dialog.",
+  "title": "Layouts survive a reload",
+  "mode": "Either",
+  "steps": [
+   "Reload."
+  ],
+  "expected": "Saved layouts are still listed."
+ },
+ {
+  "id": "16.1",
+  "section": "Switch runner",
+  "intro": "The \u21c4 control in a ladder's header.",
+  "title": "Swap two ladders",
+  "mode": "Either",
+  "steps": [
+   "On the left ladder pick the other runner from \u21c4."
+  ],
+  "expected": "The two ladders trade places; both recentre."
+ },
+ {
+  "id": "16.2",
+  "section": "Switch runner",
+  "intro": "The \u21c4 control in a ladder's header.",
+  "title": "Orders and positions follow the runner",
+  "mode": "Either",
+  "steps": [
+   "Place a bet, then switch."
+  ],
+  "expected": "The bet and position stay with their runner, not their screen position."
+ },
+ {
+  "id": "17.1",
+  "section": "Info panels",
+  "intro": "The tabbed panel at the bottom: P&L all runners, Market info, Runner info, Traded & available, Log.",
+  "title": "P&L of all runners",
+  "mode": "Either",
+  "steps": [
+   "Open the tab with a position."
+  ],
+  "expected": "Each runner shows the profit if it wins, your position, and a market line (worst case or green-up level)."
+ },
+ {
+  "id": "17.2",
+  "section": "Info panels",
+  "intro": "The tabbed panel at the bottom: P&L all runners, Market info, Runner info, Traded & available, Log.",
+  "title": "Market info",
+  "mode": "Either",
+  "steps": [
+   "Hover a ladder and open the tab."
+  ],
+  "expected": "Event, market, competition, start time, status, runners, matched in market, back and lay book."
+ },
+ {
+  "id": "17.3",
+  "section": "Info panels",
+  "intro": "The tabbed panel at the bottom: P&L all runners, Market info, Runner info, Traded & available, Log.",
+  "title": "Runner info follows the hovered ladder",
+  "mode": "Either",
+  "steps": [
+   "Hover each ladder in turn."
+  ],
+  "expected": "Runner, last price, best back and lay, spread in ticks, matched and share, weight of money, your position."
+ },
+ {
+  "id": "17.4",
+  "section": "Info panels",
+  "intro": "The tabbed panel at the bottom: P&L all runners, Market info, Runner info, Traded & available, Log.",
+  "title": "Traded & available",
+  "mode": "Either",
+  "steps": [
+   "Open the tab."
+  ],
+  "expected": "A price table with available to back, available to lay and traded at each price."
+ },
+ {
+  "id": "17.5",
+  "section": "Info panels",
+  "intro": "The tabbed panel at the bottom: P&L all runners, Market info, Runner info, Traded & available, Log.",
+  "title": "Log",
+  "mode": "Either",
+  "steps": [
+   "Place a bet, then open the Log tab."
+  ],
+  "expected": "The order appears with its time. Stops, offsets, greens and restarts are logged too."
+ },
+ {
+  "id": "17.6",
+  "section": "Info panels",
+  "intro": "The tabbed panel at the bottom: P&L all runners, Market info, Runner info, Traded & available, Log.",
+  "title": "Panels collapse",
+  "mode": "Either",
+  "steps": [
+   "Click \u25be on each panel."
+  ],
+  "expected": "Each folds to its header and reopens."
+ },
+ {
+  "id": "18.1",
+  "section": "Dutching",
+  "intro": "Spread a total over several runners.",
+  "title": "Back dutch gives equal outcomes",
+  "mode": "Demo",
+  "steps": [
+   "Dutching tab \u2192 tick both runners \u2192 total 100."
+  ],
+  "expected": "Stakes are shown and 'If it wins' is the same (within a few pence) for each runner. Total stake is \u00a3100."
+ },
+ {
+  "id": "18.2",
+  "section": "Dutching",
+  "intro": "Spread a total over several runners.",
+  "title": "Custom price per runner",
+  "mode": "Demo",
+  "steps": [
+   "Type a price in a runner's price box."
+  ],
+  "expected": "The preview uses that price (not the market's)."
+ },
+ {
+  "id": "18.3",
+  "section": "Dutching",
+  "intro": "Spread a total over several runners.",
+  "title": "Lay dutch",
+  "mode": "Demo",
+  "steps": [
+   "Switch to Lay."
+  ],
+  "expected": "Stakes are laid; outcomes are equal for the chosen runners."
+ },
+ {
+  "id": "18.4",
+  "section": "Dutching",
+  "intro": "Spread a total over several runners.",
+  "title": "Three-runner dutch",
+  "mode": "Demo",
+  "steps": [
+   "Football: tick two of three."
+  ],
+  "expected": "The third runner shows the loss of the whole stake (or gain for lay)."
+ },
+ {
+  "id": "18.5",
+  "section": "Dutching",
+  "intro": "Spread a total over several runners.",
+  "title": "Needs two runners and \u00a31",
+  "mode": "Either",
+  "steps": [
+   "Tick one runner; or enter 0.50."
+  ],
+  "expected": "No preview and the Place button is disabled (or a clear message)."
+ },
+ {
+  "id": "18.6",
+  "section": "Dutching",
+  "intro": "Spread a total over several runners.",
+  "title": "Stakes under \u00a31 are left out",
+  "mode": "Demo",
+  "steps": [
+   "Choose a long-odds runner with a small total."
+  ],
+  "expected": "The preview says how many bets are under \u00a31 and left out."
+ },
+ {
+  "id": "18.7",
+  "section": "Dutching",
+  "intro": "Spread a total over several runners.",
+  "title": "Place asks for confirmation and places all legs",
+  "mode": "Demo",
+  "steps": [
+   "Press Place."
+  ],
+  "expected": "A confirm lists every leg; after OK each leg appears in Matched bets (or Unmatched bets if waiting) and the toast says N of N placed."
+ },
+ {
+  "id": "18.8",
+  "section": "Dutching",
+  "intro": "Spread a total over several runners.",
+  "title": "Book percentage shown",
+  "mode": "Demo",
+  "steps": [
+   "Look under the table."
+  ],
+  "expected": "The book % for the chosen prices is shown."
+ },
+ {
+  "id": "19.1",
+  "section": "Bookmaking",
+  "intro": "Choose the profit you want on every outcome.",
+  "title": "Even (green-up) quick fill",
+  "mode": "Demo",
+  "steps": [
+   "With a position, Bookmaking tab \u2192 Even."
+  ],
+  "expected": "Every target fills with the green-up level; the preview shows the bets that level the market."
+ },
+ {
+  "id": "19.2",
+  "section": "Bookmaking",
+  "intro": "Choose the profit you want on every outcome.",
+  "title": "Custom targets",
+  "mode": "Demo",
+  "steps": [
+   "Enter +\u00a310 on A and +\u00a35 on B."
+  ],
+  "expected": "The preview shows the bets to place and 'After' equals your targets (within pence)."
+ },
+ {
+  "id": "19.3",
+  "section": "Bookmaking",
+  "intro": "Choose the profit you want on every outcome.",
+  "title": "Current / Clear",
+  "mode": "Demo",
+  "steps": [
+   "Press Current, then Clear."
+  ],
+  "expected": "Current copies today's outcomes (no bets needed); Clear empties the targets."
+ },
+ {
+  "id": "19.4",
+  "section": "Bookmaking",
+  "intro": "Choose the profit you want on every outcome.",
+  "title": "Targets needed for every runner",
+  "mode": "Either",
+  "steps": [
+   "Fill only one target."
+  ],
+  "expected": "A prompt says to enter a target for every runner; Place is disabled."
+ },
+ {
+  "id": "19.5",
+  "section": "Bookmaking",
+  "intro": "Choose the profit you want on every outcome.",
+  "title": "Place and verify",
+  "mode": "Demo",
+  "steps": [
+   "Place the plan, then open P&L all runners."
+  ],
+  "expected": "The outcomes shown match your targets."
+ },
+ {
+  "id": "19.6",
+  "section": "Bookmaking",
+  "intro": "Choose the profit you want on every outcome.",
+  "title": "Unreachable targets are explained",
+  "mode": "Demo",
+  "steps": [
+   "Try targets far above what the book can give."
+  ],
+  "expected": "Either large stakes are shown clearly in the preview (you decide) or a clear message explains it; nothing is placed without confirmation."
+ },
+ {
+  "id": "20.1",
+  "section": "Restart safety",
+  "intro": "Nothing held in memory may be lost on a restart or deploy.",
+  "title": "Stops, offsets and auto-greens survive a restart",
+  "mode": "Practice",
+  "steps": [
+   "Set a stop and an auto-green.",
+   "Ask for the service to be restarted.",
+   "Reload the app."
+  ],
+  "expected": "The stop and auto-green are still there; the log says 'Restarted: restored \u2026'."
+ },
+ {
+  "id": "20.2",
+  "section": "Restart safety",
+  "intro": "Nothing held in memory may be lost on a restart or deploy.",
+  "title": "Practice orders and positions survive a restart",
+  "mode": "Practice",
+  "steps": [
+   "Place a bet and leave a waiting bet; restart; reload."
+  ],
+  "expected": "The position, matched bets and waiting bet are all still present."
+ },
+ {
+  "id": "20.3",
+  "section": "Restart safety",
+  "intro": "Nothing held in memory may be lost on a restart or deploy.",
+  "title": "A deploy does not interrupt trading",
+  "mode": "Practice",
+  "steps": [
+   "Push a harmless change while holding stops or waiting bets."
+  ],
+  "expected": "The deploy is held until nothing is waiting (or completes with everything restored)."
+ },
+ {
+  "id": "20.4",
+  "section": "Restart safety",
+  "intro": "Nothing held in memory may be lost on a restart or deploy.",
+  "title": "A corrupt state file starts clean and says so",
+  "mode": "Practice",
+  "steps": [
+   "(Admin) damage the state file and restart."
+  ],
+  "expected": "The app starts empty, the log says it could not restore, and nothing crashes."
+ },
+ {
+  "id": "21.1",
+  "section": "Safety, errors and limits",
+  "intro": "How the app behaves when things go wrong.",
+  "title": "Never live",
+  "mode": "Either",
+  "steps": [
+   "Look for any way to place a real bet."
+  ],
+  "expected": "None exists: practice mode only simulates orders and live mode is not built."
+ },
+ {
+  "id": "21.2",
+  "section": "Safety, errors and limits",
+  "intro": "How the app behaves when things go wrong.",
+  "title": "Exchange or network error is readable",
+  "mode": "Practice",
+  "steps": [
+   "Disconnect the network briefly while using the app."
+  ],
+  "expected": "A readable message appears; the app recovers when the network returns."
+ },
+ {
+  "id": "21.3",
+  "section": "Safety, errors and limits",
+  "intro": "How the app behaves when things go wrong.",
+  "title": "Guardrail warnings are shown",
+  "mode": "Either",
+  "steps": [
+   "Place very large or rapid bets."
+  ],
+  "expected": "Any guardrail warning appears in a message instead of failing silently."
+ },
+ {
+  "id": "21.4",
+  "section": "Safety, errors and limits",
+  "intro": "How the app behaves when things go wrong.",
+  "title": "Rejected orders say why",
+  "mode": "Demo",
+  "steps": [
+   "Try to bet on a suspended market."
+  ],
+  "expected": "The reason is shown ('the market is suspended')."
+ },
+ {
+  "id": "21.5",
+  "section": "Safety, errors and limits",
+  "intro": "How the app behaves when things go wrong.",
+  "title": "Esc closes dialogs and menus",
+  "mode": "Either",
+  "steps": [
+   "Open the confirm card, the settings and a menu; press Esc."
+  ],
+  "expected": "Each closes."
+ },
+ {
+  "id": "22.1",
+  "section": "Layout and performance",
+  "intro": "The app in different situations.",
+  "title": "Four ladders at once",
+  "mode": "Demo",
+  "steps": [
+   "Open both tennis matches (two ladders each)."
+  ],
+  "expected": "Four ladders fit on screen and all stay readable."
+ },
+ {
+  "id": "22.2",
+  "section": "Layout and performance",
+  "intro": "The app in different situations.",
+  "title": "Window sizes",
+  "mode": "Either",
+  "steps": [
+   "Try a laptop width and a wide monitor."
+  ],
+  "expected": "Nothing overlaps; the panels reflow; ladders stay usable."
+ },
+ {
+  "id": "22.3",
+  "section": "Layout and performance",
+  "intro": "The app in different situations.",
+  "title": "Browsers",
+  "mode": "Either",
+  "steps": [
+   "Repeat a short run in Chrome and in Safari/Edge."
+  ],
+  "expected": "Same behaviour, including drag and drop."
+ },
+ {
+  "id": "22.4",
+  "section": "Layout and performance",
+  "intro": "The app in different situations.",
+  "title": "Stays responsive over time",
+  "mode": "Practice",
+  "steps": [
+   "Leave two markets open for 30 minutes."
+  ],
+  "expected": "Prices keep updating, no slow-down, no growing memory use in the tab."
+ },
+ {
+  "id": "22.5",
+  "section": "Layout and performance",
+  "intro": "The app in different situations.",
+  "title": "Hover tooltips",
+  "mode": "Either",
+  "steps": [
+   "Hover buttons, cells and chips."
+  ],
+  "expected": "Tooltips explain each control."
+ }
+]
