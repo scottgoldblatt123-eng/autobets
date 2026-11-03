@@ -123,6 +123,32 @@ class SimulatedExchange(ExchangeAdapter):
         oid = self._by_ref.get(client_ref)
         return self._orders[oid] if oid else None
 
+    def export_state(self) -> dict:
+        """Everything needed to rebuild this exchange after a restart: orders, fills and the id counter."""
+        def req(r):
+            return {"market_id": r.market_id, "selection_id": r.selection_id, "side": r.side.value, "price": r.price, "size": r.size,
+                    "order_type": r.order_type.value, "persistence": r.persistence.value, "source": r.source, "client_ref": r.client_ref}
+        return {"orders": [{"order_id": o.order_id, "request": req(o.request), "status": o.status.value, "matched": o.matched,
+                            "avg_price": o.avg_price, "placed_at": o.placed_at, "last_fill_at": o.last_fill_at} for o in self._orders.values()],
+                "fills": [{"order_id": f.order_id, "price": f.price, "size": f.size} for f in self._fills]}
+
+    def import_state(self, st: dict) -> None:
+        from ..domain import OrderRequest, OrderType, Persistence, Side
+        self._orders.clear(); self._by_ref.clear(); self._fills.clear()
+        top = 0
+        for d in st.get("orders", []):
+            r = d["request"]
+            req = OrderRequest(r["market_id"], r["selection_id"], Side(r["side"]), r["price"], r["size"], OrderType(r["order_type"]),
+                               Persistence(r["persistence"]), r["source"], r["client_ref"])
+            o = Order(d["order_id"], req, Status(d["status"]), d["matched"], d["avg_price"], d["placed_at"], d.get("last_fill_at", 0.0))
+            self._orders[o.order_id] = o
+            if req.client_ref:
+                self._by_ref[req.client_ref] = o.order_id
+            if o.order_id[1:].isdigit():
+                top = max(top, int(o.order_id[1:]))
+        self._fills.extend(Fill(f["order_id"], f["price"], f["size"]) for f in st.get("fills", []))
+        self._ids = itertools.count(top + 1)
+
     def all_orders(self) -> list[Order]:
         return list(self._orders.values())
 

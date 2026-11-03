@@ -22,7 +22,8 @@ def make_engine() -> Engine:
         from ..exchange.betfair import BetfairAdapter
         bf = BetfairAdapter.from_env_file(os.environ.get("AUTOBETS_BETFAIR_ENV", "/opt/autobets/secrets/betfair.env"))
         e = Engine(bf, "practice", os.environ.get("AUTOBETS_JOURNAL", "/opt/autobets/data/journal.db"),
-                   os.environ.get("AUTOBETS_PRICES_DB", "/opt/autobets/data/betfair_prices.db"))
+                   os.environ.get("AUTOBETS_PRICES_DB", "/opt/autobets/data/betfair_prices.db"),
+                   os.environ.get("AUTOBETS_STATE", "/opt/autobets/data/state.json"))
         e.start_background()
         return e
     raise SystemExit(f"unknown AUTOBETS_MODE {mode!r} (live mode is not built yet)")

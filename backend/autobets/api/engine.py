@@ -3,10 +3,12 @@ Modes: 'demo' (synthetic prices), 'practice' (real delayed Betfair prices, simul
 from __future__ import annotations
 
 import itertools
+import json
+import os
 import threading
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from .. import pnl, ticks
 from ..domain import Order, OrderRequest, Persistence, Position, Side, Status
@@ -22,7 +24,7 @@ OPEN = (Status.UNMATCHED, Status.PARTIAL)
 
 @dataclass
 class Trigger:
-    """'Green up this selection when its price reaches `price`'. Plain code, held in memory (lost on restart)."""
+    """'Green up this selection when its price reaches `price`'. Plain code; saved to disk with the rest of the state so it survives a restart."""
     id: str
     market_id: str
     selection_id: str
@@ -36,7 +38,7 @@ class Trigger:
 
 @dataclass
 class MarketTrigger:
-    """'Green up the whole market when the profit I could lock reaches / falls to `level`'. Held in memory."""
+    """'Green up the whole market when the profit I could lock reaches / falls to `level`'. Saved to disk so it survives a restart."""
     id: str
     market_id: str
     level: float
@@ -62,7 +64,10 @@ class Entry:
 def locked(fn):
     def wrapper(self, *a, **k):
         with self.lock:
-            return fn(self, *a, **k)
+            try:
+                return fn(self, *a, **k)
+            finally:
+                self._save()                  # keep what is held in memory safe on disk (cheap when nothing changed)
     wrapper.__name__ = fn.__name__
     wrapper.__doc__ = fn.__doc__
     wrapper.__wrapped__ = fn
@@ -70,7 +75,7 @@ def locked(fn):
 
 
 class Engine:
-    def __init__(self, feed, mode: str, journal_path: str = ":memory:", prices_db: str = "") -> None:
+    def __init__(self, feed, mode: str, journal_path: str = ":memory:", prices_db: str = "", state_path: str = "") -> None:
         self.feed, self.mode = feed, mode
         self.lock = threading.RLock()          # the API serves requests on several threads
         self.ex = PracticeExchange()
@@ -88,6 +93,52 @@ class Engine:
         self._markets_cache: dict[str, tuple[float, list]] = {}
         self.tracker = Tracker()
         self.prices_db, self._seeded = prices_db, set()      # logged history for the chart (price logger database)
+        self.state_path, self._last_saved = state_path, ""
+        self._load()
+
+    # ---- keeping state across restarts ----------------------------------
+    def _snapshot(self) -> dict:
+        return {"v": 1, "triggers": [asdict(t) for t in self.triggers.values()], "mtriggers": [asdict(t) for t in self.mtriggers.values()],
+                "entries": [asdict(t) for t in self.entries.values()], "fok": self.fok, "log": self.log[-200:],
+                "exchange": self.ex.export_state()}
+
+    def _save(self) -> None:
+        """Write stops, entries, auto-greens, fill-or-kill timers and (in practice) the practice orders and positions to disk, so a restart or
+        crash loses nothing. Never allowed to break trading: a failed write is only logged."""
+        if not self.state_path:
+            return
+        try:
+            text = json.dumps(self._snapshot(), sort_keys=True)
+            if text == self._last_saved:
+                return
+            tmp = self.state_path + ".tmp"
+            with open(tmp, "w") as f:
+                f.write(text)
+                f.flush(); os.fsync(f.fileno())
+            os.replace(tmp, self.state_path)
+            self._last_saved = text
+        except Exception as ex:          # noqa: BLE001
+            if getattr(self, "_save_warned", None) != str(ex):
+                self._save_warned = str(ex)
+                self._log(f"Could not save state to disk: {ex}", "warn")
+
+    def _load(self) -> None:
+        if not self.state_path or not os.path.exists(self.state_path):
+            return
+        try:
+            st = json.load(open(self.state_path))
+            self.ex.import_state(st.get("exchange", {}))
+            self.triggers = {t["id"]: Trigger(**t) for t in st.get("triggers", [])}
+            self.mtriggers = {t["id"]: MarketTrigger(**t) for t in st.get("mtriggers", [])}
+            self.entries = {t["order_id"]: Entry(**t) for t in st.get("entries", [])}
+            self.fok = {k: float(v) for k, v in st.get("fok", {}).items()}
+            self.log = list(st.get("log", []))
+            top = max([int(i[1:]) for i in list(self.triggers) + list(self.mtriggers) if i[1:].isdigit()] or [0])
+            self._trigger_ids = itertools.count(top + 1)
+            self._last_saved = json.dumps(self._snapshot(), sort_keys=True)
+            self._log(f"Restarted: restored {len(self.ex.all_orders())} orders, {len(self.triggers)} stops, {len(self.entries)} entries and {len(self.mtriggers)} auto-greens", "info")
+        except Exception as ex:          # noqa: BLE001
+            self._log(f"Could not restore saved state ({ex}); starting empty", "warn")
 
     def _log(self, text: str, kind: str = "info") -> None:
         self.log.append({"t": time.time(), "kind": kind, "text": text})
@@ -199,7 +250,7 @@ class Engine:
 
     @locked
     def busy(self) -> dict:
-        """What would be lost by restarting the service: stops / take-profits (held in memory) and unmatched orders."""
+        """What a restart would interrupt: stops, entries, auto-greens and unmatched orders. All of it is saved to disk and restored, so this is a caution, not a loss."""
         return {"triggers": len(self.triggers) + len(self.mtriggers) + len(self.entries), "open_orders": len([o for o in self.ex.open_orders() if o.status in OPEN])}
 
     @locked
