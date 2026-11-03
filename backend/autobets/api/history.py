@@ -14,6 +14,7 @@ SHORT_S = 60          # "short term" matched volume window
 LONG_S = 300          # "long term" matched volume window
 SNAP_EVERY = 2.0      # seconds between samples
 CHART_KEEP_S = 3 * 3600
+MAX_LONG_S = 1800     # longest 'long term' window that can be asked for
 
 
 class Tracker:
@@ -37,7 +38,7 @@ class Tracker:
                 if s.traded:
                     snaps = self._snaps.setdefault(key, deque())
                     snaps.append((now, dict(s.traded)))
-                    while snaps and now - snaps[0][0] > self.long_s + 30:
+                    while snaps and now - snaps[0][0] > MAX_LONG_S + 30:
                         snaps.popleft()
 
     def _delta(self, key, window: float, now: float, current: dict) -> tuple[list, float]:
@@ -57,11 +58,12 @@ class Tracker:
                 out.append([p, d])
         return sorted(out), round(now - old[0], 1)
 
-    def recent(self, market_id: str, sid: str, current: dict, now: float) -> dict:
+    def recent(self, market_id: str, sid: str, current: dict, now: float, short_s: int | None = None, long_s: int | None = None) -> dict:
         key = (market_id, sid)
-        short, s_span = self._delta(key, self.short_s, now, current)
-        long_, l_span = self._delta(key, self.long_s, now, current)
-        return {"short": short, "long": long_, "short_s": self.short_s, "long_s": self.long_s,
+        sh = max(10, min(int(short_s or self.short_s), MAX_LONG_S)); lg = max(sh, min(int(long_s or self.long_s), MAX_LONG_S))
+        short, s_span = self._delta(key, sh, now, current)
+        long_, l_span = self._delta(key, lg, now, current)
+        return {"short": short, "long": long_, "short_s": sh, "long_s": lg,
                 "short_span": s_span, "long_span": l_span}
 
     def chart(self, market_id: str, sid: str, seconds: int = 900, max_points: int = 300) -> dict:

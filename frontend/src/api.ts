@@ -35,7 +35,7 @@ export const api = {
   mode: () => call<{ mode: string }>('/api/mode'),
   ping: () => call<{ needs_token: boolean; mode: string }>('/api/ping'),
   markets: (sport: string) => call<MarketInfo[]>(`/api/markets?sport=${sport}`),
-  state: (ids: string[]) => call<State>(`/api/state?ids=${ids.join(',')}`),
+  state: (ids: string[], shortS = 60, longS = 300) => call<State>(`/api/state?ids=${ids.join(',')}&short_s=${shortS}&long_s=${longS}`),
   place: (b: { market_id: string; selection_id: string; side: Side; price: number; size: number }) =>
     call<{ order: Order; warnings: string[] }>('/api/orders', { method: 'POST', body: JSON.stringify(b) }),
   cancel: (id: string) => call<Order>(`/api/orders/${id}`, { method: 'DELETE' }),

@@ -6,6 +6,7 @@ import { nearest, window as tickWindow } from './ticks'
 
 export interface Props {
   market: MarketState; marketId: string; selectionId: string; orders: Order[]
+  presets: number[]; stakeText: string; defaultStake: number; stakeBad: boolean; onStakeText: (t: string) => void; pnlSide: 'left' | 'right'
   rows: number; onRows: (n: number) => void; womLevels: number; showChart: boolean; showTotal: boolean; centre: number | null; autoCentre: boolean; active: boolean
   onSetCentre: (c: number) => void
   triggers: Trigger[]
@@ -75,7 +76,7 @@ export default function Ladder(p: Props) {
   const level = open ? Math.min(pos!.win, pos!.lose) : 0
 
   return (
-    <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '')} onMouseEnter={p.onHover}
+    <div ref={card} className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '') + (p.pnlSide === 'right' ? ' pnl-right' : '')} onMouseEnter={p.onHover}
          onWheel={e => { p.onWheel(e.deltaY > 0 ? -1 : 1) }}>
       <div className="ladder-head">
         <div className="ladder-title"><b>{name}</b></div>
@@ -90,6 +91,11 @@ export default function Ladder(p: Props) {
           <span title="Profit if this selection loses" className={pos!.lose >= 0 ? 'gain' : 'loss'}>lose {money(pos!.lose)}</span>
         </>) : <span className="muted">no position</span>}
         {view.away && <span className="muted" title="The last traded price is outside the visible ladder — recentre (Enter)">{view.away} price {view.ltp?.toFixed(2)}</span>}
+      </div>
+      <div className="stakes" title="This ladder's stake. Keys 1–8 pick a preset while the mouse is over the ladder. Empty = the toolbar stake.">
+        {p.presets.map(v => <button key={v} className={'chipbtn tiny' + (Number(p.stakeText) === v ? ' on' : '')} onClick={() => p.onStakeText(Number(p.stakeText) === v ? '' : String(v))}>{v}</button>)}
+        <input inputMode="decimal" className={(p.stakeBad ? 'bad ' : '') + (p.stakeText.trim() !== '' && !p.stakeBad ? 'on' : '')} placeholder={String(p.defaultStake)}
+               value={p.stakeText} onChange={e => p.onStakeText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur() }} />
       </div>
       <div className="wom" title={wom ? `Weight of money: ${wom.back}% of the money in the best ${p.womLevels} prices is available to back, ${wom.lay}% to lay. ${wom.back >= wom.lay ? '▲ back side heavier' : '▼ lay side heavier'}` : 'No money in the book'}>
         <span className="bets">{nBack} bets</span>

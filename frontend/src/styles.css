@@ -147,3 +147,13 @@ body.dragging { cursor: row-resize; user-select: none; }
 .ladder-head { gap: 6px; padding: 6px 8px 2px; } .ladder-head .ladder-title { flex: 1; min-width: 0; } .ladder-head .ladder-title b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ladder-pos { padding: 2px 10px 6px; flex-wrap: nowrap; overflow: hidden; }
 .mhead { min-height: 96px; }
+
+.ladder .stakes { display: flex; align-items: center; gap: 3px; padding: 3px 8px; flex: none; overflow: hidden; border-top: 1px solid var(--border); }
+.stakes .chipbtn.tiny { padding: 1px 6px; border-radius: var(--radius-sm); min-width: 26px; }
+.stakes input { width: 52px; margin-left: auto; padding: 1px 6px; font-size: 12px; text-align: center; border-radius: var(--radius-sm); flex: none; }
+.stakes input.on { border-color: var(--brand); background: var(--brand); color: var(--on-brand); font-weight: 600; } .stakes input.bad { border-color: var(--loss); color: var(--loss); }
+.pnl-right .grid { grid-template-columns: 30px 1fr 54px 1fr 30px 1fr 46px; } .pnl-right.with-total .grid { grid-template-columns: 30px 1fr 54px 1fr 30px 1fr 1fr 46px; }
+.pnl-right .cell.green { order: 99; }
+
+.card.scroll { max-height: 88vh; overflow-y: auto; } .card h4 { margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+select { font: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; width: 100%; }

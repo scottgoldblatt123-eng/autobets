@@ -6,10 +6,10 @@ import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
-interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light' }
+interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light'; pnlSide: 'left' | 'right'; shortS: number; longS: number }
 interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string }
 
-const DEFAULTS: Settings = { autoCentre: false, rows: 21, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light' }
+const DEFAULTS: Settings = { autoCentre: false, rows: 21, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', shortS: 60, longS: 300 }
 const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
@@ -70,8 +70,8 @@ export default function App() {
   const refresh = useCallback(async () => {
     if (inFlight.current) return
     inFlight.current = true
-    try { setState(await api.state(ids)) } catch (e) { say((e as Error).message, 'err') } finally { inFlight.current = false }
-  }, [ids.join(','), say])                       // eslint-disable-line react-hooks/exhaustive-deps
+    try { setState(await api.state(ids, settings.shortS, settings.longS)) } catch (e) { say((e as Error).message, 'err') } finally { inFlight.current = false }
+  }, [ids.join(','), say, settings.shortS, settings.longS])                       // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (ready !== 'ok') return
     refresh()
@@ -87,6 +87,13 @@ export default function App() {
   const stakeInvalid = settings.stakeText.trim() !== '' && typed == null
   const stake = typed ?? settings.presets[settings.stakeIdx] ?? settings.presets[0]
   const stakeBox = useRef<HTMLInputElement>(null)
+  const [ladderStake, setLadderStake] = useState<Record<string, string>>({})     // each ladder can have its own stake; empty = use the toolbar stake
+  const stakeFor = (l: LadderRef): { amount: number; bad: boolean } => {
+    const t = ladderStake[keyOf(l)] ?? ''
+    if (t.trim() === '') return { amount: stake, bad: stakeInvalid }
+    const v = parseStake(t)
+    return { amount: v ?? stake, bad: v == null }
+  }
 
   const submit = useCallback(async (p: Pending) => {
     try {
@@ -101,8 +108,9 @@ export default function App() {
 
   const click = (l: LadderRef, side: Side, price: number) => {
     const m = state?.markets[l.marketId]
-    if (stakeInvalid) return say('The stake box needs an amount of £1 or more (or clear it to use a preset)', 'err')
-    const size = orderSize(side, price, stake, settings.layBasis)
+    const sf = stakeFor(l)
+    if (sf.bad) return say('The stake box needs an amount of £1 or more (or clear it to use the default)', 'err')
+    const size = orderSize(side, price, sf.amount, settings.layBasis)
     if (size < 1) return say('Minimum stake is £1', 'err')
     const p: Pending = { marketId: l.marketId, selectionId: l.selectionId, side, price, size, runner: m?.runners[l.selectionId] ?? l.selectionId }
     if (settings.confirmAbove > 0 && size >= settings.confirmAbove) setPending(p)
@@ -164,6 +172,7 @@ export default function App() {
     const pos = m?.outcomes && Math.max(...Object.values(m.outcomes)) - Math.min(...Object.values(m.outcomes)) > 0.004
     if ((risk || pos) && !window.confirm(`Close this market's ladders? ${pos ? 'You still have a position. ' : ''}${risk ? 'Unmatched orders and stops stay active. ' : ''}`)) return
     setLadders(cur => cur.filter(l => l.marketId !== marketId))
+    setLadderStake(o => Object.fromEntries(Object.entries(o).filter(([k]) => !k.startsWith(marketId + ':'))))
   }
 
   useEffect(() => {
@@ -173,7 +182,11 @@ export default function App() {
       const l = ladders.find(x => keyOf(x) === active)
       if (e.key === 'Escape') { setPending(null); setShowSettings(false); setMenu(null) }
       else if (e.key === 'Enter') setCentres({})
-      else if (['1', '2', '3', '4'].includes(e.key)) setSettings(s => (Number(e.key) - 1 < s.presets.length ? { ...s, stakeIdx: Number(e.key) - 1, ...PRESET_OFF } : s))
+      else if (/^[1-8]$/.test(e.key)) {
+        const i = Number(e.key) - 1
+        if (l) setLadderStake(o => (i < settings.presets.length ? { ...o, [keyOf(l)]: String(settings.presets[i]) } : o))
+        else setSettings(s => (i < s.presets.length ? { ...s, stakeIdx: i, ...PRESET_OFF } : s))
+      }
       else if (e.key.toLowerCase() === 's') { e.preventDefault(); stakeBox.current?.focus(); stakeBox.current?.select() }
       else if (l && e.key.toLowerCase() === 'z') cancelAll(l, 'BACK')
       else if (l && e.key.toLowerCase() === 'x') cancelAll(l, 'LAY')
@@ -245,7 +258,7 @@ export default function App() {
             <span className="muted">Lay by</span>
             {(['stake', 'liability'] as const).map(b => <button key={b} className={'chipbtn' + (settings.layBasis === b ? ' on' : '')} onClick={() => setSettings(s => ({ ...s, layBasis: b }))}>{b === 'stake' ? 'Stake' : 'Liability'}</button>)}
             <span className="spacer" />
-            <span className="muted small">S stake box · Hover a ladder · Z cancel back · X cancel lay · C close runner · G hard close market · Enter recentre · wheel scrolls</span>
+            <span className="muted small">S stake box · Hover a ladder (1–8 sets its stake) · Z cancel back · X cancel lay · C close runner · G hard close market · Enter recentre · wheel scrolls</span>
           </div>
           {ladders.length === 0 && <div className="empty muted">Pick a market on the left to open its ladders (up to {MAX_LADDERS}).</div>}
           <div className="mrow">
@@ -261,7 +274,7 @@ export default function App() {
                       if (!m) return <div key={k} className="ladder"><div className="ladder-head muted">Loading…</div></div>
                       return (
                         <Ladder key={k} market={m} marketId={l.marketId} selectionId={l.selectionId}
-                          orders={orders} rows={settings.rows} onRows={n => setSettings(s => ({ ...s, rows: n }))} womLevels={settings.womLevels} showChart={settings.showChart} showTotal={settings.showTotal}
+                          orders={orders} presets={settings.presets} stakeText={ladderStake[k] ?? ''} defaultStake={stake} stakeBad={stakeFor(l).bad} onStakeText={t => setLadderStake(o => ({ ...o, [k]: t }))} pnlSide={settings.pnlSide} rows={settings.rows} onRows={n => setSettings(s => ({ ...s, rows: n }))} womLevels={settings.womLevels} showChart={settings.showChart} showTotal={settings.showTotal}
                           centre={centres[k] ?? null} autoCentre={settings.autoCentre} active={active === k}
                           onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
                           triggers={(state?.triggers ?? []).filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId)}
@@ -296,30 +309,53 @@ export default function App() {
 
       {showSettings && (
         <div className="overlay" onClick={() => setShowSettings(false)}>
-          <div className="card wide" onClick={e => e.stopPropagation()}>
+          <div className="card wide scroll" onClick={e => e.stopPropagation()}>
             <h3>Ladder settings</h3>
+
+            <h4>Layout</h4>
             <label className="check"><input type="checkbox" checked={settings.autoCentre} onChange={e => setSettings(s => ({ ...s, autoCentre: e.target.checked }))} />
               Auto-recentre on the price (off: the ladder stays put until you press Enter or ⌖)</label>
             <label>Price rows shown (you can also drag the bar under a ladder)
               <input type="number" min={7} max={61} value={settings.rows} onChange={e => setSettings(s => ({ ...s, rows: Math.max(7, Math.min(61, Number(e.target.value) || 21)) }))} />
             </label>
+            <label>Profit and loss column (the hedge figures) sits on the
+              <select value={settings.pnlSide} onChange={e => setSettings(s => ({ ...s, pnlSide: e.target.value as 'left' | 'right' }))}>
+                <option value="left">left of the ladder (Bet Angel)</option><option value="right">right of the ladder (Geeks Toy)</option>
+              </select>
+            </label>
             <label className="check"><input type="checkbox" checked={settings.showChart} onChange={e => setSettings(s => ({ ...s, showChart: e.target.checked }))} />
               Show the price chart under each ladder</label>
             <label className="check"><input type="checkbox" checked={settings.showTotal} onChange={e => setSettings(s => ({ ...s, showTotal: e.target.checked }))} />
               Show a column of total matched at each price (as well as Recent)</label>
+            <label>Theme
+              <select value={settings.theme} onChange={e => setSettings(s => ({ ...s, theme: e.target.value as 'light' | 'dark' }))}><option value="light">Light</option><option value="dark">Dark</option></select>
+            </label>
+
+            <h4>Volume and weight of money</h4>
+            <label>Recent volume: short window (seconds)
+              <input type="number" min={10} max={1800} value={settings.shortS} onChange={e => setSettings(s => ({ ...s, shortS: Math.max(10, Math.min(1800, Number(e.target.value) || 60)), longS: Math.max(s.longS, Math.max(10, Math.min(1800, Number(e.target.value) || 60))) }))} />
+            </label>
+            <label>Recent volume: long window (seconds)
+              <input type="number" min={10} max={1800} value={settings.longS} onChange={e => setSettings(s => ({ ...s, longS: Math.max(s.shortS, Math.min(1800, Number(e.target.value) || 300)) }))} />
+            </label>
             <label>Weight of money: prices counted each side of the book
               <input type="number" min={1} max={10} value={settings.womLevels} onChange={e => setSettings(s => ({ ...s, womLevels: Math.max(1, Math.min(10, Number(e.target.value) || 3)) }))} />
             </label>
-            <label>Stake presets £ (comma separated, up to 4)
+
+            <h4>Stakes and orders</h4>
+            <label>Stake presets £ (comma separated, up to 8)
               <input defaultValue={settings.presets.join(', ')} onBlur={e => {
-                const v = e.target.value.split(',').map(x => Number(x.trim())).filter(x => x >= 1).slice(0, 4)
+                const v = e.target.value.split(',').map(x => Number(x.trim())).filter(x => x >= 1).slice(0, 8)
                 if (v.length) setSettings(s => ({ ...s, presets: v, stakeIdx: Math.min(s.stakeIdx, v.length - 1) }))
               }} />
+            </label>
+            <label>Lay stakes are entered as
+              <select value={settings.layBasis} onChange={e => setSettings(s => ({ ...s, layBasis: e.target.value as 'stake' | 'liability' }))}><option value="stake">a stake</option><option value="liability">a liability</option></select>
             </label>
             <label>Ask me to confirm orders of £… or more (0 = never)
               <input type="number" min={0} value={settings.confirmAbove} onChange={e => setSettings(s => ({ ...s, confirmAbove: Math.max(0, Number(e.target.value) || 0) }))} />
             </label>
-            <div className="row"><button className="primary" onClick={() => setShowSettings(false)}>Done</button></div>
+            <div className="row"><button className="primary" onClick={() => setShowSettings(false)}>Done</button><button onClick={() => { if (window.confirm('Reset all ladder settings to the defaults?')) setSettings(DEFAULTS) }}>Reset to defaults</button></div>
           </div>
         </div>
       )}

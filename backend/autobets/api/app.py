@@ -74,8 +74,8 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         return engine.markets(sport)
 
     @app.get("/api/state")
-    def state(ids: str = "", _=Depends(auth)):
-        return engine.state([i for i in ids.split(",") if i])
+    def state(ids: str = "", short_s: int = 60, long_s: int = 300, _=Depends(auth)):
+        return engine.state([i for i in ids.split(",") if i], short_s, long_s)
 
     @app.get("/api/busy")
     def busy(_=Depends(auth)):

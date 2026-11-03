@@ -67,3 +67,14 @@ def test_logged_history_is_loaded_ahead_of_live_samples(tmp_path):
     pts = t.chart("1.1", "1")["points"]
     assert len(pts) == 6 and pts[0][1] == 1.9 and pts[-1][1] == 2.5 and pts[0][0] < pts[-1][0]
     assert load_logged(str(tmp_path / "missing.db"), "1.1") == {}
+
+
+def test_windows_can_be_chosen_per_request():
+    t = Tracker()
+    for i in range(0, 241, 2):
+        t.record([book({2.0: 1000.0 + i * 10})], now=1000.0 + i)
+    r = t.recent("1.1", "1", {2.0: 1000.0 + 240 * 10}, now=1240.0, short_s=30, long_s=120)
+    assert r["short_s"] == 30 and r["long_s"] == 120
+    assert r["short"] == [[2.0, 300.0]] and r["long"] == [[2.0, 1200.0]]
+    r = t.recent("1.1", "1", {2.0: 3400.0}, now=1240.0, short_s=1, long_s=99999)      # out-of-range values are clamped
+    assert r["short_s"] == 10 and r["long_s"] == 1800

@@ -93,7 +93,7 @@ class Engine:
         return pos
 
     @locked
-    def state(self, ids: list[str]) -> dict:
+    def state(self, ids: list[str], short_s: int | None = None, long_s: int | None = None) -> dict:
         ids = ids[:5]
         books = self.feed.get_books(ids, depth=True) if ids else []
         self.ex.refresh(books)
@@ -113,7 +113,7 @@ class Engine:
                 "start": mi.get("start"), "in_play": b.in_play, "runners": mi.get("runners", {}),
                 "selections": {sid: {"backs": [[l.price, l.size] for l in s.backs], "lays": [[l.price, l.size] for l in s.lays],
                                      "traded": sorted([p, v] for p, v in s.traded.items()), "last": s.last_traded,
-                                     "recent": self.tracker.recent(b.market_id, sid, s.traded, now)}
+                                     "recent": self.tracker.recent(b.market_id, sid, s.traded, now, short_s, long_s)}
                                for sid, s in b.selections.items()},
                 "positions": {sid: {"win": p.win, "lose": p.lose} for sid, p in pos.get(b.market_id, {}).items()},
             }
