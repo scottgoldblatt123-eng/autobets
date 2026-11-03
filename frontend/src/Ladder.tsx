@@ -14,6 +14,7 @@ export interface Props {
   onContext: (price: number, x: number, y: number) => void
   onClick: (side: Side, price: number) => void
   onCancelAt: (price: number) => void
+  onMoveOrder: (orderId: string, price: number) => void
   onWheel: (dir: number) => void
   onHover: () => void
   onCancelAll: () => void
@@ -122,18 +123,21 @@ export default function Ladder(p: Props) {
           const backZone = bestBack != null && price <= bestBack, layZone = bestLay != null && price >= bestLay
           const cancel = (e: React.MouseEvent) => { e.stopPropagation(); (here.length || trg.length) && p.onCancelAt(price) }
           return (
-            <div key={price} className={'grid lrow' + (isLtp ? ' ltp' : '')} onContextMenu={e => { e.preventDefault(); p.onContext(price, e.clientX, e.clientY) }}>
+            <div key={price} className={'grid lrow' + (isLtp ? ' ltp' : '')}
+                 onDragOver={e => { if (e.dataTransfer.types.includes('text/order')) e.preventDefault() }}
+                 onDrop={e => { const id = e.dataTransfer.getData('text/order'); if (id && mine.some(o => o.order_id === id)) { e.preventDefault(); p.onMoveOrder(id, price) } }}
+                 onContextMenu={e => { e.preventDefault(); p.onContext(price, e.clientX, e.clientY) }}>
               <button className={'cell green ' + (green ? (green.locked >= 0 ? 'gain' : 'loss') : '')} disabled={!green}
                       onClick={() => green && p.onHedge(price)} title={green ? `Hedge here: ${green.side} £${green.stake.toFixed(2)} at ${price.toFixed(2)}, locks ${money(green.locked)}` : ''}>
                 {green ? green.locked.toFixed(2) : ''}</button>
-              <button className="cell minecol" onClick={cancel} title={hereB.length ? 'Your back bets here (click to cancel)' : ''}>
-                {hereB.map(o => <span key={o.order_id} className="chip back">{o.remaining.toFixed(0)}</span>)}</button>
+              <div className="cell minecol" onClick={cancel} title={hereB.length ? 'Your back bets here: click to cancel, drag to another price' : ''}>
+                {hereB.map(o => <span key={o.order_id} className="chip back draggable" draggable onDragStart={e => { e.dataTransfer.setData('text/order', o.order_id); e.dataTransfer.effectAllowed = 'move' }}>{o.remaining.toFixed(0)}</span>)}</div>
               <button className={'cell back' + (b ? '' : backZone ? ' zone' : ' none')} onClick={() => p.onClick('BACK', price)} title={`Back at ${price}`}>{b ? fmtSize(b) : ''}</button>
               <div className={'cell price' + (isLtp ? ' last' : '')}>{price.toFixed(2)}</div>
               <button className={'cell lay' + (l ? '' : layZone ? ' zone' : ' none')} onClick={() => p.onClick('LAY', price)} title={`Lay at ${price}`}>{l ? fmtSize(l) : ''}</button>
-              <button className="cell minecol" onClick={cancel} title={hereL.length || trg.length ? 'Your lay bets / stops here (click to cancel)' : ''}>
-                {hereL.map(o => <span key={o.order_id} className="chip lay">{o.remaining.toFixed(0)}</span>)}
-                {trg.map(t => <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} title={`${t.label}: greens up when the price reaches ${t.price.toFixed(2)} (click to remove)`}>{t.label === 'stop loss' ? 'SL' : 'TP'}</span>)}</button>
+              <div className="cell minecol" onClick={cancel} title={hereL.length || trg.length ? 'Your lay bets / stops here: click to cancel, drag a bet to another price' : ''}>
+                {hereL.map(o => <span key={o.order_id} className="chip lay draggable" draggable onDragStart={e => { e.dataTransfer.setData('text/order', o.order_id); e.dataTransfer.effectAllowed = 'move' }}>{o.remaining.toFixed(0)}</span>)}
+                {trg.map(t => <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} title={`${t.label}: greens up when the price reaches ${t.price.toFixed(2)} (click to remove)`}>{t.label === 'stop loss' ? 'SL' : 'TP'}</span>)}</div>
               <div className="cell recent" title={`Matched here: £${(view.rs.get(price) ?? 0).toFixed(0)} in the last ${sel.recent?.short_s ?? 0}s, £${(view.rl.get(price) ?? 0).toFixed(0)} in the last ${Math.round((sel.recent?.long_s ?? 0) / 60)} min${sel.recent && sel.recent.long_span < sel.recent.long_s ? ` (only ${Math.round(sel.recent.long_span)}s of history so far)` : ''}`}>
                 <i className="long" style={{ width: `${((view.rl.get(price) ?? 0) / view.maxRecent) * 100}%` }} />
                 <i className="short" style={{ width: `${((view.rs.get(price) ?? 0) / view.maxRecent) * 100}%` }} />

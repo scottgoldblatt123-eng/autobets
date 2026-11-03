@@ -7,10 +7,10 @@ import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
-interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light'; pnlSide: 'left' | 'right'; reverse: boolean; persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP'; fokS: number; shortS: number; longS: number }
-interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string }
+interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light'; pnlSide: 'left' | 'right'; reverse: boolean; persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP'; fokS: number; offsetTicks: number; stopTicks: number; shortS: number; longS: number }
+interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string; entry?: boolean }
 
-const DEFAULTS: Settings = { autoCentre: false, rows: 21, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', reverse: false, persistence: 'CANCEL', fokS: 0, shortS: 60, longS: 300 }
+const DEFAULTS: Settings = { autoCentre: false, rows: 21, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', reverse: false, persistence: 'CANCEL', fokS: 0, offsetTicks: 0, stopTicks: 0, shortS: 60, longS: 300 }
 const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
@@ -98,14 +98,15 @@ export default function App() {
 
   const submit = useCallback(async (p: Pending) => {
     try {
-      const r = await api.place({ market_id: p.marketId, selection_id: p.selectionId, side: p.side, price: p.price, size: p.size, persistence: settings.persistence, fok_s: settings.fokS || undefined })
+      const r = await api.place({ market_id: p.marketId, selection_id: p.selectionId, side: p.side, price: p.price, size: p.size, persistence: settings.persistence, fok_s: settings.fokS || undefined,
+        offset: p.entry && settings.offsetTicks ? settings.offsetTicks : undefined, stop: p.entry && settings.stopTicks ? settings.stopTicks : undefined })
       const o = r.order
       const text = `${p.runner}: ${p.side} £${p.size.toFixed(2)} @ ${p.price.toFixed(2)} — ${o.status === 'MATCHED' ? 'matched' : o.status === 'PARTIAL' ? `part matched £${o.matched.toFixed(2)}` : o.status === 'UNMATCHED' ? 'waiting (unmatched)' : o.status.toLowerCase()}`
       say(text, o.status === 'REJECTED' ? 'err' : r.warnings.length ? 'warn' : 'ok')
       if (r.warnings.length) say(r.warnings[0], 'warn')
       refresh()
     } catch (e) { say((e as Error).message, 'err') }
-  }, [refresh, say])
+  }, [refresh, say, settings.persistence, settings.fokS, settings.offsetTicks, settings.stopTicks])
 
   const click = (l: LadderRef, side: Side, price: number) => {
     const m = state?.markets[l.marketId]
@@ -114,7 +115,7 @@ export default function App() {
     if (sf.bad) return say('The stake box needs an amount of £1 or more (or clear it to use the default)', 'err')
     const size = orderSize(side, price, sf.amount, settings.layBasis)
     if (size < 1) return say('Minimum stake is £1', 'err')
-    const p: Pending = { marketId: l.marketId, selectionId: l.selectionId, side, price, size, runner: m?.runners[l.selectionId] ?? l.selectionId }
+    const p: Pending = { marketId: l.marketId, selectionId: l.selectionId, side, price, size, runner: m?.runners[l.selectionId] ?? l.selectionId, entry: true }
     if (settings.confirmAbove > 0 && size >= settings.confirmAbove) setPending(p)
     else submit(p)
   }
@@ -137,11 +138,17 @@ export default function App() {
       refresh()
     } catch (e) { say((e as Error).message, 'err') }
   }
-  const greenMarket = async (marketId: string, hard: boolean) => {
-    const r = await api.green(marketId, hard).catch(e => { say(e.message, 'err'); return null })
-    if (r) say(r.greened ? `${hard ? 'Hard close' : 'Green up'} done — locked ${money(r.locked ?? 0)}${r.level ? '' : ' (not fully level)'}${r.cancelled ? `, cancelled ${r.cancelled}` : ''}` : (r.cancelled ? `Cancelled ${r.cancelled}; ` : '') + (r.reason ?? 'nothing to do'), r.greened ? 'ok' : 'warn')
+  const greenMarket = async (marketId: string, hard: boolean, pct = 1) => {
+    const r = await api.green(marketId, hard, pct).catch(e => { say(e.message, 'err'); return null })
+    if (r) say(r.greened ? `${pct < 1 ? `${Math.round(pct * 100)}% hedge` : hard ? 'Hard close' : 'Green up'} done — locked ${money(r.locked ?? 0)}${r.level ? '' : ' (not fully level)'}${r.cancelled ? `, cancelled ${r.cancelled}` : ''}` : (r.cancelled ? `Cancelled ${r.cancelled}; ` : '') + (r.reason ?? 'nothing to do'), r.greened ? 'ok' : 'warn')
     refresh()
   }
+
+  const autoGreen = async (marketId: string, level: number) => {
+    try { await api.addMarketTrigger({ market_id: marketId, level }); say(`Auto hard-close set for when the market profit reaches ${money(level)}`) } catch (e) { say((e as Error).message, 'err') }
+    refresh()
+  }
+  const delAuto = async (id: string) => { await api.delMarketTrigger(id).catch(e => say(e.message, 'err')); refresh() }
 
   const cancelAt = async (l: LadderRef, price: number) => {
     const trg = state?.triggers.filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId && t.price === price) ?? []
@@ -283,6 +290,11 @@ export default function App() {
             <span className="muted">Lay by</span>
             {(['stake', 'liability'] as const).map(b => <button key={b} className={'chipbtn' + (settings.layBasis === b ? ' on' : '')} onClick={() => setSettings(s => ({ ...s, layBasis: b }))}>{b === 'stake' ? 'Stake' : 'Liability'}</button>)}
             <span className="sep" />
+            <span className="muted" title="After a bet matches, place the closing bet this many ticks away (0 = off)">Offset</span>
+            <input type="number" min={0} max={50} className="tickin" value={settings.offsetTicks || ''} placeholder="0" onChange={e => setSettings(s => ({ ...s, offsetTicks: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))} />
+            <span className="muted" title="Stop loss: if the price moves this many ticks against a matched bet, close the position (0 = off)">Stop</span>
+            <input type="number" min={0} max={50} className="tickin" value={settings.stopTicks || ''} placeholder="0" onChange={e => setSettings(s => ({ ...s, stopTicks: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))} />
+            <span className="sep" />
             <button className={'chipbtn' + (settings.reverse ? ' on' : '')} onClick={() => setSettings(s => ({ ...s, reverse: !s.reverse }))} title="Flip the ladders: highest price at the top (normal) or lowest price at the top (reversed). Key R.">⇅ Reverse</button>
             <span className="spacer" />
             <span className="muted small">S stake box · Hover a ladder (1–8 sets its stake) · Z cancel back · X cancel lay · C close runner · G hard close market · R reverse ladders · Enter recentre · wheel scrolls</span>
@@ -294,7 +306,7 @@ export default function App() {
               const orders = (state?.orders ?? []).filter(o => o.market_id === id)
               return (
                 <div key={id} className="mblock" style={{ flex: `${group.length} 1 ${group.length * 290}px` }}>
-                  {m ? <MarketHeader marketId={id} market={m} openOrders={orders.length} onGreen={() => greenMarket(id, true)} onClose={() => closeMarket(id)} /> : <div className="mhead muted">Loading…</div>}
+                  {m ? <MarketHeader marketId={id} market={m} openOrders={orders.length} triggers={(state?.market_triggers ?? []).filter(t => t.market_id === id)} onGreen={(h, pct) => greenMarket(id, h, pct)} onAuto={lv => autoGreen(id, lv)} onDelAuto={delAuto} onClose={() => closeMarket(id)} /> : <div className="mhead muted">Loading…</div>}
                   <div className="ladders" style={{ gridTemplateColumns: `repeat(${group.length}, minmax(0, 1fr))` }}>
                     {group.map(l => {
                       const k = keyOf(l)
@@ -306,7 +318,7 @@ export default function App() {
                           onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
                           triggers={(state?.triggers ?? []).filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId)}
                           onHedge={price => hedgeAt(l, price)} onContext={(price, x, y) => setMenu({ l, price, x, y })}
-                          onClick={(side, price) => click(l, side, price)} onCancelAt={price => cancelAt(l, price)}
+                          onClick={(side, price) => click(l, side, price)} onCancelAt={price => cancelAt(l, price)} onMoveOrder={(oid, price) => editOrder(oid, { price })}
                           onWheel={d => setCentres(o => (o[k] == null ? o : { ...o, [k]: move(o[k]!, d) }))} onHover={() => setActive(k)}
                           onCancelAll={() => cancelAll(l)} onClose={() => closePos(l)}
                           onRecentre={() => setCentres(o => ({ ...o, [k]: null }))} />
@@ -387,6 +399,12 @@ export default function App() {
               <select value={settings.persistence} onChange={e => setSettings(s => ({ ...s, persistence: e.target.value as 'KEEP' | 'CANCEL' | 'TAKE_SP' }))}>
                 <option value="CANCEL">Cancel them (safest)</option><option value="KEEP">Keep them in play</option><option value="TAKE_SP">Take the Starting Price (not simulated in practice)</option>
               </select>
+            </label>
+            <label>Offset: place the closing bet this many ticks away once a bet matches (0 = off)
+              <input type="number" min={0} max={50} value={settings.offsetTicks} onChange={e => setSettings(s => ({ ...s, offsetTicks: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))} />
+            </label>
+            <label>Stop: close the position if the price moves this many ticks against a matched bet (0 = off)
+              <input type="number" min={0} max={50} value={settings.stopTicks} onChange={e => setSettings(s => ({ ...s, stopTicks: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))} />
             </label>
             <label>Fill or kill: cancel any unmatched part after this many seconds (0 = off)
               <input type="number" min={0} max={600} value={settings.fokS} onChange={e => setSettings(s => ({ ...s, fokS: Math.max(0, Math.min(600, Number(e.target.value) || 0)) }))} />

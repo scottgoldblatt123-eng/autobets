@@ -36,11 +36,18 @@ class OrderIn(BaseModel):
     size: float
     persistence: str = "KEEP"
     fok_s: float = 0
+    offset: int = 0
+    stop: int = 0
 
 
 class EditIn(BaseModel):
     price: float | None = None
     size: float | None = None
+
+
+class MarketTriggerIn(BaseModel):
+    market_id: str
+    level: float
 
 
 class PersistIn(BaseModel):
@@ -100,7 +107,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     @app.post("/api/orders")
     def place(o: OrderIn, _=Depends(auth)):
         try:
-            return engine.place(o.market_id, o.selection_id, o.side, o.price, o.size, o.persistence, o.fok_s)
+            return engine.place(o.market_id, o.selection_id, o.side, o.price, o.size, o.persistence, o.fok_s, max(0, min(o.offset, 50)), max(0, min(o.stop, 50)))
         except ValueError as e:
             raise HTTPException(422, str(e))
         except RuntimeError as e:
@@ -152,11 +159,22 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             raise HTTPException(502, str(e))
 
     @app.post("/api/markets/{market_id}/green")
-    def green(market_id: str, hard: bool = False, _=Depends(auth)):
+    def green(market_id: str, hard: bool = False, pct: float = 1.0, _=Depends(auth)):
         try:
-            return engine.green_market(market_id, hard)
+            return engine.green_market(market_id, hard, max(0.05, min(pct, 1.0)))
         except ValueError as e:
             raise HTTPException(422, str(e))
+
+    @app.post("/api/market-triggers")
+    def add_market_trigger(t: MarketTriggerIn, _=Depends(auth)):
+        try:
+            return engine.add_market_trigger(t.market_id, t.level)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    @app.delete("/api/market-triggers/{trigger_id}")
+    def del_market_trigger(trigger_id: str, _=Depends(auth)):
+        return {"cancelled": engine.cancel_market_trigger(trigger_id)}
 
     @app.post("/api/triggers")
     def add_trigger(t: TriggerIn, _=Depends(auth)):

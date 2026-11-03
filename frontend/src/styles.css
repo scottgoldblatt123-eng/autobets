@@ -171,3 +171,8 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 .obody th { text-align: left; font-weight: 500; color: var(--text-muted); padding: 3px 8px; position: sticky; top: 0; background: var(--surface); } .obody td { padding: 2px 8px; border-top: 1px solid var(--border); }
 .obody .num { white-space: nowrap; } .obody button.tick { padding: 0 6px; margin: 0 4px; } .stakein { width: 70px; padding: 1px 6px; font-size: 12px; text-align: right; }
 .obody select { width: auto; padding: 1px 4px; font-size: 12px; }
+
+.tickin { width: 46px; padding: 2px 6px; border-radius: var(--radius-sm); text-align: center; }
+.chip.draggable { cursor: grab; } .chip.trig { cursor: pointer; }
+.mbtnrow .caret { border: 0; border-radius: 0; background: var(--surface-raised); padding: 0 6px; font-size: 12px; border-left: 1px solid var(--border); }
+.gmenu { position: fixed; left: 300px; top: 150px; width: 330px; } .gmenu .row { display: flex; gap: 6px; } .gmenu .row input { flex: 1; }

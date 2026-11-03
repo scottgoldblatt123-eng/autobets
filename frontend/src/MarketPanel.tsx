@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
-import type { MarketState } from './api'
+import type { MarketState, MarketTrigger } from './api'
 import { money } from './maths'
 
 interface Props {
   marketId: string
   market: MarketState
   openOrders: number
-  onGreen: () => void
+  triggers: MarketTrigger[]
+  onGreen: (hard: boolean, pct: number) => void
+  onAuto: (level: number) => void
+  onDelAuto: (id: string) => void
   onClose: () => void
 }
 
@@ -31,8 +34,10 @@ export function marketFigure(market: MarketState): number | null {
 /** Everything about one market in one block header, laid out like Geeks Toy's market panel:
  *  clock above, then back book % | ONE hedge button (green if the market is in profit, red if in loss) | lay book %.
  *  The button is a hard close: it cancels every unmatched order in the market, then places the bets that level all results. */
-export default function MarketHeader({ market, openOrders, onGreen, onClose }: Props) {
+export default function MarketHeader({ market, openOrders, triggers, onGreen, onAuto, onDelAuto, onClose }: Props) {
   const [now, setNow] = useState(Date.now())
+  const [menu, setMenu] = useState(false)
+  const [level, setLevel] = useState('')
   useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(t) }, [])
   const sels = Object.values(market.selections)
   const matched = Math.round(sels.reduce((a, s) => a + s.traded.reduce((x, y) => x + y[1], 0), 0))
@@ -62,15 +67,32 @@ export default function MarketHeader({ market, openOrders, onGreen, onClose }: P
         {market.status && market.status !== 'OPEN' && <span className="statustag">{market.status === 'SUSPENDED' ? 'SUSPENDED' : market.status === 'CLOSED' ? 'CLOSED' : market.status}</span>}
         <div className="mbtnrow">
           <span className="book" title="Back book: add up 1/price of the best back prices. Over 100% is normal."><i>Back</i>{book(s => s.backs[0]?.[0])}</span>
-          <button className={'bigbtn ' + state} disabled={!enabled} onClick={onGreen} title={tip}>
+          <button className={'bigbtn ' + state} disabled={!enabled} onClick={() => onGreen(true, 1)} onContextMenu={e => { e.preventDefault(); setMenu(true) }} title={tip + ' Right-click or use ▾ for more options.'}>
             <b>{label}</b><small>{sub}</small>
           </button>
+          <button className="caret" onClick={() => setMenu(v => !v)} title="More ways to green up">▾</button>
           <span className="book" title="Lay book: add up 1/price of the best lay prices. Under 100% is normal."><i>Lay</i>{book(s => s.lays[0]?.[0])}</span>
         </div>
       </div>
+      {menu && (
+        <div className="overlay clear" onClick={() => setMenu(false)} onContextMenu={e => { e.preventDefault(); setMenu(false) }}>
+          <div className="menu gmenu" onClick={e => e.stopPropagation()}>
+            <button disabled={!canGreen && !openOrders} onClick={() => { setMenu(false); onGreen(true, 1) }}>Hard close: cancel unmatched bets, then green up <small className="muted">(G)</small></button>
+            <button disabled={!canGreen} onClick={() => { setMenu(false); onGreen(false, 1) }}>Green up, keep my unmatched bets</button>
+            <div className="muted small">Partial hedge (keeps unmatched bets)</div>
+            <div className="row">{[0.75, 0.5, 0.25].map(p => <button key={p} disabled={!canGreen} onClick={() => { setMenu(false); onGreen(false, p) }}>{p * 100}%</button>)}</div>
+            <div className="muted small">Auto hard-close when the market profit reaches £{figure != null ? ` (now ${money(figure)})` : ''}</div>
+            <div className="row"><input inputMode="decimal" placeholder="e.g. 5 or -10" value={level} onChange={e => setLevel(e.target.value)} />
+              <button disabled={!hasPos || !Number.isFinite(Number(level)) || level.trim() === ''} onClick={() => { onAuto(Number(level)); setLevel(''); setMenu(false) }}>Set</button></div>
+          </div>
+        </div>
+      )}
       <div className="minfo">
         <div className="mtitle"><b>{market.event}</b><span className="muted"> · {market.name}</span></div>
         <div className="muted small" title={noVolume ? 'Betfair is not sending matched volumes for this market (a delayed key may withhold them)' : ''}>Matched <b>{noVolume ? 'n/a' : '£' + matched.toLocaleString('en-GB')}</b></div>
+        {triggers.length > 0 && <div className="small">{triggers.map(t => (
+          <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} style={{ marginRight: 6 }} title="Hard-closes the market when the profit you could lock reaches this (click to remove)" onClick={() => onDelAuto(t.id)}>
+            Auto-green at {money(t.level)} ✕</span>))}</div>}
         {o && (
           <div className="outcomes">
             {Object.entries(o).map(([sid, v]) => (

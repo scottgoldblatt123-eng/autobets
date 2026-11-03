@@ -6,7 +6,7 @@ import itertools
 import threading
 import time
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .. import pnl, ticks
 from ..domain import Order, OrderRequest, Persistence, Position, Side, Status
@@ -30,6 +30,33 @@ class Trigger:
     direction: str           # 'le': fires when the last traded price is at or below; 'ge': at or above
     label: str               # 'take profit' | 'stop loss' (from the profit locked at that price)
     locked: float
+    cancel: list = field(default_factory=list)   # order ids to cancel first when it fires (an entry's resting offset order)
+    link: str = ""                               # the entry order this stop belongs to, if any
+
+
+@dataclass
+class MarketTrigger:
+    """'Green up the whole market when the profit I could lock reaches / falls to `level`'. Held in memory."""
+    id: str
+    market_id: str
+    level: float
+    direction: str           # 'ge' | 'le'
+    label: str               # 'take profit' | 'stop loss'
+
+
+@dataclass
+class Entry:
+    """A bet placed with an offset and/or stop: when it matches, a closing bet is placed `offset` ticks away and a stop is armed."""
+    order_id: str
+    market_id: str
+    selection_id: str
+    side: str
+    offset: int
+    stop: int
+    persistence: str
+    processed: float = 0.0
+    stop_id: str = ""
+    close_ids: list = field(default_factory=list)
 
 
 def locked(fn):
@@ -53,6 +80,8 @@ class Engine:
         self.triggers: dict[str, Trigger] = {}
         self.events: list[dict] = []
         self.log: list[dict] = []                      # activity log: everything the engine did, newest last
+        self.mtriggers: dict[str, MarketTrigger] = {}
+        self.entries: dict[str, Entry] = {}
         self.fok: dict[str, float] = {}                # order_id -> time after which any unmatched part is cancelled
         self._trigger_ids = itertools.count(1)
         self._bg: threading.Thread | None = None
@@ -132,7 +161,9 @@ class Engine:
                 plan = pnl.green_plan(m["outcomes"], {k: (v.backs[0].price if v.backs else None) for k, v in sels.items()},
                                       {k: (v.lays[0].price if v.lays else None) for k, v in sels.items()})
                 m["green"] = plan
+        self._process_entries()
         self._check_triggers()
+        self._check_market_triggers()
         self._check_fok()
         orders = [self._order(o) for o in self.ex.open_orders() if o.status in OPEN and o.request.market_id in ids]
         allpos = [p for m in pos.values() for p in m.values()]
@@ -140,7 +171,8 @@ class Engine:
         return {"mode": self.mode, "t": time.time(), "markets": markets, "orders": orders,
                 "totals": {"exposure": exposure, "open_pnl": round(sum(p.win if p.win < 0 else 0 for p in allpos), 2)},
                 "warnings": self.service.warnings[-3:],
-                "triggers": [t.__dict__ for t in self.triggers.values() if t.market_id in ids],
+                "triggers": [{k: v for k, v in t.__dict__.items() if k not in ("cancel",)} for t in self.triggers.values() if t.market_id in ids],
+                "market_triggers": [t.__dict__ for t in self.mtriggers.values() if t.market_id in ids],
                 "events": self.events[-5:]}
 
     @locked
@@ -150,7 +182,7 @@ class Engine:
     @locked
     def busy(self) -> dict:
         """What would be lost by restarting the service: stops / take-profits (held in memory) and unmatched orders."""
-        return {"triggers": len(self.triggers), "open_orders": len([o for o in self.ex.open_orders() if o.status in OPEN])}
+        return {"triggers": len(self.triggers) + len(self.mtriggers) + len(self.entries), "open_orders": len([o for o in self.ex.open_orders() if o.status in OPEN])}
 
     @locked
     def history(self, market_id: str, selection_id: str, seconds: int = 900) -> dict:
@@ -166,7 +198,7 @@ class Engine:
 
     # ---- actions --------------------------------------------------------
     @locked
-    def place(self, market_id: str, selection_id: str, side: str, price: float, size: float, persistence: str = "KEEP", fok_s: float = 0) -> dict:
+    def place(self, market_id: str, selection_id: str, side: str, price: float, size: float, persistence: str = "KEEP", fok_s: float = 0, offset: int = 0, stop: int = 0) -> dict:
         if not ticks.is_valid(price):
             raise ValueError(f"{price} is not a valid Betfair price")
         if size < 1.0:
@@ -183,6 +215,9 @@ class Engine:
             raise RuntimeError("order outcome unknown; it will be reconciled")
         if fok_s and order.status in OPEN:
             self.fok[order.order_id] = time.time() + fok_s
+        if (offset or stop) and order.status in OPEN + (Status.MATCHED,):
+            self.entries[order.order_id] = Entry(order.order_id, market_id, selection_id, side, int(offset), int(stop), persistence)
+            self._process_entries()
         self._log(f"{side} £{size:.2f} @ {price:.2f} on {self._name(market_id, selection_id)}: {order.status.value.lower()}"
                   + (f" (£{order.matched:.2f} matched)" if order.matched and order.status is not Status.MATCHED else ""), "order")
         return {"order": self._order(order), "warnings": list(self.service.warnings)}
@@ -235,6 +270,94 @@ class Engine:
         if n:
             self._log(f"At the off: {n} unmatched bet{'s' if n != 1 else ''} set to {persistence.replace('_', ' ').lower()}", "order")
         return n
+
+    # ---- offset and stop on entry ------------------------------------------
+    def _process_entries(self) -> None:
+        for e in list(self.entries.values()):
+            try:
+                o = self.ex.get_order(e.order_id)
+            except Exception:
+                self.entries.pop(e.order_id, None); continue
+            new = round(o.matched - e.processed, 2)
+            if new >= 1.0 and o.avg_price:
+                p = o.avg_price
+                chunk = Position(win=round(new * (p - 1), 2), lose=-new) if e.side == "BACK" else Position(win=-round(new * (p - 1), 2), lose=new)
+                try:
+                    if e.offset:
+                        target = ticks.nearest(p)
+                        target = ticks.move(target, -e.offset if e.side == "BACK" else e.offset)
+                        h = pnl.hedge(chunk, target)
+                        if h and h[1] >= 1.0:
+                            res = self.place(e.market_id, e.selection_id, h[0].value, target, h[1], e.persistence)
+                            e.close_ids.append(res["order"]["order_id"])
+                            self._log(f"Offset: {h[0].value} £{h[1]:.2f} @ {target:.2f} placed to close the {e.side} @ {p:.2f} ({e.offset} ticks)", "order")
+                    if e.stop and not e.stop_id:
+                        sp = ticks.move(ticks.nearest(p), e.stop if e.side == "BACK" else -e.stop)
+                        h = pnl.hedge(chunk, sp)
+                        t = Trigger(f"T{next(self._trigger_ids)}", e.market_id, e.selection_id, sp, "ge" if e.side == "BACK" else "le",
+                                    "stop loss", h[2] if h else 0.0, cancel=e.close_ids, link=e.order_id)
+                        self.triggers[t.id] = t; e.stop_id = t.id
+                        self._log(f"Stop armed at {sp:.2f} ({e.stop} ticks against the {e.side} @ {p:.2f})", "trigger")
+                    e.processed = round(e.processed + new, 2)
+                except ValueError:
+                    continue                      # e.g. market suspended: try again next time
+            done_entry = o.status not in OPEN
+            if done_entry and e.processed + 0.9999 >= o.matched:
+                closed = bool(e.close_ids) and all(self.ex.get_order(c).status is Status.MATCHED for c in e.close_ids)
+                if closed or not e.close_ids:
+                    if closed and e.stop_id:
+                        self.triggers.pop(e.stop_id, None)          # the offset bet matched: the position is closed, the stop is not needed
+                        self._log("Offset matched: position closed, stop removed", "order")
+                    self.entries.pop(e.order_id, None)
+
+    def _market_figure(self, market_id: str) -> float | None:
+        """What a hard close would lock at the prices loaded now (or the guaranteed result if there is nothing to hedge)."""
+        book = self.ex.get_book(market_id)
+        pos = self.positions().get(market_id, {})
+        full = {sid: pos.get(sid, Position()) for sid in book.selections}
+        if not any(abs(p.win) > 0.004 or abs(p.lose) > 0.004 for p in full.values()):
+            return None
+        out = pnl.market_outcomes(full)
+        plan = pnl.green_plan(out, {k: (v.backs[0].price if v.backs else None) for k, v in book.selections.items()},
+                              {k: (v.lays[0].price if v.lays else None) for k, v in book.selections.items()})
+        return plan["locked"] if plan and plan["bets"] else min(out.values())
+
+    @locked
+    def add_market_trigger(self, market_id: str, level: float) -> dict:
+        self.ex.refresh(self.feed.get_books([market_id], depth=False))
+        fig = self._market_figure(market_id)
+        if fig is None:
+            raise ValueError("no position in this market to protect")
+        if abs(level - fig) < 0.005:
+            raise ValueError("that is where the market's profit is right now")
+        t = MarketTrigger(f"M{next(self._trigger_ids)}", market_id, round(level, 2), "ge" if level > fig else "le",
+                          "take profit" if level >= 0 else "stop loss")
+        self.mtriggers[t.id] = t
+        self._log(f"Auto-green set: hard close the market when the profit reaches {t.level:+.2f} (now {fig:+.2f})", "trigger")
+        return t.__dict__
+
+    @locked
+    def cancel_market_trigger(self, trigger_id: str) -> bool:
+        return self.mtriggers.pop(trigger_id, None) is not None
+
+    def _check_market_triggers(self) -> None:
+        for t in list(self.mtriggers.values()):
+            try:
+                if self.ex.get_book(t.market_id).status != "OPEN":
+                    continue
+                fig = self._market_figure(t.market_id)
+            except Exception:
+                continue
+            if fig is None:
+                self.mtriggers.pop(t.id, None); continue
+            if (t.direction == "ge" and fig >= t.level - 1e-9) or (t.direction == "le" and fig <= t.level + 1e-9):
+                self.mtriggers.pop(t.id, None)
+                try:
+                    res = self.green_market.__wrapped__(self, t.market_id, True)
+                    msg = f"Auto-green fired at {fig:+.2f}: " + (f"hard close, locked £{res.get('locked', 0):.2f}" if res.get("greened") else res.get("reason", "nothing to do"))
+                except Exception as ex:
+                    msg = f"Auto-green at {t.level:+.2f} FAILED: {ex}"
+                self.events.append({"t": time.time(), "text": msg, "trigger": t.id}); self._log(msg, "trigger")
 
     def _check_fok(self) -> None:
         now = time.time()
@@ -293,7 +416,7 @@ class Engine:
 
     # ---- market-level green up / hard close ------------------------------
     @locked
-    def green_market(self, market_id: str, hard: bool = False) -> dict:
+    def green_market(self, market_id: str, hard: bool = False, pct: float = 1.0) -> dict:
         """Equalise every outcome of the market at the prices available now. hard=True first cancels unmatched orders."""
         self.ex.refresh(self.feed.get_books([market_id], depth=False))
         if self.ex.get_book(market_id).status != "OPEN":
@@ -307,7 +430,17 @@ class Engine:
         if plan is None:
             return {"greened": False, "cancelled": cancelled, "reason": "nothing to green up (level, or no prices available)"}
         placed = []
-        for b in plan["bets"]:
+        bets = plan["bets"]
+        if pct < 0.999:                                     # partial hedge: only part of the way to level
+            bets = [{**b, "stake": round(b["stake"] * pct, 2)} for b in bets]
+            bets = [b for b in bets if b["stake"] >= 1.0]
+            if not bets:
+                return {"greened": False, "cancelled": cancelled, "reason": f"{int(pct * 100)}% of the hedge is under the £1 minimum stake"}
+            after = pnl.market_outcomes(full)
+            for b in bets:
+                after = pnl._apply(after, b["selection_id"], Side(b["side"]), b["price"], b["stake"])
+            plan = {**plan, "locked": round(min(after.values()), 2), "level": False}
+        for b in bets:
             r = self.place(market_id, b["selection_id"], b["side"], b["price"], b["stake"])
             placed.append({**b, "status": r["order"]["status"]})
         self._log(f"{'Hard close' if hard else 'Green up'} on {self._info.get(market_id, {}).get('event', market_id)}: locked £{plan['locked']:.2f}", "order")
@@ -351,6 +484,14 @@ class Engine:
                 continue                      # a suspended market cannot be traded: the stop waits and fires when it reopens
             if (t.direction == "le" and ltp <= t.price + 1e-9) or (t.direction == "ge" and ltp >= t.price - 1e-9):
                 self.triggers.pop(t.id, None)
+                for oid in t.cancel:
+                    try:
+                        if self.ex.get_order(oid).status in OPEN:
+                            self.ex.cancel_order(oid)
+                    except Exception:
+                        pass
+                if t.link:
+                    self.entries.pop(t.link, None)
                 try:
                     res = self.close_position.__wrapped__(self, t.market_id, t.selection_id)
                     msg = f"{t.label.capitalize()} fired at {t.price:.2f}: " + (f"closed, locked £{res.get('locked_profit', 0):.2f}" if res.get("closed") else res.get("reason", "nothing to close"))
@@ -360,10 +501,13 @@ class Engine:
 
     @locked
     def check_triggers_now(self) -> None:
-        mids = sorted({t.market_id for t in self.triggers.values()})
+        mids = sorted({t.market_id for t in self.triggers.values()} | {t.market_id for t in self.mtriggers.values()} | {e.market_id for e in self.entries.values()})
         if mids:
             self.ex.refresh(self.feed.get_books(mids, depth=False))
+            self._process_entries()
             self._check_triggers()
+            self._check_market_triggers()
+        self._check_fok()
 
     def start_background(self, every: float = 2.0) -> None:
         """Keep triggers working when no browser is open."""

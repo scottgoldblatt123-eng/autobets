@@ -9,13 +9,14 @@ export interface MarketState {
   green?: { locked: number; level: boolean; bets: { selection_id: string; side: Side; price: number; stake: number }[]; after: Record<string, number> } | null
 }
 export interface Trigger { id: string; market_id: string; selection_id: string; price: number; direction: 'le' | 'ge'; label: string; locked: number }
+export interface MarketTrigger { id: string; market_id: string; level: number; direction: 'ge' | 'le'; label: string }
 export interface Evt { t: number; text: string; trigger: string }
 export interface Order {
   order_id: string; market_id: string; selection_id: string; side: Side; price: number; size: number
   matched: number; avg_price: number; remaining: number; status: string; persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP'; placed_at: number
 }
 export interface LogEntry { t: number; kind: string; text: string }
-export interface State { mode: string; markets: Record<string, MarketState>; orders: Order[]; totals: { exposure: number; open_pnl: number }; warnings: string[]; triggers: Trigger[]; events: Evt[] }
+export interface State { mode: string; markets: Record<string, MarketState>; orders: Order[]; totals: { exposure: number; open_pnl: number }; warnings: string[]; triggers: Trigger[]; market_triggers: MarketTrigger[]; events: Evt[] }
 export interface MarketInfo { market_id: string; name: string; event: string; competition: string; start: string | null; runners: Record<string, string>; in_play?: boolean }
 
 let token = ''
@@ -37,7 +38,7 @@ export const api = {
   ping: () => call<{ needs_token: boolean; mode: string }>('/api/ping'),
   markets: (sport: string) => call<MarketInfo[]>(`/api/markets?sport=${sport}`),
   state: (ids: string[], shortS = 60, longS = 300) => call<State>(`/api/state?ids=${ids.join(',')}&short_s=${shortS}&long_s=${longS}`),
-  place: (b: { market_id: string; selection_id: string; side: Side; price: number; size: number; persistence?: string; fok_s?: number }) =>
+  place: (b: { market_id: string; selection_id: string; side: Side; price: number; size: number; persistence?: string; fok_s?: number; offset?: number; stop?: number }) =>
     call<{ order: Order; warnings: string[] }>('/api/orders', { method: 'POST', body: JSON.stringify(b) }),
   edit: (id: string, b: { price?: number; size?: number }) =>
     call<{ order: Order; warnings: string[] }>(`/api/orders/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
@@ -47,8 +48,10 @@ export const api = {
   cancel: (id: string) => call<Order>(`/api/orders/${id}`, { method: 'DELETE' }),
   cancelAll: (market: string, selection?: string, side?: Side) =>
     call<{ cancelled: number }>(`/api/markets/${market}/cancel-all?${new URLSearchParams({ ...(selection ? { selection_id: selection } : {}), ...(side ? { side } : {}) })}`, { method: 'POST' }),
-  green: (market: string, hard: boolean) =>
-    call<{ greened: boolean; reason?: string; cancelled: number; locked?: number; level?: boolean; placed?: { status: string }[] }>(`/api/markets/${market}/green?hard=${hard}`, { method: 'POST' }),
+  green: (market: string, hard: boolean, pct = 1) =>
+    call<{ greened: boolean; reason?: string; cancelled: number; locked?: number; level?: boolean; placed?: { status: string }[] }>(`/api/markets/${market}/green?hard=${hard}&pct=${pct}`, { method: 'POST' }),
+  addMarketTrigger: (b: { market_id: string; level: number }) => call<MarketTrigger>('/api/market-triggers', { method: 'POST', body: JSON.stringify(b) }),
+  delMarketTrigger: (id: string) => call<{ cancelled: boolean }>(`/api/market-triggers/${id}`, { method: 'DELETE' }),
   addTrigger: (b: { market_id: string; selection_id: string; price: number }) =>
     call<Trigger>('/api/triggers', { method: 'POST', body: JSON.stringify(b) }),
   delTrigger: (id: string) => call<{ cancelled: boolean }>(`/api/triggers/${id}`, { method: 'DELETE' }),
