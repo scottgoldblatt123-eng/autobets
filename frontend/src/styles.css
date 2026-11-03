@@ -182,9 +182,11 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 
 .chartwrap { overflow: hidden; }
 
-.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 10px 10px; flex: none; } .panels .opanel { margin: 0; min-width: 0; }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 10px; margin: 0 10px 10px; flex: none; } .panels .opanel { margin: 0; min-width: 0; }
 .sidetag { padding: 0 6px; border-radius: 3px; font-size: 11px; } .sidetag.back { background: var(--back); color: var(--on-back); } .sidetag.lay { background: var(--lay); color: var(--on-lay); }
 
 .chip.sum { font-weight: 700; padding: 1px 5px; } .chip.sum sup { font-size: 9px; margin-left: 2px; }
 .cell.recent.waiting { position: relative; } .waitbox { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; background: var(--surface); font-size: 11px; white-space: nowrap; overflow: hidden; } .waitbox em { color: var(--text-muted); font-style: normal; }
 .chartwrap.tiny > * { visibility: hidden; }
+
+.infopanel .ohead { flex-wrap: wrap; } .obody .totrow td { border-top: 2px solid var(--border-strong); } .obody .pad { padding: 8px; }
