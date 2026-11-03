@@ -35,3 +35,6 @@ export function window(centre: number, above: number, below: number): number[] {
   for (let i = hi; i >= lo; i--) rows.push(LADDER[i])
   return rows
 }
+
+/** Position of a price on the tick ladder (for charts that space prices by tick, as Betfair does). */
+export const tickIndex = (p: number): number => INDEX.get(r2(p)) ?? INDEX.get(nearest(p))!

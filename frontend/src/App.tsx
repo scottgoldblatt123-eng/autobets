@@ -2,16 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, setToken, type MarketInfo, type State } from './api'
 import MarketPanel from './MarketPanel'
 import Ladder from './Ladder'
-import { hedge, money, orderSize, type Side } from './maths'
+import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
-interface Settings { autoCentre: boolean; ticksShown: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number }
+interface Settings { autoCentre: boolean; ticksShown: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean }
 interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string }
 
-const DEFAULTS: Settings = { autoCentre: false, ticksShown: 10, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50 }
+const DEFAULTS: Settings = { autoCentre: false, ticksShown: 10, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true }
 const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
+const PRESET_OFF = { stakeText: '' }
 
 function loadSettings(): Settings {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('autobets.settings') ?? '{}') } } catch { return DEFAULTS }
@@ -82,7 +83,10 @@ export default function App() {
     for (const e of state?.events ?? []) if (e.t > seenEvt.current) { seenEvt.current = e.t; say(e.text, e.text.includes('FAILED') ? 'err' : 'ok') }
   }, [state, say])
 
-  const stake = settings.presets[settings.stakeIdx] ?? settings.presets[0]
+  const typed = parseStake(settings.stakeText)
+  const stakeInvalid = settings.stakeText.trim() !== '' && typed == null
+  const stake = typed ?? settings.presets[settings.stakeIdx] ?? settings.presets[0]
+  const stakeBox = useRef<HTMLInputElement>(null)
 
   const submit = useCallback(async (p: Pending) => {
     try {
@@ -97,6 +101,7 @@ export default function App() {
 
   const click = (l: LadderRef, side: Side, price: number) => {
     const m = state?.markets[l.marketId]
+    if (stakeInvalid) return say('The stake box needs an amount of £1 or more (or clear it to use a preset)', 'err')
     const size = orderSize(side, price, stake, settings.layBasis)
     if (size < 1) return say('Minimum stake is £1', 'err')
     const p: Pending = { marketId: l.marketId, selectionId: l.selectionId, side, price, size, runner: m?.runners[l.selectionId] ?? l.selectionId }
@@ -163,7 +168,8 @@ export default function App() {
       const l = ladders.find(x => keyOf(x) === active)
       if (e.key === 'Escape') { setPending(null); setShowSettings(false); setMenu(null) }
       else if (e.key === 'Enter') setCentres({})
-      else if (['1', '2', '3', '4'].includes(e.key)) setSettings(s => (Number(e.key) - 1 < s.presets.length ? { ...s, stakeIdx: Number(e.key) - 1 } : s))
+      else if (['1', '2', '3', '4'].includes(e.key)) setSettings(s => (Number(e.key) - 1 < s.presets.length ? { ...s, stakeIdx: Number(e.key) - 1, ...PRESET_OFF } : s))
+      else if (e.key.toLowerCase() === 's') { e.preventDefault(); stakeBox.current?.focus(); stakeBox.current?.select() }
       else if (l && e.key.toLowerCase() === 'z') cancelAll(l, 'BACK')
       else if (l && e.key.toLowerCase() === 'x') cancelAll(l, 'LAY')
       else if (l && e.key.toLowerCase() === 'c') closePos(l)
@@ -220,23 +226,30 @@ export default function App() {
           <div className="toolbar">
             <span className="muted">Stake £</span>
             {settings.presets.map((v, i) => (
-              <button key={i} className={'chipbtn' + (i === settings.stakeIdx ? ' on' : '')} onClick={() => setSettings(s => ({ ...s, stakeIdx: i }))} title={`Key ${i + 1}`}>{v}</button>
+              <button key={i} className={'chipbtn' + (i === settings.stakeIdx && typed == null ? ' on' : '')} onClick={() => setSettings(s => ({ ...s, stakeIdx: i, ...PRESET_OFF }))} title={`Key ${i + 1}`}>{v}</button>
             ))}
+            <span className="stakebox" title="Type any stake, e.g. 65 (press S to jump here, Enter to finish). Clear it to go back to the presets.">
+              <span className="muted">£</span>
+              <input ref={stakeBox} inputMode="decimal" placeholder="any" className={(typed != null ? 'on' : '') + (stakeInvalid ? ' bad' : '')}
+                     value={settings.stakeText} onChange={e => setSettings(s => ({ ...s, stakeText: e.target.value }))}
+                     onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur() }} />
+            </span>
+            {stakeInvalid && <span className="loss small">min £1</span>}
             <span className="sep" />
             <span className="muted">Lay by</span>
             {(['stake', 'liability'] as const).map(b => <button key={b} className={'chipbtn' + (settings.layBasis === b ? ' on' : '')} onClick={() => setSettings(s => ({ ...s, layBasis: b }))}>{b === 'stake' ? 'Stake' : 'Liability'}</button>)}
             <span className="spacer" />
-            <span className="muted small">Hover a ladder · Z cancel back · X cancel lay · C close · Enter recentre · wheel scrolls</span>
+            <span className="muted small">S stake box · Hover a ladder · Z cancel back · X cancel lay · C close · Enter recentre · wheel scrolls</span>
           </div>
           {ids.map(id => state?.markets[id] && <MarketPanel key={id} marketId={id} market={state.markets[id]} onGreen={h => greenMarket(id, h)} />)}
           {ladders.length === 0 && <div className="empty muted">Pick a market on the left to open its ladders (up to {MAX_LADDERS}).</div>}
-          <div className="ladders" style={{ gridTemplateColumns: `repeat(${Math.max(1, ladders.length)}, minmax(230px, 1fr))` }}>
+          <div className="ladders" style={{ gridTemplateColumns: `repeat(${Math.max(1, ladders.length)}, minmax(290px, 1fr))` }}>
             {ladders.map(l => {
               const k = keyOf(l), m = state?.markets[l.marketId]
               if (!m) return <div key={k} className="ladder"><div className="ladder-head muted">Loading…</div></div>
               return (
                 <Ladder key={k} market={m} marketId={l.marketId} selectionId={l.selectionId}
-                  orders={(state?.orders ?? []).filter(o => o.market_id === l.marketId)} ticksShown={settings.ticksShown}
+                  orders={(state?.orders ?? []).filter(o => o.market_id === l.marketId)} ticksShown={settings.ticksShown} womLevels={settings.womLevels} showChart={settings.showChart}
                   centre={centres[k] ?? null} autoCentre={settings.autoCentre} active={active === k}
                   onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
                   triggers={(state?.triggers ?? []).filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId)}
@@ -274,6 +287,11 @@ export default function App() {
               Auto-recentre on the price (off: the ladder stays put until you press Enter or ⌖)</label>
             <label>Ticks shown each side of the price
               <input type="number" min={4} max={30} value={settings.ticksShown} onChange={e => setSettings(s => ({ ...s, ticksShown: Math.max(4, Math.min(30, Number(e.target.value) || 10)) }))} />
+            </label>
+            <label className="check"><input type="checkbox" checked={settings.showChart} onChange={e => setSettings(s => ({ ...s, showChart: e.target.checked }))} />
+              Show the price chart under each ladder</label>
+            <label>Weight of money: prices counted each side of the book
+              <input type="number" min={1} max={10} value={settings.womLevels} onChange={e => setSettings(s => ({ ...s, womLevels: Math.max(1, Math.min(10, Number(e.target.value) || 3)) }))} />
             </label>
             <label>Stake presets £ (comma separated, up to 4)
               <input defaultValue={settings.presets.join(', ')} onBlur={e => {

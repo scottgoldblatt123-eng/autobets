@@ -24,3 +24,27 @@ export function orderSize(side: Side, price: number, amount: number, layBasis: '
 }
 
 export const money = (x: number) => (x < 0 ? '-' : x > 0 ? '+' : '') + '£' + Math.abs(x).toFixed(2)
+
+/** Weight of money: share of the money waiting in the best `levels` prices on each side. */
+export function weightOfMoney(backs: [number, number][], lays: [number, number][], levels: number): { back: number; lay: number } | null {
+  const b = backs.slice(0, levels).reduce((a, x) => a + x[1], 0)
+  const l = lays.slice(0, levels).reduce((a, x) => a + x[1], 0)
+  if (b + l <= 0) return null
+  const back = Math.round((b / (b + l)) * 100)
+  return { back, lay: 100 - back }
+}
+
+/** Matched volume on a selection, and its share of the market's matched volume across all selections. */
+export function matchedShare(traded: [number, number][], all: [number, number][][]): { volume: number; pct: number } {
+  const sum = (t: [number, number][]) => t.reduce((a, x) => a + x[1], 0)
+  const v = sum(traded), tot = all.reduce((a, t) => a + sum(t), 0)
+  return { volume: Math.round(v), pct: tot > 0 ? Math.round((v / tot) * 1000) / 10 : 0 }
+}
+
+/** Parse a typed stake like "65", "£65", "12.50". Returns null unless it is at least £1 (two decimals at most are kept). */
+export function parseStake(text: string): number | null {
+  const t = text.replace(/[£,\s]/g, '')
+  if (!/^\d+(\.\d+)?$/.test(t)) return null
+  const v = Math.round(Number(t) * 100) / 100
+  return v >= 1 ? v : null
+}

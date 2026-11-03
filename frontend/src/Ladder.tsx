@@ -1,11 +1,12 @@
 import { useEffect, useMemo } from 'react'
 import type { MarketState, Order, Trigger } from './api'
-import { hedge, money, type Position, type Side } from './maths'
+import { hedge, matchedShare, money, weightOfMoney, type Position, type Side } from './maths'
+import PriceChart from './PriceChart'
 import { nearest, window } from './ticks'
 
 export interface Props {
   market: MarketState; marketId: string; selectionId: string; orders: Order[]
-  ticksShown: number; centre: number | null; autoCentre: boolean; active: boolean
+  ticksShown: number; womLevels: number; showChart: boolean; centre: number | null; autoCentre: boolean; active: boolean
   onSetCentre: (c: number) => void
   triggers: Trigger[]
   onHedge: (price: number) => void
@@ -44,8 +45,12 @@ export default function Ladder(p: Props) {
     const maxTraded = Math.max(1, ...rows.map(r => traded.get(r) ?? 0))
     const ltp = sel.last
     const away = ltp == null ? '' : ltp > rows[0] ? '▲' : ltp < rows[rows.length - 1] ? '▼' : ''
-    return { rows, back, lay, traded, maxTraded, ltp, away }
+    const rs = new Map(sel.recent?.short ?? []), rl = new Map(sel.recent?.long ?? [])
+    const maxRecent = Math.max(1, ...rows.map(r => rl.get(r) ?? 0))
+    return { rows, back, lay, traded, maxTraded, ltp, away, rs, rl, maxRecent }
   }, [sel, ref, p.centre, p.autoCentre, p.ticksShown])
+  const wom = useMemo(() => (sel ? weightOfMoney(sel.backs, sel.lays, p.womLevels) : null), [sel, p.womLevels])
+  const share = useMemo(() => matchedShare(sel?.traded ?? [], Object.values(p.market.selections).map(s => s.traded)), [sel, p.market.selections])
 
   if (!sel || !view) return <div className="ladder"><div className="ladder-head"><b>{name}</b> · no data</div></div>
   const open = pos && (Math.abs(pos.win) > 0.004 || Math.abs(pos.lose) > 0.004)
@@ -71,8 +76,14 @@ export default function Ladder(p: Props) {
         <button className="sm" onClick={p.onCancelAll} disabled={!mine.length} title="Cancel all unmatched">Cancel</button>
         <button className="sm" onClick={p.onRecentre} title="Recentre (Enter)">⌖</button>
       </div>
+      <div className="wom" title={wom ? `Weight of money: ${wom.back}% of the money in the best ${p.womLevels} prices is available to back, ${wom.lay}% to lay. ${wom.back >= wom.lay ? '▲ back side heavier' : '▼ lay side heavier'}` : 'No money in the book'}>
+        <span className="b">{wom ? wom.back + '%' : '–'}</span>
+        <span className="arrow">{wom ? (wom.back >= wom.lay ? '▲' : '▼') : ''}</span>
+        <span className="l">{wom ? wom.lay + '%' : '–'}</span>
+      </div>
       <div className="grid head">
-        <div>Green</div><div>Vol</div><div>Back</div><div>Price</div><div>Lay</div><div>Mine</div>
+        <div>Green</div><div title="Total matched at each price">Traded</div><div>Back</div><div>Price</div><div>Lay</div>
+        <div title={sel.recent ? `Matched in the last ${sel.recent.short_s}s (number, dark bar) and ${Math.round(sel.recent.long_s / 60)} min (light bar)${sel.recent.long_span < sel.recent.long_s ? ` — only ${Math.round(sel.recent.long_span)}s of history so far` : ''}` : ''}>Recent</div><div>Mine</div>
       </div>
       <div className="rows">
         {view.rows.map(price => {
@@ -90,6 +101,11 @@ export default function Ladder(p: Props) {
               <button className="cell back" onClick={() => p.onClick('BACK', price)} title={`Back at ${price}`}>{b ? fmtSize(b) : ''}</button>
               <div className="cell price">{price.toFixed(2)}</div>
               <button className="cell lay" onClick={() => p.onClick('LAY', price)} title={`Lay at ${price}`}>{l ? fmtSize(l) : ''}</button>
+              <div className="cell recent" title={`Matched here: £${(view.rs.get(price) ?? 0).toFixed(0)} in the last ${sel.recent?.short_s ?? 0}s, £${(view.rl.get(price) ?? 0).toFixed(0)} in the last ${Math.round((sel.recent?.long_s ?? 0) / 60)} min`}>
+                <i className="long" style={{ width: `${((view.rl.get(price) ?? 0) / view.maxRecent) * 100}%` }} />
+                <i className="short" style={{ width: `${((view.rs.get(price) ?? 0) / view.maxRecent) * 100}%` }} />
+                {(view.rs.get(price) ?? 0) > 0 ? <span>{fmtSize(view.rs.get(price)!)}</span> : null}
+              </div>
               <button className="cell mine" onClick={() => (here.length || trg.length) && p.onCancelAt(price)} title={here.length || trg.length ? 'Cancel the orders / stops here' : ''}>
                 {here.map(o => <span key={o.order_id} className={'chip ' + o.side.toLowerCase()}>{o.side[0]}{o.remaining.toFixed(0)}</span>)}
                 {trg.map(t => <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} title={`${t.label}: greens up when the price reaches ${t.price.toFixed(2)} (click to remove)`}>{t.label === 'stop loss' ? 'SL' : 'TP'}</span>)}
@@ -98,6 +114,10 @@ export default function Ladder(p: Props) {
           )
         })}
       </div>
+      <div className="foot" title="Matched on this runner, and its share of everything matched in the market">
+        £{share.volume.toLocaleString('en-GB')} <span className="muted">({share.pct.toFixed(1)}%)</span>
+      </div>
+      {p.showChart && <PriceChart marketId={p.marketId} selectionId={p.selectionId} />}
     </div>
   )
 }

@@ -35,7 +35,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .ladder-title { display: flex; flex-direction: column; min-width: 0; } .ladder-title span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ladder-pos span { white-space: nowrap; }
 .ladder-pos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 2px 10px 8px; font-variant-numeric: tabular-nums; font-size: 13px; }
-.grid { display: grid; grid-template-columns: 44px 1fr 1fr 52px 1fr 44px; }
+.grid { display: grid; grid-template-columns: 44px 1fr 1fr 52px 1fr 1fr 40px; }
 .grid.head { font-size: 11px; color: var(--text-muted); text-align: center; padding: 3px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .lrow { border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
 .lrow.ltp .price { outline: 2px solid var(--text); outline-offset: -2px; }
@@ -71,3 +71,23 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .overlay.clear { background: none; display: block; }
 .menu { position: fixed; background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px; display: flex; flex-direction: column; gap: 6px; max-width: 280px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
 .menu button { text-align: left; }
+
+.stakebox { display: inline-flex; align-items: center; gap: 3px; margin-left: 4px; }
+.stakebox input { width: 70px; padding: 3px 8px; border-radius: var(--radius-pill); text-align: center; }
+.stakebox input.on { border-color: var(--brand); background: var(--brand); color: var(--on-brand); font-weight: 600; }
+.stakebox input.bad { border-color: var(--loss); background: var(--bg); color: var(--loss); }
+.chipbtn.tiny { padding: 1px 7px; font-size: 11px; }
+.wom { display: grid; grid-template-columns: 1fr 24px 1fr; align-items: center; text-align: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; border-top: 1px solid var(--border); }
+.wom .b { background: var(--back); color: var(--on-back); padding: 2px 0; } .wom .l { background: var(--lay); color: var(--on-lay); padding: 2px 0; } .wom .arrow { color: var(--text); }
+.cell.recent { position: relative; justify-content: flex-end; padding-right: 3px; color: var(--text); }
+.cell.recent i { position: absolute; top: 3px; bottom: 3px; left: 0; }
+.cell.recent i.long { background: color-mix(in srgb, var(--warn-fill) 38%, transparent); } .cell.recent i.short { background: var(--warn-fill); }
+.cell.recent span { position: relative; font-size: 11px; font-weight: 600; mix-blend-mode: normal; text-shadow: 0 0 3px var(--surface); }
+.foot { text-align: center; padding: 4px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; border-top: 1px solid var(--border); }
+.chart { border-top: 1px solid var(--border); padding: 4px 8px 6px; } .chart-bar { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart-line { fill: none; stroke: var(--text); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.chart-band { fill: color-mix(in srgb, var(--info) 18%, transparent); stroke: none; }
+.chart-vol { fill: color-mix(in srgb, var(--text-muted) 55%, transparent); }
+.chart-last { stroke: var(--brand); stroke-dasharray: 3 3; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.chart-tag { fill: var(--brand); font-size: 9px; font-weight: 700; } .chart-axis { fill: var(--text-muted); font-size: 8px; } .chart-note { fill: var(--text-muted); font-size: 9px; }

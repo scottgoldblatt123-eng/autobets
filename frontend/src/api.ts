@@ -1,6 +1,7 @@
 import type { Side } from './maths'
 
-export interface Sel { backs: [number, number][]; lays: [number, number][]; traded: [number, number][]; last: number | null }
+export interface Recent { short: [number, number][]; long: [number, number][]; short_s: number; long_s: number; short_span: number; long_span: number }
+export interface Sel { backs: [number, number][]; lays: [number, number][]; traded: [number, number][]; last: number | null; recent?: Recent }
 export interface MarketState {
   name: string; event: string; competition: string; start: string | null; in_play: boolean
   runners: Record<string, string>; selections: Record<string, Sel>; positions: Record<string, { win: number; lose: number }>
@@ -45,6 +46,8 @@ export const api = {
   addTrigger: (b: { market_id: string; selection_id: string; price: number }) =>
     call<Trigger>('/api/triggers', { method: 'POST', body: JSON.stringify(b) }),
   delTrigger: (id: string) => call<{ cancelled: boolean }>(`/api/triggers/${id}`, { method: 'DELETE' }),
+  history: (market: string, selection: string, seconds: number) =>
+    call<{ points: [number, number | null, number | null, number | null, number][] }>(`/api/history?${new URLSearchParams({ market_id: market, selection_id: selection, seconds: String(seconds) })}`),
   close: (market: string, selection: string) =>
     call<{ closed: boolean; reason?: string; locked_profit?: number }>(`/api/markets/${market}/close/${selection}`, { method: 'POST' }),
 }

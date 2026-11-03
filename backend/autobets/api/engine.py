@@ -14,6 +14,7 @@ from ..guardrails import Guardrails
 from ..journal import Journal
 from ..order_service import Blocked, OrderService
 from .demo import DemoFeed
+from .history import Tracker
 from .practice import PracticeExchange
 
 OPEN = (Status.UNMATCHED, Status.PARTIAL)
@@ -54,6 +55,7 @@ class Engine:
         self._trigger_ids = itertools.count(1)
         self._bg: threading.Thread | None = None
         self._markets_cache: dict[str, tuple[float, list]] = {}
+        self.tracker = Tracker()
 
     @classmethod
     def demo(cls) -> "Engine":
@@ -94,6 +96,8 @@ class Engine:
         ids = ids[:5]
         books = self.feed.get_books(ids, depth=True) if ids else []
         self.ex.refresh(books)
+        now = time.time()
+        self.tracker.record(books, now)
         info = self.info(ids)
         pos = self.positions()
         markets = {}
@@ -103,7 +107,8 @@ class Engine:
                 "name": mi.get("name", ""), "event": mi.get("event", ""), "competition": mi.get("competition", ""),
                 "start": mi.get("start"), "in_play": b.in_play, "runners": mi.get("runners", {}),
                 "selections": {sid: {"backs": [[l.price, l.size] for l in s.backs], "lays": [[l.price, l.size] for l in s.lays],
-                                     "traded": sorted([p, v] for p, v in s.traded.items()), "last": s.last_traded}
+                                     "traded": sorted([p, v] for p, v in s.traded.items()), "last": s.last_traded,
+                                     "recent": self.tracker.recent(b.market_id, sid, s.traded, now)}
                                for sid, s in b.selections.items()},
                 "positions": {sid: {"win": p.win, "lose": p.lose} for sid, p in pos.get(b.market_id, {}).items()},
             }
@@ -125,6 +130,10 @@ class Engine:
                 "warnings": self.service.warnings[-3:],
                 "triggers": [t.__dict__ for t in self.triggers.values() if t.market_id in ids],
                 "events": self.events[-5:]}
+
+    @locked
+    def history(self, market_id: str, selection_id: str, seconds: int = 900) -> dict:
+        return self.tracker.chart(market_id, selection_id, seconds)
 
     @staticmethod
     def _order(o: Order) -> dict:

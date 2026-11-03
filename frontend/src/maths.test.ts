@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hedge, applyFill, orderSize } from './maths'
+import { hedge, applyFill, orderSize, parseStake, weightOfMoney, matchedShare } from './maths'
 import { move, nearest, isValid, window } from './ticks'
 
 describe('ticks', () => {
@@ -34,5 +34,26 @@ describe('maths', () => {
     expect(orderSize('LAY', 3.0, 10, 'liability')).toBe(5)
     expect(orderSize('LAY', 3.0, 10, 'stake')).toBe(10)
     expect(orderSize('BACK', 3.0, 10, 'liability')).toBe(10)
+  })
+})
+
+describe('stake box, weight of money, matched share', () => {
+  it('parses typed stakes', () => {
+    expect(parseStake('65')).toBe(65)
+    expect(parseStake('£65')).toBe(65)
+    expect(parseStake(' 12.505 ')).toBe(12.51)
+    expect(parseStake('0.5')).toBeNull()
+    expect(parseStake('abc')).toBeNull()
+    expect(parseStake('')).toBeNull()
+    expect(parseStake('-5')).toBeNull()
+  })
+  it('weight of money uses the best levels each side', () => {
+    const w = weightOfMoney([[2, 300], [1.99, 100], [1.98, 100], [1.97, 9999]], [[2.02, 200], [2.04, 100], [2.06, 100], [2.08, 9999]], 3)
+    expect(w).toEqual({ back: 56, lay: 44 })
+    expect(weightOfMoney([], [], 3)).toBeNull()
+  })
+  it('matched share across the market', () => {
+    const a: [number, number][] = [[2, 6200]], b: [number, number][] = [[3, 6700]]
+    expect(matchedShare(a, [a, b])).toEqual({ volume: 6200, pct: 48.1 })
   })
 })

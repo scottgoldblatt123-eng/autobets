@@ -76,6 +76,10 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     def state(ids: str = "", _=Depends(auth)):
         return engine.state([i for i in ids.split(",") if i])
 
+    @app.get("/api/history")
+    def history(market_id: str, selection_id: str, seconds: int = 900, _=Depends(auth)):
+        return engine.history(market_id, selection_id, max(60, min(seconds, 3 * 3600)))
+
     @app.post("/api/orders")
     def place(o: OrderIn, _=Depends(auth)):
         try:
