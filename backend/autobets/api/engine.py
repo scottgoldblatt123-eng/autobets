@@ -14,7 +14,7 @@ from ..guardrails import Guardrails
 from ..journal import Journal
 from ..order_service import Blocked, OrderService
 from .demo import DemoFeed
-from .history import Tracker
+from .history import Tracker, load_logged
 from .practice import PracticeExchange
 
 OPEN = (Status.UNMATCHED, Status.PARTIAL)
@@ -43,7 +43,7 @@ def locked(fn):
 
 
 class Engine:
-    def __init__(self, feed, mode: str, journal_path: str = ":memory:") -> None:
+    def __init__(self, feed, mode: str, journal_path: str = ":memory:", prices_db: str = "") -> None:
         self.feed, self.mode = feed, mode
         self.lock = threading.RLock()          # the API serves requests on several threads
         self.ex = PracticeExchange()
@@ -56,6 +56,7 @@ class Engine:
         self._bg: threading.Thread | None = None
         self._markets_cache: dict[str, tuple[float, list]] = {}
         self.tracker = Tracker()
+        self.prices_db, self._seeded = prices_db, set()      # logged history for the chart (price logger database)
 
     @classmethod
     def demo(cls) -> "Engine":
@@ -97,6 +98,10 @@ class Engine:
         books = self.feed.get_books(ids, depth=True) if ids else []
         self.ex.refresh(books)
         now = time.time()
+        for b in books:
+            if b.market_id not in self._seeded:
+                self._seeded.add(b.market_id)
+                self.tracker.seed(b.market_id, load_logged(self.prices_db, b.market_id))
         self.tracker.record(books, now)
         info = self.info(ids)
         pos = self.positions()
@@ -130,6 +135,11 @@ class Engine:
                 "warnings": self.service.warnings[-3:],
                 "triggers": [t.__dict__ for t in self.triggers.values() if t.market_id in ids],
                 "events": self.events[-5:]}
+
+    @locked
+    def busy(self) -> dict:
+        """What would be lost by restarting the service: stops / take-profits (held in memory) and unmatched orders."""
+        return {"triggers": len(self.triggers), "open_orders": len([o for o in self.ex.open_orders() if o.status in OPEN])}
 
     @locked
     def history(self, market_id: str, selection_id: str, seconds: int = 900) -> dict:

@@ -1,9 +1,13 @@
 """Short-lived price and volume history for the ladder: recent matched volume per price, and the price chart.
 
-Held in memory, sampled while a market is open on screen, so it starts when the market is first opened (it is
-not backfilled). The price logger's database holds the longer record."""
+Held in memory and sampled while a market is open on screen. When a market is first opened, earlier history is
+loaded from the price logger's database (one point a minute, prices only, no volume), if the logger saw it."""
 from __future__ import annotations
 
+import calendar
+import os
+import sqlite3
+import time as _time
 from collections import deque
 
 SHORT_S = 60          # "short term" matched volume window
@@ -73,3 +77,38 @@ class Tracker:
             out.append([round(t, 1), ltp, back, lay, vol])
             prev = total if total is not None else prev
         return {"points": out}
+
+
+    def seed(self, market_id: str, rows: dict[str, list]) -> int:
+        """Put earlier history (from the price logger) in front of what has been seen live. rows: sid -> [(t, last, back, lay)]."""
+        n = 0
+        for sid, pts in rows.items():
+            chart = self._chart.setdefault((market_id, sid), deque())
+            first = chart[0][0] if chart else float("inf")
+            older = [(t, last, back, lay, None) for t, last, back, lay in pts if t < first]
+            chart.extendleft(reversed(older))
+            n += len(older)
+        return n
+
+
+def load_logged(path: str, market_id: str, since_s: float = CHART_KEEP_S) -> dict[str, list]:
+    """Read one market's logged prices (price logger database; one row per minute, no volume). Empty if unavailable."""
+    if not path or not os.path.exists(path):
+        return {}
+    try:
+        db = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=2)
+        try:
+            rows = db.execute("SELECT t, selection, last, back, lay FROM prices WHERE market_id=? ORDER BY t", (market_id,)).fetchall()
+        finally:
+            db.close()
+    except sqlite3.Error:
+        return {}
+    cutoff, out = _time.time() - since_s, {}
+    for t, sel, last, back, lay in rows:
+        try:
+            ts = calendar.timegm(_time.strptime(t[:19], "%Y-%m-%dT%H:%M:%S"))      # logged as naive UTC
+        except ValueError:
+            continue
+        if ts >= cutoff:
+            out.setdefault(str(sel), []).append((float(ts), last, back, lay))
+    return out

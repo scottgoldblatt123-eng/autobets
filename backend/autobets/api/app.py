@@ -21,7 +21,8 @@ def make_engine() -> Engine:
     if mode == "practice":
         from ..exchange.betfair import BetfairAdapter
         bf = BetfairAdapter.from_env_file(os.environ.get("AUTOBETS_BETFAIR_ENV", "/opt/autobets/secrets/betfair.env"))
-        e = Engine(bf, "practice", os.environ.get("AUTOBETS_JOURNAL", "/opt/autobets/data/journal.db"))
+        e = Engine(bf, "practice", os.environ.get("AUTOBETS_JOURNAL", "/opt/autobets/data/journal.db"),
+                   os.environ.get("AUTOBETS_PRICES_DB", "/opt/autobets/data/betfair_prices.db"))
         e.start_background()
         return e
     raise SystemExit(f"unknown AUTOBETS_MODE {mode!r} (live mode is not built yet)")
@@ -75,6 +76,10 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     @app.get("/api/state")
     def state(ids: str = "", _=Depends(auth)):
         return engine.state([i for i in ids.split(",") if i])
+
+    @app.get("/api/busy")
+    def busy(_=Depends(auth)):
+        return engine.busy()
 
     @app.get("/api/history")
     def history(market_id: str, selection_id: str, seconds: int = 900, _=Depends(auth)):

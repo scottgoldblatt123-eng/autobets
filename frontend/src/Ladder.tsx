@@ -6,7 +6,7 @@ import { nearest, window } from './ticks'
 
 export interface Props {
   market: MarketState; marketId: string; selectionId: string; orders: Order[]
-  ticksShown: number; womLevels: number; showChart: boolean; centre: number | null; autoCentre: boolean; active: boolean
+  ticksShown: number; womLevels: number; showChart: boolean; showTotal: boolean; centre: number | null; autoCentre: boolean; active: boolean
   onSetCentre: (c: number) => void
   triggers: Trigger[]
   onHedge: (price: number) => void
@@ -54,15 +54,20 @@ export default function Ladder(p: Props) {
 
   if (!sel || !view) return <div className="ladder"><div className="ladder-head"><b>{name}</b> · no data</div></div>
   const open = pos && (Math.abs(pos.win) > 0.004 || Math.abs(pos.lose) > 0.004)
+  const bestBack = sel.backs[0]?.[0], bestLay = sel.lays[0]?.[0]
+  const nBack = mine.filter(o => o.side === 'BACK').length, nLay = mine.filter(o => o.side === 'LAY').length
+  // The figure Bet Angel shows beside the runner name: what you make if this runner's result is the one that lands worst/best, kept simple as win / lose.
+  const level = open ? Math.min(pos!.win, pos!.lose) : 0
 
   return (
-    <div className={'ladder' + (p.active ? ' active' : '')} onMouseEnter={p.onHover}
+    <div className={'ladder ba' + (p.active ? ' active' : '') + (p.showTotal ? ' with-total' : '')} onMouseEnter={p.onHover}
          onWheel={e => { p.onWheel(e.deltaY > 0 ? -1 : 1) }}>
       <div className="ladder-head">
         <div className="ladder-title">
           <b>{name}</b>
           <span className="muted">{p.market.event} · {p.market.name}{p.market.in_play ? ' · ● in play' : ''}</span>
         </div>
+        <span className={'pnl ' + (level > 0.004 ? 'gain' : level < -0.004 ? 'loss' : 'muted')} title="Worst case on this runner (the smaller of 'win' and 'lose')">{money(level).replace('+', '')}</span>
         <button className="icon" title="Remove ladder" onClick={p.onRemove}>✕</button>
       </div>
       <div className="ladder-pos">
@@ -77,39 +82,41 @@ export default function Ladder(p: Props) {
         <button className="sm" onClick={p.onRecentre} title="Recentre (Enter)">⌖</button>
       </div>
       <div className="wom" title={wom ? `Weight of money: ${wom.back}% of the money in the best ${p.womLevels} prices is available to back, ${wom.lay}% to lay. ${wom.back >= wom.lay ? '▲ back side heavier' : '▼ lay side heavier'}` : 'No money in the book'}>
+        <span className="bets">{nBack} bets</span>
         <span className="b">{wom ? wom.back + '%' : '–'}</span>
         <span className="arrow">{wom ? (wom.back >= wom.lay ? '▲' : '▼') : ''}</span>
         <span className="l">{wom ? wom.lay + '%' : '–'}</span>
-      </div>
-      <div className="grid head">
-        <div>Green</div><div title="Total matched at each price">Traded</div><div>Back</div><div>Price</div><div>Lay</div>
-        <div title={sel.recent ? `Matched in the last ${sel.recent.short_s}s (number, dark bar) and ${Math.round(sel.recent.long_s / 60)} min (light bar)${sel.recent.long_span < sel.recent.long_s ? ` — only ${Math.round(sel.recent.long_span)}s of history so far` : ''}` : ''}>Recent</div><div>Mine</div>
+        <span className="bets">{nLay} bets</span>
       </div>
       <div className="rows">
         {view.rows.map(price => {
           const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
           const here = mine.filter(o => o.price === price)
+          const hereB = here.filter(o => o.side === 'BACK'), hereL = here.filter(o => o.side === 'LAY')
           const green = open ? hedge(pos!, price) : null
           const trg = p.triggers.filter(t => t.price === price)
           const isLtp = view.ltp === price
+          const backZone = bestBack != null && price <= bestBack, layZone = bestLay != null && price >= bestLay
+          const cancel = (e: React.MouseEvent) => { e.stopPropagation(); (here.length || trg.length) && p.onCancelAt(price) }
           return (
             <div key={price} className={'grid lrow' + (isLtp ? ' ltp' : '')} onContextMenu={e => { e.preventDefault(); p.onContext(price, e.clientX, e.clientY) }}>
               <button className={'cell green ' + (green ? (green.locked >= 0 ? 'gain' : 'loss') : '')} disabled={!green}
                       onClick={() => green && p.onHedge(price)} title={green ? `Hedge here: ${green.side} £${green.stake.toFixed(2)} at ${price.toFixed(2)}, locks ${money(green.locked)}` : ''}>
                 {green ? green.locked.toFixed(2) : ''}</button>
-              <div className="cell vol"><i style={{ width: `${(t / view.maxTraded) * 100}%` }} />{t ? <span>{fmtSize(t)}</span> : null}</div>
-              <button className="cell back" onClick={() => p.onClick('BACK', price)} title={`Back at ${price}`}>{b ? fmtSize(b) : ''}</button>
-              <div className="cell price">{price.toFixed(2)}</div>
-              <button className="cell lay" onClick={() => p.onClick('LAY', price)} title={`Lay at ${price}`}>{l ? fmtSize(l) : ''}</button>
-              <div className="cell recent" title={`Matched here: £${(view.rs.get(price) ?? 0).toFixed(0)} in the last ${sel.recent?.short_s ?? 0}s, £${(view.rl.get(price) ?? 0).toFixed(0)} in the last ${Math.round((sel.recent?.long_s ?? 0) / 60)} min`}>
+              <button className="cell minecol" onClick={cancel} title={hereB.length ? 'Your back bets here (click to cancel)' : ''}>
+                {hereB.map(o => <span key={o.order_id} className="chip back">{o.remaining.toFixed(0)}</span>)}</button>
+              <button className={'cell back' + (b ? '' : backZone ? ' zone' : ' none')} onClick={() => p.onClick('BACK', price)} title={`Back at ${price}`}>{b ? fmtSize(b) : ''}</button>
+              <div className={'cell price' + (isLtp ? ' last' : '')}>{price.toFixed(2)}</div>
+              <button className={'cell lay' + (l ? '' : layZone ? ' zone' : ' none')} onClick={() => p.onClick('LAY', price)} title={`Lay at ${price}`}>{l ? fmtSize(l) : ''}</button>
+              <button className="cell minecol" onClick={cancel} title={hereL.length || trg.length ? 'Your lay bets / stops here (click to cancel)' : ''}>
+                {hereL.map(o => <span key={o.order_id} className="chip lay">{o.remaining.toFixed(0)}</span>)}
+                {trg.map(t => <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} title={`${t.label}: greens up when the price reaches ${t.price.toFixed(2)} (click to remove)`}>{t.label === 'stop loss' ? 'SL' : 'TP'}</span>)}</button>
+              <div className="cell recent" title={`Matched here: £${(view.rs.get(price) ?? 0).toFixed(0)} in the last ${sel.recent?.short_s ?? 0}s, £${(view.rl.get(price) ?? 0).toFixed(0)} in the last ${Math.round((sel.recent?.long_s ?? 0) / 60)} min${sel.recent && sel.recent.long_span < sel.recent.long_s ? ` (only ${Math.round(sel.recent.long_span)}s of history so far)` : ''}`}>
                 <i className="long" style={{ width: `${((view.rl.get(price) ?? 0) / view.maxRecent) * 100}%` }} />
                 <i className="short" style={{ width: `${((view.rs.get(price) ?? 0) / view.maxRecent) * 100}%` }} />
                 {(view.rs.get(price) ?? 0) > 0 ? <span>{fmtSize(view.rs.get(price)!)}</span> : null}
               </div>
-              <button className="cell mine" onClick={() => (here.length || trg.length) && p.onCancelAt(price)} title={here.length || trg.length ? 'Cancel the orders / stops here' : ''}>
-                {here.map(o => <span key={o.order_id} className={'chip ' + o.side.toLowerCase()}>{o.side[0]}{o.remaining.toFixed(0)}</span>)}
-                {trg.map(t => <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} title={`${t.label}: greens up when the price reaches ${t.price.toFixed(2)} (click to remove)`}>{t.label === 'stop loss' ? 'SL' : 'TP'}</span>)}
-              </button>
+              {p.showTotal && <div className="cell vol" title="Total matched at this price"><i style={{ width: `${(t / view.maxTraded) * 100}%` }} />{t ? <span>{fmtSize(t)}</span> : null}</div>}
             </div>
           )
         })}

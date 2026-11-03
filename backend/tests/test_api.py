@@ -147,3 +147,9 @@ def test_trigger_logic_directly():
 def ticks_move(p, n):
     from autobets import ticks
     return ticks.move(p, n)
+
+
+def test_busy_reports_what_a_restart_would_lose(client):
+    assert client.get("/api/busy").json() == {"triggers": 0, "open_orders": 0}
+    client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": 50.0, "size": 5})
+    assert client.get("/api/busy").json()["open_orders"] == 1

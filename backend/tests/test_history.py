@@ -46,3 +46,24 @@ def test_api_exposes_recent_and_history(monkeypatch):
     assert set(sel["recent"]) >= {"short", "long", "short_s", "long_s"}
     h = c.get("/api/history?market_id=1.900001&selection_id=101").json()
     assert h["points"] and len(h["points"][0]) == 5
+
+
+def test_logged_history_is_loaded_ahead_of_live_samples(tmp_path):
+    import sqlite3, time
+    from autobets.api.history import load_logged
+    db = tmp_path / "p.db"
+    c = sqlite3.connect(db)
+    c.execute("CREATE TABLE prices(t TEXT, market_id TEXT, selection TEXT, back REAL, back_size REAL, lay REAL, lay_size REAL, last REAL, in_play INTEGER)")
+    now = time.time()
+    for i in range(5):
+        ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now - 600 + i * 60))
+        c.execute("INSERT INTO prices VALUES(?,?,?,?,?,?,?,?,?)", (ts, "1.1", "1", 1.9, 100, 1.92, 100, 1.9 + i * 0.01, 0))
+    c.commit(); c.close()
+    rows = load_logged(str(db), "1.1")
+    assert len(rows["1"]) == 5
+    t = Tracker()
+    t.record([book({2.0: 10.0}, ltp=2.5)], now=now)                    # one live sample
+    assert t.seed("1.1", rows) == 5
+    pts = t.chart("1.1", "1")["points"]
+    assert len(pts) == 6 and pts[0][1] == 1.9 and pts[-1][1] == 2.5 and pts[0][0] < pts[-1][0]
+    assert load_logged(str(tmp_path / "missing.db"), "1.1") == {}

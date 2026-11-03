@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, setToken, type MarketInfo, type State } from './api'
-import MarketPanel from './MarketPanel'
+import MarketPanel, { MarketHeader } from './MarketPanel'
 import Ladder from './Ladder'
 import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
-interface Settings { autoCentre: boolean; ticksShown: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean }
+interface Settings { autoCentre: boolean; ticksShown: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light' }
 interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string }
 
-const DEFAULTS: Settings = { autoCentre: false, ticksShown: 10, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true }
+const DEFAULTS: Settings = { autoCentre: false, ticksShown: 10, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light' }
 const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
@@ -35,7 +35,6 @@ export default function App() {
   const [menu, setMenu] = useState<{ l: LadderRef; price: number; x: number; y: number } | null>(null)
   const seenEvt = useRef(Date.now() / 1000)
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'warn' | 'err' } | null>(null)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const inFlight = useRef(false)
 
   const say = useCallback((text: string, kind: 'ok' | 'warn' | 'err' = 'ok') => {
@@ -43,6 +42,7 @@ export default function App() {
     window.setTimeout(() => setToast(t => (t && t.text === text ? null : t)), 4000)
   }, [])
 
+  const theme = settings.theme
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => { try { localStorage.setItem('autobets.settings', JSON.stringify(settings)) } catch { /* ignore */ } }, [settings])
 
@@ -203,7 +203,7 @@ export default function App() {
         <span className="spacer" />
         <span className="stat">Exposure <b>£{(tot?.exposure ?? 0).toFixed(2)}</b></span>
         <button className="sm" onClick={() => setShowSettings(true)}>Ladder settings</button>
-        <button className="sm" onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}>{theme === 'dark' ? 'Light' : 'Dark'}</button>
+        <button className="sm" onClick={() => setSettings(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }))}>{theme === 'dark' ? 'Light' : 'Dark'}</button>
       </header>
 
       <div className="body">
@@ -241,7 +241,7 @@ export default function App() {
             <span className="spacer" />
             <span className="muted small">S stake box · Hover a ladder · Z cancel back · X cancel lay · C close · Enter recentre · wheel scrolls</span>
           </div>
-          {ids.map(id => state?.markets[id] && <MarketPanel key={id} marketId={id} market={state.markets[id]} onGreen={h => greenMarket(id, h)} />)}
+          {ids.map(id => state?.markets[id] && <div key={id}><MarketHeader market={state.markets[id]} /><MarketPanel marketId={id} market={state.markets[id]} onGreen={h => greenMarket(id, h)} /></div>)}
           {ladders.length === 0 && <div className="empty muted">Pick a market on the left to open its ladders (up to {MAX_LADDERS}).</div>}
           <div className="ladders" style={{ gridTemplateColumns: `repeat(${Math.max(1, ladders.length)}, minmax(290px, 1fr))` }}>
             {ladders.map(l => {
@@ -249,7 +249,7 @@ export default function App() {
               if (!m) return <div key={k} className="ladder"><div className="ladder-head muted">Loading…</div></div>
               return (
                 <Ladder key={k} market={m} marketId={l.marketId} selectionId={l.selectionId}
-                  orders={(state?.orders ?? []).filter(o => o.market_id === l.marketId)} ticksShown={settings.ticksShown} womLevels={settings.womLevels} showChart={settings.showChart}
+                  orders={(state?.orders ?? []).filter(o => o.market_id === l.marketId)} ticksShown={settings.ticksShown} womLevels={settings.womLevels} showChart={settings.showChart} showTotal={settings.showTotal}
                   centre={centres[k] ?? null} autoCentre={settings.autoCentre} active={active === k}
                   onSetCentre={c => setCentres(o => ({ ...o, [k]: c }))}
                   triggers={(state?.triggers ?? []).filter(t => t.market_id === l.marketId && t.selection_id === l.selectionId)}
@@ -290,6 +290,8 @@ export default function App() {
             </label>
             <label className="check"><input type="checkbox" checked={settings.showChart} onChange={e => setSettings(s => ({ ...s, showChart: e.target.checked }))} />
               Show the price chart under each ladder</label>
+            <label className="check"><input type="checkbox" checked={settings.showTotal} onChange={e => setSettings(s => ({ ...s, showTotal: e.target.checked }))} />
+              Show a column of total matched at each price (as well as Recent)</label>
             <label>Weight of money: prices counted each side of the book
               <input type="number" min={1} max={10} value={settings.womLevels} onChange={e => setSettings(s => ({ ...s, womLevels: Math.max(1, Math.min(10, Number(e.target.value) || 3)) }))} />
             </label>
