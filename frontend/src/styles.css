@@ -194,3 +194,11 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 .tradebody { padding: 4px 8px; } .trow { display: flex; align-items: center; gap: 8px; padding: 4px 0; flex-wrap: wrap; } .trow .spacer { flex: 1; }
 .tradepanel .stakein { width: 78px; } .tradepanel td input[type=checkbox] { width: auto; }
 .tradepanel { max-height: 280px; }
+
+/* Ladder rows scale to the chosen number of ticks: row height (--rh) and text size (--rf) come from Ladder.tsx */
+.ladder .rows .cell { height: var(--rh, 22px); font-size: var(--rf, 12px); line-height: 1; }
+.ladder .rows .cell.price { font-size: calc(var(--rf, 12px) + 1px); }
+.ladder .rows .cell.green, .ladder .rows .cell.recent span { font-size: calc(var(--rf, 12px) - 1px); }
+/* The ladder block gets most of the window; the order/matched/info panels sit below it and the page scrolls to them */
+main { overflow-y: auto; }
+.mrow { flex: none; height: max(600px, calc(100vh - 150px)); }

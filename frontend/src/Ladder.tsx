@@ -26,13 +26,19 @@ export interface Props {
 const fmtSize = (s: number) => (s >= 1000 ? (s / 1000).toFixed(1) + 'k' : s.toFixed(0))
 
 const MIN_ROWS = 7
+const MIN_RH = 15, MAX_RH = 26, CHART_MIN = 96   // row height limits (px) and the smallest chart worth keeping before rows take its space
 
 export default function Ladder(p: Props) {
   const card = useRef<HTMLDivElement>(null), rowsEl = useRef<HTMLDivElement>(null), chartEl = useRef<HTMLDivElement>(null)
-  /** How many price rows fit in this ladder's card, measured, so the ladder never needs a scrollbar of its own. */
-  const [fit, setFit] = useState(61)
+  /** Vertical room (px) in this ladder's card for price rows plus chart, measured so the ladder never needs a scrollbar of its own. */
+  const [avail, setAvail] = useState(61 * 22)
   const [chartH, setChartH] = useState(999)
-  const er = Math.max(MIN_ROWS, Math.min(p.rows > 0 ? p.rows : Math.floor(fit * 0.7), fit, 61))   // rows actually shown: 0 = fit automatically, leaving room for the chart
+  const chartMin = p.showChart ? CHART_MIN : 0
+  const fit = Math.max(MIN_ROWS, Math.floor(avail / MIN_RH))                                        // most rows that can ever fit (rows squeezed to their smallest)
+  const want = p.rows > 0 ? p.rows : Math.floor((avail - chartMin) / 22)                          // 0 = as many normal-sized rows as fit, leaving room for the chart
+  const er = Math.max(MIN_ROWS, Math.min(want, fit, 61))                                          // rows actually shown
+  const rh = Math.max(MIN_RH, Math.min(MAX_RH, Math.floor((avail - chartMin) / er)))             // row height: the ladder compresses (or relaxes) so the chosen number of ticks fits
+  const rf = rh >= 21 ? 12 : rh >= 18 ? 11 : 10                                                    // text shrinks with the rows
   useLayoutEffect(() => {
     const el = card.current; if (!el) return
     const measure = () => {
@@ -40,8 +46,8 @@ export default function Ladder(p: Props) {
       if (!rowsH) return
       const total = Math.max(el.clientHeight, el.scrollHeight)
       const chrome = total - rowsH - chartH
-      const n = Math.floor((el.clientHeight - chrome) / (rowsH / er))
-      setFit(f => (f === n ? f : Math.max(MIN_ROWS, n))); setChartH(chartH_ => (chartH_ === chartH ? chartH_ : chartH))
+      const a = Math.max(MIN_ROWS * MIN_RH, el.clientHeight - chrome)
+      setAvail(v => (Math.abs(v - a) < 1 ? v : a)); setChartH(chartH_ => (chartH_ === chartH ? chartH_ : chartH))
     }
     const ro = new ResizeObserver(measure); ro.observe(el); measure()
     return () => ro.disconnect()
@@ -50,7 +56,7 @@ export default function Ladder(p: Props) {
   const startDrag = (e: React.PointerEvent) => {
     e.preventDefault()
     const startY = e.clientY, startRows = er
-    const rowH = rowsEl.current && er ? rowsEl.current.clientHeight / er : 23
+    const rowH = rh
     const maxRows = fit
     const move = (ev: PointerEvent) => p.onRows(Math.max(MIN_ROWS, Math.min(maxRows, 61, startRows + Math.round((ev.clientY - startY) / rowH))))
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('dragging') }
@@ -138,7 +144,7 @@ export default function Ladder(p: Props) {
         <span className="bets">{nLay} bet{nLay === 1 ? "" : "s"}</span>
       </div>
       {blocked && <div className="blockedbar">{rstatus !== 'ACTIVE' ? `Runner ${rstatus.toLowerCase()}` : mstatus === 'SUSPENDED' ? 'SUSPENDED' : mstatus === 'CLOSED' ? 'MARKET CLOSED' : mstatus}</div>}
-      <div className="rows" ref={rowsEl} onWheel={e => { p.onWheel((e.deltaY > 0 ? -1 : 1) * (p.reverse ? -1 : 1)) }}>
+      <div className="rows" ref={rowsEl} style={{ ["--rh" as string]: rh + "px", ["--rf" as string]: rf + "px" }} onWheel={e => { p.onWheel((e.deltaY > 0 ? -1 : 1) * (p.reverse ? -1 : 1)) }}>
         {view.rows.map(price => {
           const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
           const here = mine.filter(o => o.price === price)

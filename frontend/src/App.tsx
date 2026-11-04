@@ -14,7 +14,7 @@ interface Settings { autoCentre: boolean; rows: number; presets: number[]; stake
 interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string; entry?: boolean }
 
 const KEYS: Record<string, string> = { stakeBox: 's', cancelBack: 'z', cancelLay: 'x', closeRunner: 'c', hardClose: 'g', reverse: 'r', recentre: 'Enter' }
-const DEFAULTS: Settings = { autoCentre: false, rows: 0, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', pnlBasis: 'runner', reverse: false, persistence: 'CANCEL', fokS: 0, offsetTicks: 0, stopTicks: 0, stakeMode: 'fixed', bank: 1000, sepLay: false, layText: '', clickMode: 'single', keys: KEYS, shortS: 60, longS: 300 }
+const DEFAULTS: Settings = { autoCentre: false, rows: 25, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', pnlBasis: 'runner', reverse: false, persistence: 'CANCEL', fokS: 0, offsetTicks: 0, stopTicks: 0, stakeMode: 'fixed', bank: 1000, sepLay: false, layText: '', clickMode: 'single', keys: KEYS, shortS: 60, longS: 300 }
 const KEY_LABELS: Record<string, string> = { stakeBox: 'Jump to the stake box', cancelBack: 'Cancel back bets (hovered ladder)', cancelLay: 'Cancel lay bets (hovered ladder)', closeRunner: 'Close the hovered runner', hardClose: 'Hard close the market', reverse: 'Reverse the ladders', recentre: 'Recentre all ladders' }
 const keyName = (k: string) => (k.length === 1 ? k.toUpperCase() : k)
 export function resolveStakeText(t: string, bank: number, mode: 'fixed' | 'pct'): number | null {
@@ -28,7 +28,7 @@ const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
 
 function loadSettings(): Settings {
-  try { const s = JSON.parse(localStorage.getItem('autobets.settings') ?? '{}'); if (s.rows === 21) delete s.rows
+  try { const s = JSON.parse(localStorage.getItem('autobets.settings') ?? '{}'); if (s.rows === 21 || s.rows === 0) delete s.rows
     return { ...DEFAULTS, ...s, keys: { ...KEYS, ...(s.keys ?? {}) } } } catch { return DEFAULTS }
 }
 
@@ -445,7 +445,7 @@ export default function App() {
             <h4>Layout</h4>
             <label className="check"><input type="checkbox" checked={settings.autoCentre} onChange={e => setSettings(s => ({ ...s, autoCentre: e.target.checked }))} />
               Auto-recentre on the price (off: the ladder stays put until you press Enter or ⌖)</label>
-            <label>Price rows shown (0 = fit the window and leave room for the chart; you can also drag the bar under a ladder)
+            <label>Ticks in view (default 25; the ladder compresses or relaxes to fit that many. 0 = as many as fit. You can also drag the bar under a ladder)
               <input type="number" min={0} max={61} value={settings.rows} onChange={e => setSettings(s => ({ ...s, rows: Math.max(0, Math.min(61, Number(e.target.value) || 0)) }))} />
             </label>
             <label>The profit and loss column shows
