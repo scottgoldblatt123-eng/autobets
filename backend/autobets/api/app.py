@@ -112,6 +112,19 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         except RuntimeError as e:
             raise HTTPException(502, str(e))
 
+    tennis = None
+    if engine.mode != "demo" and os.environ.get("API_TENNIS_KEY"):
+        from ..tennis.apitennis import ApiTennis
+        from ..tennis.collector import TennisCollector
+        from ..tennis.livestore import TennisStore
+        data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
+        tennis = TennisCollector(ApiTennis(), TennisStore(data + "/tennis.db"))
+        threading.Thread(target=tennis.run_forever, name="tennis-collector", daemon=True).start()
+
+    @app.get("/api/tennis/status")
+    def tennis_status(_=Depends(auth)):
+        return tennis.status() if tennis else {"enabled": False}
+
     @app.get("/api/football/status")
     def football_status(_=Depends(auth)):
         return football.status() if football else {"enabled": False}
