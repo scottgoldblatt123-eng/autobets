@@ -6,6 +6,7 @@ import datetime as dt
 from collections import defaultdict
 
 from . import model, model2, tables
+from .matching import tour_group
 
 MIN_MATCHES = 5
 
@@ -14,8 +15,8 @@ def build(store, tour: str, day: str, days: int = 365) -> dict:
     """-> {player_key(str): {name, matches, service_pts, return_pts, hold, opp_hold}} (percentages)."""
     start = (dt.date.fromisoformat(day) - dt.timedelta(days=days)).isoformat()
     with store.lock:
-        rows = store.db.execute("SELECT raw FROM matches WHERE status='Finished' AND day>=? AND day<? AND type LIKE ?",
-                                (start, day, f"%{tour.lower()}%singles%")).fetchall()
+        rows = [(r, t) for r, t in store.db.execute("SELECT raw, type FROM matches WHERE status='Finished' AND day>=? AND day<?", (start, day))]
+    rows = [(r,) for r, t in rows if tour_group(t) == tour]
     acc, names = defaultdict(lambda: defaultdict(int)), {}
     for (raw,) in rows:
         p = tables.parse_match(raw)

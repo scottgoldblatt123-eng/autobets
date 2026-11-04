@@ -33,3 +33,15 @@ def split_event(event):
                 return None
             return a, b
     return None
+
+
+def tour_group(event_type):
+    """api-tennis event_type_type -> 'WTA' (women's: WTA tour or women's Challenger/125) or 'ATP' (men's), or None."""
+    t = (event_type or "").lower()
+    if "double" in t or "itf" in t:
+        return None
+    if "wta" in t or "women" in t:
+        return "WTA"
+    if "atp" in t or "men" in t or "challenger" in t:
+        return "ATP"
+    return None

@@ -8,7 +8,7 @@ import json
 import re
 import unicodedata
 
-from .tennis.matching import same_player, split_event
+from .tennis.matching import same_player, split_event, tour_group
 
 FOOTBALL_STATUS = {"NS": "Not started", "TBD": "Time to be defined", "1H": "First half", "HT": "Half time", "2H": "Second half", "ET": "Extra time",
                    "BT": "Break", "P": "Penalties", "SUSP": "Suspended", "INT": "Interrupted", "FT": "Full time", "AET": "After extra time",
@@ -187,7 +187,7 @@ class MatchContext:
         m, swapped, a, b = found
         k1, k2 = m.get("first_player_key"), m.get("second_player_key")
         keys = [k2, k1] if swapped else [k1, k2]                      # in Betfair order
-        tour = "WTA" if "wta" in (m.get("event_type_type") or "").lower() else "ATP" if "atp" in (m.get("event_type_type") or "").lower() else None
+        tour = tour_group(m.get("event_type_type"))
         day = m.get("event_date") or ""
         db, lock = self.tennis.db, self.tennis.lock
 
