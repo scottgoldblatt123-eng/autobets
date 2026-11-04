@@ -34,7 +34,20 @@ class ApiFootball:
         self._fetch = fetch or self._http
         self.last_limits: dict[str, str] = {}      # requests left today / per minute, from the response headers
 
+    def _pace(self) -> None:
+        """Stay inside the per-minute allowance: at most about 4 requests a second, and a pause when the headers say it is nearly used up."""
+        gap = 0.25 - (time.monotonic() - getattr(self, "_last", 0.0))
+        if gap > 0:
+            time.sleep(gap)
+        try:
+            if int(self.last_limits.get("x-ratelimit-remaining", "999")) < 25:
+                time.sleep(15)
+        except ValueError:
+            pass
+        self._last = time.monotonic()
+
     def _http(self, path: str, params: dict) -> dict:
+        self._pace()
         url = f"{HOST}/{path}" + (("?" + urllib.parse.urlencode(params)) if params else "")
         req = urllib.request.Request(url, headers={"x-apisports-key": self.key, "Accept": "application/json"})
         try:
