@@ -117,3 +117,16 @@ def test_matched_bets_listed_with_side_and_outcomes():
     assert {b["side"] for b in mb} == {"LAY", "BACK"}
     lay = next(b for b in mb if b["side"] == "LAY")
     assert lay["if_loses"] == 10 and lay["if_wins"] < 0
+
+
+def test_event_markets_lists_every_market_on_the_event_and_main_list_only_match_odds():
+    from autobets.api.engine import Engine
+    e = Engine.demo()
+    main = e.markets("football")
+    assert {m["market_type"] for m in main} == {"MATCH_ODDS"}
+    ev = next(m["event_id"] for m in main if m["event"] == "Riverside v Northgate")
+    kinds = {m["market_type"] for m in e.event_markets(ev)}
+    assert {"MATCH_ODDS", "HALF_TIME", "OVER_UNDER_25", "FIRST_HALF_GOALS_15", "CORRECT_SCORE", "BOTH_TEAMS_TO_SCORE"} <= kinds
+    cs = next(m for m in e.event_markets(ev) if m["market_type"] == "CORRECT_SCORE")
+    assert len(cs["runners"]) > 4                      # more runners than ladders on screen: the screen must let you choose which to open
+    assert e.info([cs["market_id"]])[cs["market_id"]]["market_type"] == "CORRECT_SCORE"

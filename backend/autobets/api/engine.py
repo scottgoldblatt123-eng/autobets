@@ -91,6 +91,7 @@ class Engine:
         self._trigger_ids = itertools.count(1)
         self._bg: threading.Thread | None = None
         self._markets_cache: dict[str, tuple[float, list]] = {}
+        self._event_cache: dict[str, tuple[float, list]] = {}
         self.tracker = Tracker()
         self.prices_db, self._seeded = prices_db, set()      # logged history for the chart (price logger database)
         self.state_path, self._last_saved = state_path, ""
@@ -161,6 +162,17 @@ class Engine:
         for m in res:
             self._info[m["market_id"]] = m
         self._markets_cache[sport] = (time.time(), res)
+        return res
+
+    @locked
+    def event_markets(self, event_id: str) -> list[dict]:
+        hit = self._event_cache.get(event_id)
+        if hit and time.time() - hit[0] < 30:
+            return hit[1]
+        res = self.feed.event_markets(event_id)
+        for m in res:
+            self._info[m["market_id"]] = m
+        self._event_cache[event_id] = (time.time(), res)
         return res
 
     @locked

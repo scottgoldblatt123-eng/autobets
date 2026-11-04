@@ -27,6 +27,22 @@ const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
 
+const GROUPS: [string, RegExp][] = [
+  ['Result', /^(MATCH_ODDS|HALF_TIME|DRAW_NO_BET|TO_QUALIFY|ASIAN_HANDICAP|MATCH_ODDS_UNMANAGED|HALF_TIME_MATCH_ODDS)$|HANDICAP|WIN_|DOUBLE_CHANCE|WINNING_MARGIN/],
+  ['Goals', /^(OVER_UNDER|FIRST_HALF_GOALS|BOTH_TEAMS|TOTAL_GOALS|GOAL_LINE|TEAM_._OVER|NEXT_GOAL|ODD_OR_EVEN|SECOND_HALF_GOALS|HALF_WITH_MOST)|TEAM_._WIN|CLEAN_SHEET/],
+  ['Score', /CORRECT_SCORE|HALF_TIME_SCORE|HALF_TIME_FULL_TIME|MATCH_ODDS_AND|FIRST_GOAL_ODDS|TIME_OF_FIRST/],
+]
+/** Group an event's markets for the picker: result, goals, score, and everything else. */
+function groupMarkets(ms: MarketInfo[]): [string, MarketInfo[]][] {
+  const out = new Map<string, MarketInfo[]>()
+  for (const m of ms) {
+    const t = m.market_type ?? ''
+    const g = (GROUPS.find(([, re]) => re.test(t)) ?? ['Other'])[0]
+    out.set(g, [...(out.get(g) ?? []), m])
+  }
+  return ['Result', 'Goals', 'Score', 'Other'].filter(g => out.has(g)).map(g => [g, out.get(g)!] as [string, MarketInfo[]])
+}
+
 function loadSettings(): Settings {
   try { const s = JSON.parse(localStorage.getItem('autobets.settings') ?? '{}'); if (s.rows === 21 || s.rows === 0) delete s.rows
     return { ...DEFAULTS, ...s, keys: { ...KEYS, ...(s.keys ?? {}) } } } catch { return DEFAULTS }
@@ -41,6 +57,8 @@ export default function App() {
   const [markets, setMarkets] = useState<MarketInfo[]>([])
   const [ladders, setLadders] = useState<LadderRef[]>([])
   /** Every market you have open, shown or not. Up to MAX_LADDERS ladders are on screen; the rest wait behind a tab. */
+  const [expanded, setExpanded] = useState<Record<string, MarketInfo[] | 'loading'>>({})
+  const [picker, setPicker] = useState<{ m: MarketInfo; sel: string[] } | null>(null)
   const [ctxs, setCtxs] = useState<Record<string, MatchCtx>>({})
   const [openList, setOpenList] = useState<MarketInfo[]>([])
   const [q, setQ] = useState(''), [fIn, setFIn] = useState(false), [fSoon, setFSoon] = useState(false), [fMine, setFMine] = useState(false), [byVol, setByVol] = useState(false)
@@ -225,7 +243,7 @@ export default function App() {
 
   /** A market's runners are one unit (a tennis match is A and B, a football match is home, draw and away), so they open and close together. */
   const showMarket = (m: MarketInfo) => {
-    const want = Object.keys(m.runners).map(selectionId => ({ marketId: m.market_id, selectionId }))
+    const want = (m.shown ?? Object.keys(m.runners)).map(selectionId => ({ marketId: m.market_id, selectionId }))
     if (ladders.some(l => l.marketId === m.market_id)) return
     if (want.length > MAX_LADDERS) return say(`${m.event} needs ${want.length} ladders, more than the ${MAX_LADDERS} that fit`, 'warn')
     setLadders(cur => {
@@ -234,7 +252,13 @@ export default function App() {
       return [...out, ...want]
     })
   }
+  const toggleEvent = (eventId: string) => {
+    if (expanded[eventId]) return setExpanded(o => { const n = { ...o }; delete n[eventId]; return n })
+    setExpanded(o => ({ ...o, [eventId]: 'loading' }))
+    api.eventMarkets(eventId).then(ms => setExpanded(o => ({ ...o, [eventId]: ms }))).catch(e => { say(e.message, 'err'); setExpanded(o => { const n = { ...o }; delete n[eventId]; return n }) })
+  }
   const openMarket = (m: MarketInfo) => {
+    if (!m.shown && Object.keys(m.runners).length > MAX_LADDERS) { setPicker({ m, sel: Object.keys(m.runners).slice(0, 2) }); return }       // e.g. correct score: choose which runners get a ladder
     setOpenList(cur => (cur.some(x => x.market_id === m.market_id) ? cur : [...cur, m]))
     if (ladders.some(l => l.marketId === m.market_id)) return say('That market is already open', 'warn')
     showMarket(m)
@@ -346,10 +370,22 @@ export default function App() {
                 <div key={comp} className="mgroup">
                   <button className="mgroup-h" onClick={() => setFolded(o => ({ ...o, [comp]: !o[comp] }))}><span>{folded[comp] ? '▸' : '▾'} {comp}</span><i>{ms.length}</i></button>
                   {!folded[comp] && ms.map(m => (
-                    <button key={m.market_id} className={'market' + (mine.has(m.market_id) ? ' open' : '')} onClick={() => openMarket(m)}>
-                      <span>{m.in_play && <b className="livedot" title="In play" />}{m.event}</span>
-                      <small className="muted">{m.name}{m.start ? ' · ' + new Date(m.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</small>
-                    </button>
+                    <div key={m.market_id} className="mwrap">
+                      <div className="mrowx">
+                        <button className={'market' + (mine.has(m.market_id) ? ' open' : '')} onClick={() => openMarket(m)}>
+                          <span>{m.in_play && <b className="livedot" title="In play" />}{m.event}</span>
+                          <small className="muted">{m.name}{m.start ? ' · ' + new Date(m.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</small>
+                        </button>
+                        {m.event_id && <button className="mexp" title="All markets on this event: half time, goal lines, correct score…" onClick={() => toggleEvent(m.event_id!)}>{expanded[m.event_id] ? '▾' : '＋'}</button>}
+                      </div>
+                      {m.event_id && expanded[m.event_id] === 'loading' && <div className="muted small pad">Loading markets…</div>}
+                      {m.event_id && Array.isArray(expanded[m.event_id]) && groupMarkets(expanded[m.event_id] as MarketInfo[]).map(([label, list]) => (
+                        <div key={label} className="mxgroup">
+                          <div className="mxh">{label}</div>
+                          {list.map(x => <button key={x.market_id} className={'mx' + (mine.has(x.market_id) ? ' open' : '')} onClick={() => openMarket(x)}>{x.name}<small className="muted">{Object.keys(x.runners).length > MAX_LADDERS ? ` · ${Object.keys(x.runners).length} runners` : ''}</small></button>)}
+                        </div>
+                      ))}
+                    </div>
                   ))}
                 </div>
               ))
@@ -407,7 +443,7 @@ export default function App() {
                 return (
                   <div key={m.market_id} role="tab" aria-selected={shown} className={'mtab' + (shown ? ' on' : '') + (st?.status && st.status !== 'OPEN' ? ' susp' : '')} onClick={() => showMarket(m)} title={shown ? 'On screen' : 'Click to bring on screen (the longest-shown market steps back to its tab)'}>
                     {(st?.in_play ?? m.in_play) && <b className="livedot" />}
-                    <span className="mtab-n">{m.event}</span>
+                    <span className="mtab-n">{m.event}{m.name && m.name !== 'Match Odds' ? <small className="muted"> · {m.name}</small> : null}</span>
                     {hasPos && <i className={worst >= 0 ? 'gain' : 'loss'}>{money(worst)}</i>}
                     {nOrd > 0 && <em title="Unmatched bets waiting">{nOrd}</em>}
                     <button className="mtab-x" aria-label={'Close ' + m.event} onClick={e => { e.stopPropagation(); closeMarket(m.market_id) }}>×</button>
@@ -468,6 +504,25 @@ export default function App() {
         </div>
       )}
 
+      {picker && (
+        <div className="overlay" onClick={() => setPicker(null)}>
+          <div className="card scroll" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <h3>{picker.m.event} · {picker.m.name}</h3>
+            <p className="muted small">This market has {Object.keys(picker.m.runners).length} runners. Choose up to {MAX_LADDERS} to open as ladders; you can swap a ladder to any other runner later with the selector at its top.</p>
+            <div className="pickgrid">
+              {Object.entries(picker.m.runners).map(([id, name]) => {
+                const on = picker.sel.includes(id)
+                return <label key={id} className={'pick' + (on ? ' on' : '')}><input type="checkbox" checked={on} disabled={!on && picker.sel.length >= MAX_LADDERS}
+                  onChange={() => setPicker(p => p && ({ ...p, sel: on ? p.sel.filter(x => x !== id) : [...p.sel, id] }))} />{name}</label>
+              })}
+            </div>
+            <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setPicker(null)}>Cancel</button>
+              <button className="primary" disabled={!picker.sel.length} onClick={() => { const m = { ...picker.m, shown: picker.sel }; setPicker(null); openMarket(m) }}>Open {picker.sel.length} ladder{picker.sel.length === 1 ? '' : 's'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showSettings && (
         <div className="overlay" onClick={() => setShowSettings(false)}>
           <div className="card wide scroll" onClick={e => e.stopPropagation()}>

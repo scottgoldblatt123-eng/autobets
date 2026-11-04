@@ -158,6 +158,13 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     def ping():
         return {"needs_token": bool(token), "mode": engine.mode}
 
+    @app.get("/api/event_markets")
+    def event_markets(event_id: str, _=Depends(auth)):
+        """All the markets on one event, so the screen can offer half time, goal lines, correct score and the rest."""
+        if not event_id:
+            raise HTTPException(400, "event_id is required")
+        return engine.event_markets(event_id)
+
     @app.get("/api/markets")
     def markets(sport: str = "tennis", _=Depends(auth)):
         if sport not in ("tennis", "football"):

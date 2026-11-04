@@ -82,20 +82,32 @@ class BetfairAdapter(ExchangeAdapter):
         raise ExchangeError(f"{op} failed: HTTP {code} {text[:200]}")
 
     # ---- discovery -----------------------------------------------------
+    @staticmethod
+    def _cat(m: dict) -> dict:
+        return {
+            "market_id": m["marketId"], "name": m.get("marketName", ""), "start": m.get("marketStartTime"),
+            "event": m.get("event", {}).get("name", ""), "event_id": m.get("event", {}).get("id", ""),
+            "competition": m.get("competition", {}).get("name", ""),
+            "market_type": (m.get("description") or {}).get("marketType", ""), "matched": m.get("totalMatched"),
+            "runners": {str(r["selectionId"]): r["runnerName"] for r in sorted(m.get("runners", []), key=lambda r: r.get("sortPriority", 0))},
+        }
+
+    _PROJ = ["EVENT", "COMPETITION", "MARKET_START_TIME", "RUNNER_DESCRIPTION", "MARKET_DESCRIPTION"]
+
     def list_markets(self, event_type_id: str, market_type: str = "MATCH_ODDS", max_results: int = 50,
                      in_play_only: bool = False) -> list[dict]:
         flt = {"eventTypeIds": [event_type_id], "marketTypeCodes": [market_type]}
         if in_play_only:
             flt["inPlayOnly"] = True
         res = self._call("listMarketCatalogue", {"filter": flt, "maxResults": str(max_results),
-                         "sort": "FIRST_TO_START", "marketProjection":
-                         ["EVENT", "COMPETITION", "MARKET_START_TIME", "RUNNER_DESCRIPTION"]})
-        return [{
-            "market_id": m["marketId"], "name": m.get("marketName", ""),
-            "start": m.get("marketStartTime"), "event": m.get("event", {}).get("name", ""),
-            "competition": m.get("competition", {}).get("name", ""),
-            "runners": {str(r["selectionId"]): r["runnerName"] for r in m.get("runners", [])},
-        } for m in res]
+                         "sort": "FIRST_TO_START", "marketProjection": self._PROJ})
+        return [self._cat(m) for m in res]
+
+    def event_markets(self, event_id: str, max_results: int = 100) -> list[dict]:
+        """Every market Betfair offers on one event (match odds, half time, goal lines, correct score, ...)."""
+        res = self._call("listMarketCatalogue", {"filter": {"eventIds": [event_id]}, "maxResults": str(max_results),
+                         "sort": "FIRST_TO_START", "marketProjection": self._PROJ})
+        return [self._cat(m) for m in res]
 
     # ---- ExchangeAdapter ----------------------------------------------
     def get_book(self, market_id: str) -> MarketBook:
@@ -114,10 +126,8 @@ class BetfairAdapter(ExchangeAdapter):
 
     def market_info(self, market_ids: list[str]) -> dict[str, dict]:
         res = self._call("listMarketCatalogue", {"filter": {"marketIds": market_ids}, "maxResults": str(len(market_ids)),
-                         "marketProjection": ["EVENT", "COMPETITION", "MARKET_START_TIME", "RUNNER_DESCRIPTION"]})
-        return {m["marketId"]: {"market_id": m["marketId"], "name": m.get("marketName", ""), "start": m.get("marketStartTime"),
-                "event": m.get("event", {}).get("name", ""), "competition": m.get("competition", {}).get("name", ""),
-                "runners": {str(r["selectionId"]): r["runnerName"] for r in m.get("runners", [])}} for m in res}
+                         "marketProjection": self._PROJ})
+        return {m["marketId"]: self._cat(m) for m in res}
 
     @staticmethod
     def parse_book(raw: dict) -> MarketBook:

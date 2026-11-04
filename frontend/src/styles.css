@@ -227,3 +227,11 @@ main { overflow-y: auto; }
 .mgame { margin-left: 4px; font-weight: 700; color: var(--brand); } .mscore b { font-size: 15px; padding: 0 4px; }
 .matchline.tennis-board { display: grid; grid-template-columns: auto; gap: 1px; }
 .matchline .mrowp { flex-basis: 100%; }
+
+/* Event markets expander and runner picker */
+.mrowx { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); } .mrowx .market { border-bottom: 0; flex: 1; min-width: 0; }
+.mexp { border: 0; border-left: 1px solid var(--border); border-radius: 0; background: none; padding: 0 10px; font-size: 14px; color: var(--text-muted); } .mexp:hover { color: var(--brand); background: var(--surface-raised); }
+.mxgroup { background: var(--surface-raised); } .mxh { padding: 4px 12px 2px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.mx { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: 5px 12px 5px 22px; font-size: 12px; } .mx:hover { background: var(--surface); } .mx.open { box-shadow: inset 3px 0 0 var(--brand); font-weight: 600; }
+.pickgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; margin-top: 8px; }
+.pick { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; } .pick.on { border-color: var(--brand); background: var(--surface-raised); }
