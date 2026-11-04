@@ -58,7 +58,7 @@ export default function InfoPanel({ markets, active }: Props) {
       return <span key={i} className={'fchip ' + (d ? 'd' : w ? 'w' : 'l')} title={`${r.day}  ${r.venue ? (r.venue === 'H' ? 'home' : 'away') + ' v ' : 'v '}${r.opponent}  ${r.score}${r.tournament ? '  (' + r.tournament + ')' : ''}`}>{d ? 'D' : w ? 'W' : 'L'}</span> })}</span>
     if (!detMarket) body = <div className="muted small pad">Open a market to see rankings, form and head-to-head.</div>
     else if (!det) body = <div className="muted small pad">Loading…</div>
-    else if (!det.kind) body = <div className="muted small pad">No match found in the stored data for this market (it may be a competition we do not collect, doubles, or the data has not arrived yet).</div>
+    else if (!det.kind) body = <div className="muted small pad">No match found in the stored data for this market (it may be a competition we do not collect, doubles, or the data has not arrived yet).{det.why && <div className="small">Diagnostic: {det.why}</div>}</div>
     else {
       const names = det.kind === 'tennis' ? (det.players ?? []).map(p => p.name) : (det.teams ?? []).map(t => t.name)
       body = (

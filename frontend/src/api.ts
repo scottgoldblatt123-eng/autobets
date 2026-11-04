@@ -31,6 +31,7 @@ export interface MatchDetails {
   kind: 'tennis' | 'football' | null; note?: string; tour?: string | null
   players?: { name: string; rank: { place?: string; points?: string; country?: string; movement?: string } | null; form: FormRow[] }[]
   teams?: { name: string; table: { place?: number; points?: number; played?: number; gd?: number; form?: string; record?: string } | null; form: FormRow[] }[]
+  why?: string
   model?: { v1: { p_a: number; p_b: number; odds_a: number; odds_b: number }; v2: { p_a: number; p_b: number; odds_a: number; odds_b: number }; matches: number[] } | null
   h2h?: { day: string; tournament?: string; winner?: string; home?: string; away?: string; score: string }[]; h2h_wins?: number[]
 }

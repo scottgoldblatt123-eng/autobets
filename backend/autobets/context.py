@@ -136,6 +136,37 @@ class MatchContext:
                 "goals": [gh, ga] if gh is not None else None, "ht": [hh, ha] if hh is not None else None, "kickoff": ko}
 
 
+    def explain(self, info: dict) -> str:
+        """Why no match was found for this market, in one line (shown in the Match info tab so a miss can be diagnosed)."""
+        try:
+            ev = info.get("event") or ""
+            parts = [f"event '{ev}'", f"start {info.get('start')}"]
+            names = split_event(ev)
+            if names and self.tennis is not None:
+                now = dt.datetime.now(dt.timezone.utc)
+                days = [(now + dt.timedelta(days=d)).strftime("%Y-%m-%d") for d in (-1, 0, 1)]
+                with self.tennis.lock:
+                    rows = self.tennis.db.execute(f"SELECT raw FROM matches WHERE day IN ({','.join('?' * len(days))})", days).fetchall()
+                near = []
+                for (raw,) in rows:
+                    m = json.loads(raw)
+                    p1, p2 = m.get("event_first_player"), m.get("event_second_player")
+                    if same_player(p1, names[0]) or same_player(p2, names[0]) or same_player(p1, names[1]) or same_player(p2, names[1]):
+                        near.append(f"{p1} v {p2}")
+                parts.append(f"tennis: {len(rows)} stored matches on those days, {len(near)} involving these names {near[:3]}")
+            if self.football is not None and not names:
+                start = _iso(info.get("start"))
+                if start:
+                    lo, hi = (start - dt.timedelta(hours=3)).isoformat(), (start + dt.timedelta(hours=3)).isoformat()
+                    with self.football.lock:
+                        n = self.football.db.execute("SELECT COUNT(*) FROM fixtures WHERE kickoff BETWEEN ? AND ?", (lo, hi)).fetchone()[0]
+                    parts.append(f"football: {n} stored fixtures within 3h of start")
+                else:
+                    parts.append("football: market has no usable start time")
+            return "; ".join(parts)
+        except Exception as e:
+            return f"explain failed: {e!r}"
+
     # ---- richer match information: rankings, form, head-to-head ------------------------------------------------
     def details(self, info: dict) -> dict | None:
         try:
