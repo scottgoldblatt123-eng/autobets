@@ -6,12 +6,14 @@ set -euo pipefail
 IP="${1:-159.65.20.243}"
 HOST="${IP//./-}.sslip.io"
 if ! command -v caddy >/dev/null; then
+  rm -f /etc/apt/sources.list.d/caddy.list   # left by an earlier failed run
   apt-get update -qq
   apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl gpg
-  curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor -o /usr/share/keyrings/caddy.gpg
-  curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt | sed 's#^deb #deb [signed-by=/usr/share/keyrings/caddy.gpg] #' > /etc/apt/sources.list.d/caddy.list
+  curl -1fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  curl -1fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt -o /etc/apt/sources.list.d/caddy-stable.list
   apt-get update -qq && apt-get install -y -qq caddy
 fi
+mkdir -p /etc/caddy
 cat > /etc/caddy/Caddyfile <<CADDY
 $HOST {
     encode gzip
