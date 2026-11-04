@@ -32,6 +32,7 @@ export interface MatchDetails {
   players?: { name: string; rank: { place?: string; points?: string; country?: string; movement?: string } | null; form: FormRow[] }[]
   teams?: { name: string; table: { place?: number; points?: number; played?: number; gd?: number; form?: string; record?: string } | null; form: FormRow[] }[]
   why?: string
+  fmodel?: { home: number; draw: number; away: number; btts: number; mu: number[]; games: number[]; correct: [string, number][]; [k: string]: unknown } | null
   model?: { v1: { p_a: number; p_b: number; odds_a: number; odds_b: number }; v2: { p_a: number; p_b: number; odds_a: number; odds_b: number }; matches: number[] } | null
   h2h?: { day: string; tournament?: string; winner?: string; home?: string; away?: string; score: string }[]; h2h_wins?: number[]
 }

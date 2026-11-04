@@ -267,5 +267,10 @@ class MatchContext:
                 continue
             winner_id = hi_ if gh > ga else (aid if hi_ == hid else hid)
             wins[0 if winner_id == hid else 1] += 1
-        return {"kind": "football", "league": league, "teams": [{"name": h, "table": team_row(hid), "form": last(hid)}, {"name": a, "table": team_row(aid), "form": last(aid)}],
+        try:
+            from .football import model as fbmodel
+            fb_model = fbmodel.predict(db, lock, league, row[8], hid, aid)
+        except Exception:
+            fb_model = None
+        return {"kind": "football", "league": league, "fmodel": fb_model, "teams": [{"name": h, "table": team_row(hid), "form": last(hid)}, {"name": a, "table": team_row(aid), "form": last(aid)}],
                 "h2h": h2h, "h2h_wins": wins}

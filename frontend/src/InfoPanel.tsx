@@ -71,6 +71,16 @@ export default function InfoPanel({ markets, active }: Props) {
                 : (det.teams ?? []).map(t => <tr key={t.name}><td><b>{t.name}</b></td><td className="num">{t.table?.place ?? '–'}</td><td className="num">{t.table?.points ?? '–'}</td><td className="num">{t.table?.played ?? '–'}</td><td className="num">{t.table?.gd ?? '–'}</td><td className="num">{t.table?.record ?? '–'}</td><td>{chips(t.form)}</td></tr>)}
             </tbody>
           </table>
+          {det.kind === 'football' && det.fmodel && (() => { const f = det.fmodel, o = (p: number) => `${(1 / p).toFixed(2)} (${(100 * p).toFixed(0)}%)`, ov = (l: string) => f[`over_${l}`] as number
+            return <div className="h2h"><b>Model prices</b> <span className="muted small">(goals model, recommendation only; expected goals {f.mu[0].toFixed(2)} – {f.mu[1].toFixed(2)})</span>
+              <table><tbody>
+                <tr><td>{names[0]}</td><td>Draw</td><td>{names[1]}</td></tr>
+                <tr className="num"><td>{o(f.home)}</td><td>{o(f.draw)}</td><td>{o(f.away)}</td></tr>
+                <tr><td>Over 1.5</td><td>Over 2.5</td><td>Over 3.5</td></tr>
+                <tr className="num"><td>{o(ov('1.5'))}</td><td>{o(ov('2.5'))}</td><td>{o(ov('3.5'))}</td></tr>
+                <tr><td>Both teams score</td><td colSpan={2}>Likely scores</td></tr>
+                <tr className="num"><td>{o(f.btts)}</td><td colSpan={2}>{f.correct.slice(0, 4).map(([s, p]) => `${s} ${(100 * p).toFixed(0)}%`).join('  ·  ')}</td></tr>
+              </tbody></table></div> })()}
           {det.kind === 'tennis' && det.model && <div className="h2h"><b>Model prices</b> <span className="muted small">(recommendation only; last 12 months, {det.model.matches[0]} and {det.model.matches[1]} matches)</span>
             <table><thead><tr><th></th><th>{names[0]}</th><th>{names[1]}</th></tr></thead><tbody>
               <tr><td>v1 workbook</td><td className="num">{det.model.v1.odds_a.toFixed(2)} ({det.model.v1.p_a.toFixed(0)}%)</td><td className="num">{det.model.v1.odds_b.toFixed(2)} ({det.model.v1.p_b.toFixed(0)}%)</td></tr>
