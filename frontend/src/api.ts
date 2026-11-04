@@ -21,6 +21,11 @@ export interface Order {
 }
 export interface LogEntry { t: number; kind: string; text: string }
 export interface State { mode: string; markets: Record<string, MarketState>; orders: Order[]; totals: { exposure: number; open_pnl: number }; warnings: string[]; triggers: Trigger[]; market_triggers: MarketTrigger[]; matched_bets: MatchedBet[]; events: Evt[] }
+export interface MatchCtx {
+  kind: 'tennis' | 'football'; source: string; status: string; live: boolean; tournament?: string; round?: string
+  players?: [string, string]; sets?: string[][]; sets_won?: string[] | null; game?: string[] | null; serving?: number | null
+  teams?: [string, string]; goals?: number[] | null; ht?: number[] | null; elapsed?: number | null; code?: string; kickoff?: string
+}
 export interface MarketInfo { market_id: string; name: string; event: string; competition: string; start: string | null; runners: Record<string, string>; in_play?: boolean }
 
 let token = ''
@@ -40,6 +45,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   mode: () => call<{ mode: string }>('/api/mode'),
   ping: () => call<{ needs_token: boolean; mode: string }>('/api/ping'),
+  context: (ids: string[]) => call<Record<string, MatchCtx>>(`/api/context?ids=${ids.join(',')}`),
   markets: (sport: string) => call<MarketInfo[]>(`/api/markets?sport=${sport}`),
   state: (ids: string[], shortS = 60, longS = 300) => call<State>(`/api/state?ids=${ids.join(',')}&short_s=${shortS}&long_s=${longS}`),
   place: (b: { market_id: string; selection_id: string; side: Side; price: number; size: number; persistence?: string; fok_s?: number; offset?: number; stop?: number }) =>

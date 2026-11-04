@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, setToken, type MarketInfo, type State } from './api'
+import { api, setToken, type MarketInfo, type MatchCtx, type State } from './api'
 import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
 import MatchedPanel from './MatchedPanel'
@@ -41,6 +41,7 @@ export default function App() {
   const [markets, setMarkets] = useState<MarketInfo[]>([])
   const [ladders, setLadders] = useState<LadderRef[]>([])
   /** Every market you have open, shown or not. Up to MAX_LADDERS ladders are on screen; the rest wait behind a tab. */
+  const [ctxs, setCtxs] = useState<Record<string, MatchCtx>>({})
   const [openList, setOpenList] = useState<MarketInfo[]>([])
   const [q, setQ] = useState(''), [fIn, setFIn] = useState(false), [fSoon, setFSoon] = useState(false), [fMine, setFMine] = useState(false), [byVol, setByVol] = useState(false)
   const [folded, setFolded] = useState<Record<string, boolean>>({})
@@ -89,6 +90,13 @@ export default function App() {
 
   const shownIds = Array.from(new Set(ladders.map(l => l.marketId)))
   const ids = Array.from(new Set([...openList.map(m => m.market_id), ...shownIds]))
+  useEffect(() => {
+    if (ready !== 'ok' || !ids.length) return
+    let dead = false
+    const go = () => api.context(ids).then(c => { if (!dead) setCtxs(c) }).catch(() => { /* context is decoration; ignore errors */ })
+    go(); const t = window.setInterval(go, 5000)
+    return () => { dead = true; window.clearInterval(t) }
+  }, [ready, ids.join(',')])                                                       // eslint-disable-line react-hooks/exhaustive-deps
   const refresh = useCallback(async () => {
     if (inFlight.current) return
     inFlight.current = true
@@ -414,7 +422,7 @@ export default function App() {
               const orders = (state?.orders ?? []).filter(o => o.market_id === id)
               return (
                 <div key={id} className="mblock" style={{ flex: `${group.length} 1 ${group.length * 290}px` }}>
-                  {m ? <MarketHeader marketId={id} market={m} openOrders={orders.length} triggers={(state?.market_triggers ?? []).filter(t => t.market_id === id)} onGreen={(h, pct) => greenMarket(id, h, pct)} onAuto={lv => autoGreen(id, lv)} onDelAuto={delAuto} onClose={() => closeMarket(id)} /> : <div className="mhead muted">Loading…</div>}
+                  {m ? <MarketHeader marketId={id} market={m} ctx={ctxs[id]} openOrders={orders.length} triggers={(state?.market_triggers ?? []).filter(t => t.market_id === id)} onGreen={(h, pct) => greenMarket(id, h, pct)} onAuto={lv => autoGreen(id, lv)} onDelAuto={delAuto} onClose={() => closeMarket(id)} /> : <div className="mhead muted">Loading…</div>}
                   <div className="ladders" style={{ gridTemplateColumns: `repeat(${group.length}, minmax(0, 1fr))` }}>
                     {group.map(l => {
                       const k = keyOf(l)

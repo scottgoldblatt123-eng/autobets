@@ -218,3 +218,12 @@ main { overflow-y: auto; }
 .mtab i { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; } .mtab i.gain { color: var(--profit-text, var(--profit)); } .mtab i.loss { color: var(--loss); }
 .mtab em { font-style: normal; font-size: 10px; background: var(--warn-fill); color: #1a1200; border-radius: var(--radius-pill); padding: 0 6px; font-weight: 700; }
 .mtab-x { border: 0; background: none; padding: 0 4px; font-size: 14px; line-height: 1; color: var(--text-muted); } .mtab-x:hover { color: var(--loss); }
+
+/* Live match line in the market header */
+.matchline { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 14px; padding: 3px 0; font-variant-numeric: tabular-nums; font-size: 13px; }
+.matchline .mstat { font-weight: 700; color: var(--live-fill, var(--brand)); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+.mrowp { display: inline-flex; align-items: center; gap: 6px; } .mname { min-width: 70px; font-weight: 600; } .mname i { color: var(--brand); font-style: normal; margin-right: 3px; font-size: 9px; }
+.mset { display: inline-block; min-width: 16px; text-align: center; background: var(--surface-raised); border-radius: 3px; padding: 1px 4px; font-weight: 700; }
+.mgame { margin-left: 4px; font-weight: 700; color: var(--brand); } .mscore b { font-size: 15px; padding: 0 4px; }
+.matchline.tennis-board { display: grid; grid-template-columns: auto; gap: 1px; }
+.matchline .mrowp { flex-basis: 100%; }

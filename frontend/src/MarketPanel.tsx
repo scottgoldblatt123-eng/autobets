@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import type { MarketState, MarketTrigger } from './api'
+import type { MarketState, MarketTrigger, MatchCtx } from './api'
 import { money } from './maths'
 
 interface Props {
   marketId: string
   market: MarketState
+  ctx?: MatchCtx
   openOrders: number
   triggers: MarketTrigger[]
   onGreen: (hard: boolean, pct: number) => void
@@ -34,7 +35,7 @@ export function marketFigure(market: MarketState): number | null {
 /** Everything about one market in one block header, laid out like Geeks Toy's market panel:
  *  clock above, then back book % | ONE hedge button (green if the market is in profit, red if in loss) | lay book %.
  *  The button is a hard close: it cancels every unmatched order in the market, then places the bets that level all results. */
-export default function MarketHeader({ market, openOrders, triggers, onGreen, onAuto, onDelAuto, onClose }: Props) {
+export default function MarketHeader({ market, ctx, openOrders, triggers, onGreen, onAuto, onDelAuto, onClose }: Props) {
   const [now, setNow] = useState(Date.now())
   const [menu, setMenu] = useState(false)
   const [level, setLevel] = useState('')
@@ -89,6 +90,7 @@ export default function MarketHeader({ market, openOrders, triggers, onGreen, on
       )}
       <div className="minfo">
         <div className="mtitle"><b>{market.event}</b><span className="muted"> · {market.name}</span></div>
+        {ctx && <MatchLine ctx={ctx} />}
         <div className="muted small" title={noVolume ? 'Betfair is not sending matched volumes for this market (a delayed key may withhold them)' : ''}>Matched <b>{noVolume ? 'n/a' : '£' + matched.toLocaleString('en-GB')}</b></div>
         {triggers.length > 0 && <div className="small">{triggers.map(t => (
           <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} style={{ marginRight: 6 }} title="Hard-closes the market when the profit you could lock reaches this (click to remove)" onClick={() => onDelAuto(t.id)}>
@@ -104,6 +106,37 @@ export default function MarketHeader({ market, openOrders, triggers, onGreen, on
         )}
       </div>
       <button className="icon" title="Close this market (all of its ladders)" onClick={onClose}>✕</button>
+    </div>
+  )
+}
+
+
+/** Live score line from the stored data feeds: sets, game and serve for tennis; clock and goals for football. */
+function MatchLine({ ctx }: { ctx: MatchCtx }) {
+  if (ctx.kind === 'tennis') {
+    const [a, b] = ctx.players ?? ['', '']
+    const last = (n: string) => n.split(' ').pop()
+    return (
+      <div className="matchline" title={`${ctx.tournament ?? ''} ${ctx.round ?? ''} · ${ctx.source}`}>
+        {ctx.live && <b className="livedot" />}
+        <span className="mstat">{ctx.status}</span>
+        {[0, 1].map(i => (
+          <span key={i} className="mrowp">
+            <span className="mname">{ctx.serving === i && <i title="Serving">●</i>}{last(i ? b : a)}</span>
+            {(ctx.sets ?? []).map((s, k) => <span key={k} className="mset">{s[i]}</span>)}
+            {ctx.game && ctx.live && <span className="mgame">{ctx.game[i]}</span>}
+          </span>
+        ))}
+      </div>
+    )
+  }
+  const [h, a] = ctx.teams ?? ['', '']
+  return (
+    <div className="matchline" title={`${ctx.source} · ${ctx.kickoff ?? ''}`}>
+      {ctx.live && <b className="livedot" />}
+      <span className="mstat">{ctx.live && ctx.elapsed != null ? `${ctx.elapsed}′` : ctx.status}</span>
+      <span className="mscore">{h} <b>{ctx.goals ? `${ctx.goals[0]} – ${ctx.goals[1]}` : 'v'}</b> {a}</span>
+      {ctx.ht && !ctx.live && ctx.code !== 'NS' && <span className="muted small">HT {ctx.ht[0]}–{ctx.ht[1]}</span>}
     </div>
   )
 }

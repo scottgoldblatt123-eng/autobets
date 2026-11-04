@@ -132,6 +132,16 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         _applog.exception("tennis collector not started: %s", e)
         tennis = None
 
+    from ..context import MatchContext
+    match_context = MatchContext(tennis.store if tennis else None, football.store if football else None)
+
+    @app.get("/api/context")
+    def context(ids: str = "", _=Depends(auth)):
+        """Live score / clock / serve for the open markets, where the stored data matches them clearly."""
+        wanted = [i for i in ids.split(",") if i][:12]
+        info = engine.info(wanted) if wanted else {}
+        return {i: c for i in wanted if i in info and (c := match_context.for_market(info[i]))}
+
     @app.get("/api/tennis/status")
     def tennis_status(_=Depends(auth)):
         return tennis.status() if tennis else {"enabled": False}
