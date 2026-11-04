@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import os
+import threading
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -83,6 +84,17 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         raise SystemExit("AUTOBETS_TOKEN must be set outside demo mode")
     app = FastAPI(title="AutoBets")
 
+    # Football data collector: only outside demo mode and only when a key is configured. It runs in a background thread
+    # inside this process, so a deploy restart also restarts it (everything it does is safe to repeat).
+    football = None
+    if engine.mode != "demo" and os.environ.get("API_FOOTBALL_KEY"):
+        from ..football.apifootball import ApiFootball
+        from ..football.collector import Collector
+        from ..football.store import FootballStore
+        data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
+        football = Collector(ApiFootball(store_dir=data + "/apifootball"), FootballStore(data + "/football.db"))
+        threading.Thread(target=football.run_forever, name="football-collector", daemon=True).start()
+
     @app.exception_handler(ExchangeError)
     async def exchange_error(_request, exc):          # exchange problems are shown to the user, not a bare 500
         from fastapi.responses import JSONResponse
@@ -99,6 +111,10 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             raise HTTPException(422, str(e))
         except RuntimeError as e:
             raise HTTPException(502, str(e))
+
+    @app.get("/api/football/status")
+    def football_status(_=Depends(auth)):
+        return football.status() if football else {"enabled": False}
 
     @app.get("/api/mode")
     def mode(_=Depends(auth)):

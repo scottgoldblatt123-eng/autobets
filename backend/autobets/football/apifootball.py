@@ -44,14 +44,15 @@ class ApiFootball:
         except (urllib.error.URLError, TimeoutError) as e:
             raise ApiFootballError(f"Cannot reach API-Football: {e}") from None
 
-    def get(self, path: str, **params: Any) -> dict:
+    def get(self, path: str, _save: bool = True, **params: Any) -> dict:
         if not self.key:
             raise ApiFootballError("API_FOOTBALL_KEY is not set")
         out = self._fetch(path, params)
         errs = out.get("errors")
         if errs:       # the API reports problems (bad key, plan limits) inside a 200 response
             raise ApiFootballError("; ".join(f"{k}: {v}" for k, v in errs.items()) if isinstance(errs, dict) else str(errs))
-        self._save(path, params, out)
+        if _save:
+            self._save(path, params, out)
         return out
 
     def _save(self, path: str, params: dict, out: dict) -> None:
@@ -65,7 +66,7 @@ class ApiFootball:
 
     def status(self) -> dict:
         """Account, plan and today's request allowance (this call does not count against the daily limit)."""
-        r = self.get("status").get("response") or {}
+        r = self.get("status", _save=False).get("response") or {}
         return {"plan": (r.get("subscription") or {}).get("plan"), "active": (r.get("subscription") or {}).get("active"),
                 "ends": (r.get("subscription") or {}).get("end"), "used_today": (r.get("requests") or {}).get("current"),
                 "limit_day": (r.get("requests") or {}).get("limit_day")}
