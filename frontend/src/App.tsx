@@ -29,18 +29,25 @@ const PRESET_OFF = { stakeText: '' }
 
 const GROUPS: [string, RegExp][] = [
   ['Result', /^(MATCH_ODDS|HALF_TIME|DRAW_NO_BET|TO_QUALIFY|ASIAN_HANDICAP|MATCH_ODDS_UNMANAGED|HALF_TIME_MATCH_ODDS)$|HANDICAP|WIN_|DOUBLE_CHANCE|WINNING_MARGIN/],
-  ['Goals', /^(OVER_UNDER|FIRST_HALF_GOALS|BOTH_TEAMS|TOTAL_GOALS|GOAL_LINE|TEAM_._OVER|NEXT_GOAL|ODD_OR_EVEN|SECOND_HALF_GOALS|HALF_WITH_MOST)|TEAM_._WIN|CLEAN_SHEET/],
+  ['Match goals', /^(OVER_UNDER|FIRST_HALF_GOALS|BOTH_TEAMS|TOTAL_GOALS|GOAL_LINE|NEXT_GOAL|ODD_OR_EVEN|SECOND_HALF_GOALS|HALF_WITH_MOST)|CLEAN_SHEET/],
   ['Score', /CORRECT_SCORE|HALF_TIME_SCORE|HALF_TIME_FULL_TIME|MATCH_ODDS_AND|FIRST_GOAL_ODDS|TIME_OF_FIRST/],
 ]
-/** Group an event's markets for the picker: result, goals, score, and everything else. */
-function groupMarkets(ms: MarketInfo[]): [string, MarketInfo[]][] {
+const line = (n: string) => Number((n.match(/(\d+(?:\.\d+)?)/) ?? [])[1] ?? 99)
+/** Group an event's markets for the picker. Team totals ("Real Madrid Over/Under 2.5 Goals") are a team's own goals, not the match, so they get their own heading. */
+function groupMarkets(ms: MarketInfo[], event = ''): [string, MarketInfo[]][] {
+  const teams = event.split(/ v | vs /i).map(t => t.trim().toLowerCase()).filter(Boolean)
   const out = new Map<string, MarketInfo[]>()
   for (const m of ms) {
-    const t = m.market_type ?? ''
-    const g = (GROUPS.find(([, re]) => re.test(t)) ?? ['Other'])[0]
+    const t = m.market_type ?? '', n = m.name.toLowerCase()
+    let g: string
+    if (/corner/.test(n)) g = 'Corners'
+    else if (/card|booking/.test(n)) g = 'Cards'
+    else if (/^team_.|TEAM_/.test(t) || teams.some(x => x && n.startsWith(x) && /goals|over|under/.test(n))) g = 'Team goals'
+    else g = (GROUPS.find(([, re]) => re.test(t)) ?? ['Other'])[0]
     out.set(g, [...(out.get(g) ?? []), m])
   }
-  return ['Result', 'Goals', 'Score', 'Other'].filter(g => out.has(g)).map(g => [g, out.get(g)!] as [string, MarketInfo[]])
+  const order = ['Result', 'Match goals', 'Team goals', 'Score', 'Corners', 'Cards', 'Other']
+  return order.filter(g => out.has(g)).map(g => [g, out.get(g)!.sort((x, y) => (x.name.replace(/[\d.]+/g, '') === y.name.replace(/[\d.]+/g, '') ? line(x.name) - line(y.name) : x.name.localeCompare(y.name)))] as [string, MarketInfo[]])
 }
 
 function loadSettings(): Settings {
@@ -379,7 +386,7 @@ export default function App() {
                         {m.event_id && <button className="mexp" title="All markets on this event: half time, goal lines, correct score…" onClick={() => toggleEvent(m.event_id!)}>{expanded[m.event_id] ? '▾' : '＋'}</button>}
                       </div>
                       {m.event_id && expanded[m.event_id] === 'loading' && <div className="muted small pad">Loading markets…</div>}
-                      {m.event_id && Array.isArray(expanded[m.event_id]) && groupMarkets(expanded[m.event_id] as MarketInfo[]).map(([label, list]) => (
+                      {m.event_id && Array.isArray(expanded[m.event_id]) && groupMarkets(expanded[m.event_id] as MarketInfo[], m.event).map(([label, list]) => (
                         <div key={label} className="mxgroup">
                           <div className="mxh">{label}</div>
                           {list.map(x => <button key={x.market_id} className={'mx' + (mine.has(x.market_id) ? ' open' : '')} onClick={() => openMarket(x)}>{x.name}<small className="muted">{Object.keys(x.runners).length > MAX_LADDERS ? ` · ${Object.keys(x.runners).length} runners` : ''}</small></button>)}
