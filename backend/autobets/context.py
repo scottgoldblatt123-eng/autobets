@@ -154,13 +154,13 @@ class MatchContext:
                     if same_player(p1, names[0]) or same_player(p2, names[0]) or same_player(p1, names[1]) or same_player(p2, names[1]):
                         near.append(f"{p1} v {p2}")
                 parts.append(f"tennis: {len(rows)} stored matches on those days, {len(near)} involving these names {near[:3]}")
-            if self.football is not None and not names:
+            if self.football is not None:
                 start = _iso(info.get("start"))
                 if start:
                     lo, hi = (start - dt.timedelta(hours=3)).isoformat(), (start + dt.timedelta(hours=3)).isoformat()
                     with self.football.lock:
                         n = self.football.db.execute("SELECT COUNT(*) FROM fixtures WHERE kickoff BETWEEN ? AND ?", (lo, hi)).fetchone()[0]
-                    parts.append(f"football: {n} stored fixtures within 3h of start")
+                    parts.append(f"football: {n} stored fixtures within 3h of start; collected leagues are England (top two tiers), Germany, Spain, Italy, France and Scotland only")
                 else:
                     parts.append("football: market has no usable start time")
             return "; ".join(parts)
