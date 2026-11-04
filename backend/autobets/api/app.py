@@ -126,7 +126,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             from ..tennis.collector import TennisCollector
             from ..tennis.livestore import TennisStore
             data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
-            tennis = TennisCollector(ApiTennis(), TennisStore(data + "/tennis.db"))
+            tennis = TennisCollector(ApiTennis(), TennisStore(data + "/tennis_api.db"))
             threading.Thread(target=tennis.run_forever, name="tennis-collector", daemon=True).start()
     except Exception as e:      # a data collector must never stop the trading app from starting
         _applog.exception("tennis collector not started: %s", e)
