@@ -235,3 +235,4 @@ main { overflow-y: auto; }
 .mx { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: 5px 12px 5px 22px; font-size: 12px; } .mx:hover { background: var(--surface); } .mx.open { box-shadow: inset 3px 0 0 var(--brand); font-weight: 600; }
 .pickgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; margin-top: 8px; }
 .pick { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; } .pick.on { border-color: var(--brand); background: var(--surface-raised); }
+.ladder .rows { overscroll-behavior: contain; }

@@ -52,6 +52,15 @@ export default function Ladder(p: Props) {
     const ro = new ResizeObserver(measure); ro.observe(el); measure()
     return () => ro.disconnect()
   })
+  /** Mouse wheel over the price rows moves the ladder and must never also scroll the page, which needs a non-passive listener (React's onWheel is passive). */
+  const wheelRef = useRef(p.onWheel); wheelRef.current = p.onWheel
+  const revRef = useRef(p.reverse); revRef.current = p.reverse
+  useEffect(() => {
+    const el = rowsEl.current; if (!el) return
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); if (e.deltaY) wheelRef.current((e.deltaY > 0 ? -1 : 1) * (revRef.current ? -1 : 1)) }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
   /** Drag the bar under the ladder: down adds price rows and shrinks the chart (right down to no chart), up does the reverse. */
   const startDrag = (e: React.PointerEvent) => {
     e.preventDefault()
@@ -144,7 +153,7 @@ export default function Ladder(p: Props) {
         <span className="bets">{nLay} bet{nLay === 1 ? "" : "s"}</span>
       </div>
       {blocked && <div className="blockedbar">{rstatus !== 'ACTIVE' ? `Runner ${rstatus.toLowerCase()}` : mstatus === 'SUSPENDED' ? 'SUSPENDED' : mstatus === 'CLOSED' ? 'MARKET CLOSED' : mstatus}</div>}
-      <div className="rows" ref={rowsEl} style={{ ["--rh" as string]: rh + "px", ["--rf" as string]: rf + "px" }} onWheel={e => { p.onWheel((e.deltaY > 0 ? -1 : 1) * (p.reverse ? -1 : 1)) }}>
+      <div className="rows" ref={rowsEl} style={{ ["--rh" as string]: rh + "px", ["--rf" as string]: rf + "px" }}>
         {view.rows.map(price => {
           const b = view.back.get(price), l = view.lay.get(price), t = view.traded.get(price) ?? 0
           const here = mine.filter(o => o.price === price)
