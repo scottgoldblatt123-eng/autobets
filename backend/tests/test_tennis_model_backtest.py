@@ -14,7 +14,7 @@ def test_walk_forward_scores_without_lookahead():
         i += 1; st.upsert(match(i, f"2025-0{1 + j}-20", 1, 2, (68, 46, 11, 8), (55, 34, 4, 1)))
     i += 1; st.upsert(match(i, "2025-09-25", 1, 2, (68, 46, 11, 8), (55, 34, 4, 1)))
     res = bt.run(st, "2025-09-01")
-    assert res and all(len(r) == 4 for r in res)
+    assert res and all(len(r) == 5 for r in res)
     final = [r for r in res if r[3] == 1][-1]
     assert final[2] > 0.7                                # v2 favours the player who has been dominating
     assert "v2 point model" in bt.report(res)

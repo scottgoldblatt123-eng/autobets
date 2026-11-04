@@ -21,6 +21,7 @@ def run(store, since: str, window: int = WINDOW):
             return [(tour_group(t), r) for t, r in store.db.execute("SELECT type, raw FROM matches WHERE status='Finished' AND day=?", (day,)) if tour_group(t)]
     acc = {"ATP": collections.defaultdict(lambda: collections.defaultdict(float)), "WTA": collections.defaultdict(lambda: collections.defaultdict(float))}
     names, history, results = {}, collections.deque(), []
+    elo, played = collections.defaultdict(lambda: 1500.0), collections.defaultdict(int)
     for day in alldays:
         d0 = dt.date.fromisoformat(day)
         while history and (d0 - history[0][0]).days > window:          # roll the window forward
@@ -53,7 +54,20 @@ def run(store, since: str, window: int = WINDOW):
                     bo = 5 if t == "ATP" and any(s in (m.get("tournament_name") or "").lower() for s in SLAMS) else 3
                     v2 = model2.price(ra, rb, avg, bo)["p_a"] / 100
                     v1 = model.price(ra, rb, model.Averages(avg["return_pts"], avg["opp_hold"]))["p_a"] / 100
-                    results.append((t, v1, v2, first_won))
+                    pe = 1 / (1 + 10 ** ((elo[b] - elo[a]) / 400))
+                    results.append((t, v1, v2, first_won, pe))
+        with store.lock:
+            basics = store.db.execute("SELECT type, p1_key, p2_key, winner FROM matches WHERE status='Finished' AND day=?", (day,)).fetchall()
+        updates = []
+        for typ, k1, k2, w in basics:                                      # Elo over every finished tour-level match, priced before the day's updates
+            if tour_group(typ) and w in ("First Player", "Second Player") and k1 and k2:
+                updates.append((str(k1), str(k2), 1.0 if w == "First Player" else 0.0))
+        for k1, k2, r in updates:
+            e = 1 / (1 + 10 ** ((elo[k2] - elo[k1]) / 400))
+            for k, sign in ((k1, 1), (k2, -1)):
+                kf = 250 / (played[k] + 5) ** 0.4
+                elo[k] += sign * kf * (r - e)
+            played[k1] += 1; played[k2] += 1
         for t, a, b, p, fw, m in todays:                                  # add the day's matches after pricing them
             contrib = {}
             for me, opp in ((a, b), (b, a)):
@@ -64,6 +78,15 @@ def run(store, since: str, window: int = WINDOW):
                 for k, v in c.items(): acc[t][me][k] += v
             history.append((dt.date.fromisoformat(day), t, contrib))
     return results
+
+
+def logit(p):
+    p = min(0.99, max(0.01, p)); return math.log(p / (1 - p))
+
+
+def blend(p2, pe, w):
+    """v3: weighted average of v2 and Elo on the log-odds scale, mapped back to a probability."""
+    return 1 / (1 + math.exp(-(w * logit(p2) + (1 - w) * logit(pe))))
 
 
 def score(rows, idx):
@@ -82,8 +105,11 @@ def report(results):
         if not rows:
             continue
         out.append(f"\n{label}: {len(rows)} matches   (50/50 baseline: accuracy 50.0%, Brier 0.2500, log loss 0.6931)")
-        for name, i in (("v1 workbook", 1), ("v2 point model", 2)):
+        for name, i in (("v1 workbook", 1), ("v2 point model", 2), ("Elo rating", 4)):
             a, b, l = score(rows, i); out.append(f"  {name:15s} accuracy {100 * a:5.1f}%   Brier {b:.4f}   log loss {l:.4f}")
+        for w in (0.3, 0.5, 0.7):
+            bl = [(r[0], r[1], r[2], r[3], blend(r[2], r[4], w)) for r in rows]
+            a, b, l = score(bl, 4); out.append(f"  v3 blend {int(w * 100)}% v2 / {int((1 - w) * 100)}% Elo accuracy {100 * a:5.1f}%   Brier {b:.4f}   log loss {l:.4f}")
     rows = results
     if rows:
         out.append("\nv2 calibration (predicted win chance for the first-listed player -> actual):")
