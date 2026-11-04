@@ -13,7 +13,9 @@ main() {
   say() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG"; }
 
   cd "$APP" || { say "deploy: cannot cd to $APP"; return 1; }
-  git fetch -q origin main || { say "deploy: git fetch failed"; return 1; }
+  # GitHub now and then refuses a valid deploy key for a moment (seen 4 Nov 2026), so try a few times before giving up.
+  fetched=""; for try in 1 2 3 4 5; do git fetch -q origin main && { fetched=1; break; }; sleep $((try * 3)); done
+  [ -n "$fetched" ] || { say "deploy: git fetch failed after 5 tries"; return 1; }
   old=$(git rev-parse HEAD); new=$(git rev-parse origin/main)
   if [ "$old" = "$new" ] && [ ! -e "$PEND" ]; then say "deploy: already up to date (${new:0:7})"; return 0; fi
   if [ "$old" != "$new" ]; then
