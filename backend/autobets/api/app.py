@@ -3,6 +3,7 @@ Environment: AUTOBETS_MODE=demo|practice, AUTOBETS_TOKEN=<secret> (required unle
 from __future__ import annotations
 
 import hmac
+import logging
 import os
 import threading
 from pathlib import Path
@@ -13,6 +14,8 @@ from pydantic import BaseModel
 
 from ..exchange.base import ExchangeError
 from .engine import Engine
+
+_applog = logging.getLogger("autobets")
 
 
 def make_engine() -> Engine:
@@ -87,13 +90,17 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     # Football data collector: only outside demo mode and only when a key is configured. It runs in a background thread
     # inside this process, so a deploy restart also restarts it (everything it does is safe to repeat).
     football = None
-    if engine.mode != "demo" and os.environ.get("API_FOOTBALL_KEY"):
-        from ..football.apifootball import ApiFootball
-        from ..football.collector import Collector
-        from ..football.store import FootballStore
-        data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
-        football = Collector(ApiFootball(store_dir=data + "/apifootball"), FootballStore(data + "/football.db"))
-        threading.Thread(target=football.run_forever, name="football-collector", daemon=True).start()
+    try:
+        if engine.mode != "demo" and os.environ.get("API_FOOTBALL_KEY"):
+            from ..football.apifootball import ApiFootball
+            from ..football.collector import Collector
+            from ..football.store import FootballStore
+            data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
+            football = Collector(ApiFootball(store_dir=data + "/apifootball"), FootballStore(data + "/football.db"))
+            threading.Thread(target=football.run_forever, name="football-collector", daemon=True).start()
+    except Exception as e:      # a data collector must never stop the trading app from starting
+        _applog.exception("football collector not started: %s", e)
+        football = None
 
     @app.exception_handler(ExchangeError)
     async def exchange_error(_request, exc):          # exchange problems are shown to the user, not a bare 500
@@ -113,13 +120,17 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             raise HTTPException(502, str(e))
 
     tennis = None
-    if engine.mode != "demo" and os.environ.get("API_TENNIS_KEY"):
-        from ..tennis.apitennis import ApiTennis
-        from ..tennis.collector import TennisCollector
-        from ..tennis.livestore import TennisStore
-        data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
-        tennis = TennisCollector(ApiTennis(), TennisStore(data + "/tennis.db"))
-        threading.Thread(target=tennis.run_forever, name="tennis-collector", daemon=True).start()
+    try:
+        if engine.mode != "demo" and os.environ.get("API_TENNIS_KEY"):
+            from ..tennis.apitennis import ApiTennis
+            from ..tennis.collector import TennisCollector
+            from ..tennis.livestore import TennisStore
+            data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
+            tennis = TennisCollector(ApiTennis(), TennisStore(data + "/tennis.db"))
+            threading.Thread(target=tennis.run_forever, name="tennis-collector", daemon=True).start()
+    except Exception as e:      # a data collector must never stop the trading app from starting
+        _applog.exception("tennis collector not started: %s", e)
+        tennis = None
 
     @app.get("/api/tennis/status")
     def tennis_status(_=Depends(auth)):
