@@ -1,6 +1,7 @@
 import json
 import pytest
-from autobets.football.apifootball import ApiFootball, ApiFootballError
+import time
+from autobets.football.apifootball import ApiFootball, ApiFootballError, current_season
 
 
 def fake(resp):
@@ -28,3 +29,9 @@ def test_responses_are_saved_raw(tmp_path):
     api.get("fixtures", league=39)
     files = list(tmp_path.rglob("*.json"))
     assert len(files) == 1 and json.loads(files[0].read_text())["params"] == {"league": 39}
+
+
+def test_season_rolls_over_in_july():
+    assert current_season(time.strptime("2026-11-04", "%Y-%m-%d")) == 2026
+    assert current_season(time.strptime("2027-03-01", "%Y-%m-%d")) == 2026
+    assert current_season(time.strptime("2027-07-01", "%Y-%m-%d")) == 2027

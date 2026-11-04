@@ -15,6 +15,12 @@ from typing import Any, Callable
 HOST = "https://v3.football.api-sports.io"
 
 
+def current_season(now: time.struct_time | None = None) -> int:
+    """European seasons start in August: from July on, the season is named for this year, before that for last year."""
+    t = now or time.gmtime()
+    return t.tm_year if t.tm_mon >= 7 else t.tm_year - 1
+
+
 class ApiFootballError(RuntimeError):
     pass
 
@@ -70,7 +76,7 @@ if __name__ == "__main__":          # python -m autobets.football.apifootball : 
     try:
         print("Account:", api.status())
         for name, lid in {"Premier League": 39, "Bundesliga": 78, "La Liga": 140, "Serie A": 135, "Ligue 1": 61, "Scottish Premiership": 179}.items():
-            r = api.get("fixtures", league=lid, season=2025, next=1)
+            r = api.get("fixtures", league=lid, season=current_season(), next=1)
             print(f"{name}: ok, next fixture {(r['response'][0]['teams']['home']['name'] + ' v ' + r['response'][0]['teams']['away']['name']) if r['response'] else 'none listed'}")
         print("Rate limit headers:", api.last_limits)
     except ApiFootballError as e:
