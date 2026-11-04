@@ -26,6 +26,13 @@ export interface MatchCtx {
   players?: [string, string]; sets?: string[][]; sets_won?: string[] | null; game?: string[] | null; serving?: number | null
   teams?: [string, string]; goals?: number[] | null; ht?: number[] | null; elapsed?: number | null; code?: string; kickoff?: string
 }
+export interface FormRow { day: string; opponent: string; won?: boolean; result?: string; score: string; tournament?: string; venue?: string }
+export interface MatchDetails {
+  kind: 'tennis' | 'football' | null; note?: string; tour?: string | null
+  players?: { name: string; rank: { place?: string; points?: string; country?: string; movement?: string } | null; form: FormRow[] }[]
+  teams?: { name: string; table: { place?: number; points?: number; played?: number; gd?: number; form?: string; record?: string } | null; form: FormRow[] }[]
+  h2h?: { day: string; tournament?: string; winner?: string; home?: string; away?: string; score: string }[]; h2h_wins?: number[]
+}
 export interface MarketInfo { market_id: string; event_id?: string; market_type?: string; shown?: string[]; name: string; event: string; competition: string; start: string | null; runners: Record<string, string>; in_play?: boolean }
 
 let token = ''
@@ -49,6 +56,7 @@ export const api = {
   eventMarkets: (eventId: string) => call<MarketInfo[]>(`/api/event_markets?event_id=${encodeURIComponent(eventId)}`),
   footballStatus: () => call<Record<string, unknown>>('/api/football/status'),
   tennisStatus: () => call<Record<string, unknown>>('/api/tennis/status'),
+  matchDetails: (marketId: string) => call<MatchDetails>(`/api/match_details?market_id=${encodeURIComponent(marketId)}`),
   markets: (sport: string) => call<MarketInfo[]>(`/api/markets?sport=${sport}`),
   state: (ids: string[], shortS = 60, longS = 300) => call<State>(`/api/state?ids=${ids.join(',')}&short_s=${shortS}&long_s=${longS}`),
   place: (b: { market_id: string; selection_id: string; side: Side; price: number; size: number; persistence?: string; fok_s?: number; offset?: number; stop?: number }) =>

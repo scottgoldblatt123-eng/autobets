@@ -239,3 +239,9 @@ main { overflow-y: auto; }
 
 .dbox { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 12px; margin-top: 10px; } .dbox h4 { margin: 0 0 4px; border: 0; }
 .dbox table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; } .dbox td { padding: 2px 0; } .dbox td:last-child { text-align: right; }
+
+/* Match info tab */
+.matchinfo { padding: 6px 10px; display: grid; gap: 8px; } .matchinfo table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; } .matchinfo td, .matchinfo th { padding: 2px 8px 2px 0; text-align: left; } .matchinfo .num { text-align: right; }
+.formchips { display: inline-flex; gap: 3px; } .fchip { display: inline-block; width: 18px; text-align: center; font-size: 10px; font-weight: 700; border-radius: 3px; padding: 1px 0; cursor: default; }
+.fchip.w { background: var(--profit); color: #06210f; } .fchip.l { background: var(--loss); color: #fff; } .fchip.d { background: var(--surface-raised); border: 1px solid var(--border); }
+.h2h > b { margin-right: 6px; }

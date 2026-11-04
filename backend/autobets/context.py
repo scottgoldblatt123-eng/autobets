@@ -63,7 +63,7 @@ class MatchContext:
         return None
 
     # ---- tennis -----------------------------------------------------------------------------------------------
-    def _tennis(self, info: dict) -> dict | None:
+    def _find_tennis(self, info: dict):
         names = split_event(info.get("event") or "")
         if not names:
             return None
@@ -82,7 +82,13 @@ class MatchContext:
                 hits.append((m, True))
         if len(hits) != 1:
             return None                      # none, or ambiguous (two matches, e.g. a rematch on consecutive days): say nothing
-        m, swapped = hits[0]
+        return hits[0][0], hits[0][1], a, b
+
+    def _tennis(self, info: dict) -> dict | None:
+        found = self._find_tennis(info)
+        if not found:
+            return None
+        m, swapped, a, b = found
         sets = [(s.get("score_first"), s.get("score_second")) for s in (m.get("scores") or [])]
         if swapped:
             sets = [(y, x) for x, y in sets]
@@ -101,7 +107,7 @@ class MatchContext:
                 "game": game if len(game) == 2 and game != ["-"] else None, "serving": serve}
 
     # ---- football ---------------------------------------------------------------------------------------------
-    def _football(self, info: dict) -> dict | None:
+    def _find_football(self, info: dict):
         ev = info.get("event") or ""
         for sep in (" v ", " vs "):
             if sep in ev:
@@ -114,11 +120,113 @@ class MatchContext:
             return None
         lo, hi = (start - dt.timedelta(hours=3)).isoformat(), (start + dt.timedelta(hours=3)).isoformat()
         with self.football.lock:
-            rows = self.football.db.execute("SELECT home, away, status, elapsed, goals_h, goals_a, ht_h, ht_a, kickoff FROM fixtures WHERE kickoff BETWEEN ? AND ?", (lo, hi)).fetchall()
+            rows = self.football.db.execute("SELECT home, away, status, elapsed, goals_h, goals_a, ht_h, ht_a, kickoff, home_id, away_id, league_id, season FROM fixtures WHERE kickoff BETWEEN ? AND ?", (lo, hi)).fetchall()
         hits = [r for r in rows if same_team(r[0], h) and same_team(r[1], a)]
         if len(hits) != 1:
             return None
-        home, away, status, elapsed, gh, ga, hh, ha, ko = hits[0]
+        return hits[0], h, a
+
+    def _football(self, info: dict) -> dict | None:
+        found = self._find_football(info)
+        if not found:
+            return None
+        (home, away, status, elapsed, gh, ga, hh, ha, ko, *_), h, a = found
         return {"kind": "football", "source": "API-Football", "status": FOOTBALL_STATUS.get(status, status), "code": status,
                 "live": status in ("1H", "HT", "2H", "ET", "BT", "P", "LIVE"), "elapsed": elapsed, "teams": [h, a],
                 "goals": [gh, ga] if gh is not None else None, "ht": [hh, ha] if hh is not None else None, "kickoff": ko}
+
+
+    # ---- richer match information: rankings, form, head-to-head ------------------------------------------------
+    def details(self, info: dict) -> dict | None:
+        try:
+            if self.tennis is not None:
+                d = self._tennis_details(info)
+                if d:
+                    return d
+            if self.football is not None:
+                return self._football_details(info)
+        except Exception:
+            return None
+        return None
+
+    def _tennis_details(self, info: dict) -> dict | None:
+        found = self._find_tennis(info)
+        if not found:
+            return None
+        m, swapped, a, b = found
+        k1, k2 = m.get("first_player_key"), m.get("second_player_key")
+        keys = [k2, k1] if swapped else [k1, k2]                      # in Betfair order
+        tour = "WTA" if "wta" in (m.get("event_type_type") or "").lower() else "ATP" if "atp" in (m.get("event_type_type") or "").lower() else None
+        day = m.get("event_date") or ""
+        db, lock = self.tennis.db, self.tennis.lock
+
+        def finished_with(*ks):
+            with lock:
+                return db.execute("SELECT day, tournament, p1, p1_key, p2, p2_key, result, winner, type FROM matches WHERE status='Finished' AND day < ? AND "
+                                  + " AND ".join(f"(p1_key={int(k)} OR p2_key={int(k)})" for k in ks) + " ORDER BY day DESC, time DESC LIMIT 60", (day,)).fetchall()
+
+        def won(row, k):
+            w = (row[7] or "")
+            return w == ("First Player" if row[3] == k else "Second Player")
+
+        players = []
+        for name, k in zip((a, b), keys):
+            rank = None
+            if tour:
+                with lock:
+                    r = db.execute("SELECT data FROM standings WHERE tour=? ORDER BY day DESC LIMIT 1", (tour,)).fetchone()
+                for x in (json.loads(r[0]) if r else []):
+                    if str(x.get("player_key")) == str(k):
+                        rank = {"place": x.get("place"), "points": x.get("points"), "country": x.get("country"), "movement": x.get("movement")}
+                        break
+            rows = finished_with(k)[:6]
+            players.append({"name": name, "rank": rank, "form": [{"day": r[0], "opponent": r[4] if r[3] == k else r[2], "won": won(r, k), "score": r[6], "tournament": r[1]} for r in rows]})
+        h2h_rows = [r for r in finished_with(keys[0], keys[1])][:8]
+        h2h = [{"day": r[0], "tournament": r[1], "winner": a if won(r, keys[0]) else b, "score": r[6]} for r in h2h_rows]
+        return {"kind": "tennis", "tour": tour, "players": players, "h2h": h2h, "h2h_wins": [sum(1 for x in h2h if x["winner"] == a), sum(1 for x in h2h if x["winner"] == b)],
+                "note": "Head-to-head and form come from matches stored since the data collection began, so older meetings may be missing."}
+
+    def _football_details(self, info: dict) -> dict | None:
+        found = self._find_football(info)
+        if not found:
+            return None
+        row, h, a = found
+        home, away, hid, aid, league, season = row[0], row[1], row[9], row[10], row[11], row[12]
+        db, lock = self.football.db, self.football.lock
+        table = []
+        with lock:
+            r = db.execute("SELECT data FROM standings WHERE league_id=? AND season=? ORDER BY day DESC LIMIT 1", (league, season)).fetchone()
+        try:
+            for grp in ((json.loads(r[0]) or [{}])[0].get("league", {}).get("standings") or []) if r else []:
+                table += grp
+        except (IndexError, AttributeError, TypeError):
+            table = []
+
+        def team_row(tid):
+            for x in table:
+                if (x.get("team") or {}).get("id") == tid:
+                    al = x.get("all") or {}
+                    return {"place": x.get("rank"), "points": x.get("points"), "played": al.get("played"), "gd": x.get("goalsDiff"), "form": x.get("form"),
+                            "record": f"{al.get('win')}-{al.get('draw')}-{al.get('lose')}"}
+            return None
+
+        def last(tid):
+            with lock:
+                rows = db.execute("SELECT kickoff, home_id, home, away, goals_h, goals_a FROM fixtures WHERE status IN ('FT','AET','PEN') AND (home_id=? OR away_id=?) AND kickoff < ? ORDER BY kickoff DESC LIMIT 6", (tid, tid, row[8])).fetchall()
+            out = []
+            for k, hi_, hn, an, gh, ga in rows:
+                us, them = (gh, ga) if hi_ == tid else (ga, gh)
+                out.append({"day": (k or "")[:10], "opponent": an if hi_ == tid else hn, "venue": "H" if hi_ == tid else "A", "score": f"{gh}-{ga}", "result": "W" if us > them else "D" if us == them else "L"})
+            return out
+
+        with lock:
+            hrows = db.execute("SELECT kickoff, home_id, home, away, goals_h, goals_a FROM fixtures WHERE status IN ('FT','AET','PEN') AND ((home_id=? AND away_id=?) OR (home_id=? AND away_id=?)) AND kickoff < ? ORDER BY kickoff DESC LIMIT 8", (hid, aid, aid, hid, row[8])).fetchall()
+        h2h = [{"day": (k or "")[:10], "home": hn, "away": an, "score": f"{gh}-{ga}"} for k, _, hn, an, gh, ga in hrows]
+        wins = [0, 0]
+        for k, hi_, hn, an, gh, ga in hrows:
+            if gh == ga:
+                continue
+            winner_id = hi_ if gh > ga else (aid if hi_ == hid else hid)
+            wins[0 if winner_id == hid else 1] += 1
+        return {"kind": "football", "league": league, "teams": [{"name": h, "table": team_row(hid), "form": last(hid)}, {"name": a, "table": team_row(aid), "form": last(aid)}],
+                "h2h": h2h, "h2h_wins": wins}

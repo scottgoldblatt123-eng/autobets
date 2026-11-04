@@ -142,6 +142,12 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         info = engine.info(wanted) if wanted else {}
         return {i: c for i in wanted if i in info and (c := match_context.for_market(info[i]))}
 
+    @app.get("/api/match_details")
+    def match_details(market_id: str, _=Depends(auth)):
+        """Rankings or league position, recent form and head-to-head for the match behind a market, where it can be matched."""
+        info = engine.info([market_id]).get(market_id)
+        return (match_context.details(info) if info else None) or {"kind": None}
+
     @app.get("/api/tennis/status")
     def tennis_status(_=Depends(auth)):
         return tennis.status() if tennis else {"enabled": False}

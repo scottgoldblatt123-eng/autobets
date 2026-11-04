@@ -44,3 +44,30 @@ def test_football_context_needs_both_teams_and_a_close_kickoff():
     assert c["goals"] == [1, 0] and c["elapsed"] == 34 and c["live"] and c["status"] == "First half"
     assert MatchContext(football=st).for_market({"event": "Man Utd v Liverpool", "start": (ko + dt.timedelta(days=2)).isoformat()}) is None
     assert MatchContext(football=st).for_market({"event": "Everton v Fulham", "start": ko.isoformat()}) is None
+
+
+def test_tennis_details_have_rank_form_and_head_to_head_in_betfair_order():
+    st = TennisStore()
+    def old(key, day, w, p1k=1, p2k=2, p1="J. Sinner", p2="C. Alcaraz"):
+        m = tm(key, p1, p2, status="Finished", result="2 - 1"); m.update(event_date=day, event_live="0", event_winner=w, first_player_key=p1k, second_player_key=p2k, event_first_player=p1, event_second_player=p2); return m
+    st.upsert(old(10, "2026-09-01", "First Player")); st.upsert(old(11, "2026-08-01", "Second Player"))
+    live = tm(1, "C. Alcaraz", "J. Sinner"); live.update(first_player_key=2, second_player_key=1); st.upsert(live)
+    st.save_standings("ATP", today(), [{"place": "1", "player": "J. Sinner", "player_key": 1, "points": "11000", "country": "ITA"}, {"place": "2", "player": "C. Alcaraz", "player_key": 2, "points": "9000", "country": "ESP"}])
+    d = MatchContext(tennis=st).details({"event": "Jannik Sinner v Carlos Alcaraz"})
+    assert [p["name"] for p in d["players"]] == ["Jannik Sinner", "Carlos Alcaraz"]
+    assert d["players"][0]["rank"]["place"] == "1" and d["players"][1]["rank"]["points"] == "9000"
+    assert d["h2h_wins"] == [1, 1] and len(d["h2h"]) == 2 and d["players"][0]["form"][0]["won"] is True
+
+
+def test_football_details_have_table_form_and_head_to_head():
+    st = FootballStore(); ko = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    def fx(fid, h, a, gh, ga, when, status="FT", hid=1, aid=2):
+        st.upsert_fixture({"fixture": {"id": fid, "date": when.isoformat(), "status": {"short": status, "elapsed": 90}}, "league": {"id": 39, "season": 2026},
+                           "teams": {"home": {"id": hid, "name": h}, "away": {"id": aid, "name": a}}, "goals": {"home": gh, "away": ga}, "score": {"halftime": {}}})
+    fx(1, "Manchester United", "Liverpool", None, None, ko, "NS")
+    fx(2, "Liverpool", "Manchester United", 2, 0, ko - dt.timedelta(days=60), hid=2, aid=1)
+    fx(3, "Manchester United", "Liverpool", 1, 1, ko - dt.timedelta(days=200))
+    st.save_standings(39, 2026, today(), [{"league": {"standings": [[{"rank": 3, "team": {"id": 1}, "points": 20, "goalsDiff": 5, "form": "WWDLW", "all": {"played": 10, "win": 6, "draw": 2, "lose": 2}}]]}}])
+    d = MatchContext(football=st).details({"event": "Man Utd v Liverpool", "start": ko.isoformat()})
+    assert d["teams"][0]["table"]["place"] == 3 and d["teams"][1]["table"] is None
+    assert d["h2h_wins"] == [0, 1] and len(d["h2h"]) == 2 and d["teams"][0]["form"][0]["result"] == "L"
