@@ -40,6 +40,10 @@ export default function App() {
   const [sport, setSport] = useState<'tennis' | 'football'>('tennis')
   const [markets, setMarkets] = useState<MarketInfo[]>([])
   const [ladders, setLadders] = useState<LadderRef[]>([])
+  /** Every market you have open, shown or not. Up to MAX_LADDERS ladders are on screen; the rest wait behind a tab. */
+  const [openList, setOpenList] = useState<MarketInfo[]>([])
+  const [q, setQ] = useState(''), [fIn, setFIn] = useState(false), [fSoon, setFSoon] = useState(false), [fMine, setFMine] = useState(false), [byVol, setByVol] = useState(false)
+  const [folded, setFolded] = useState<Record<string, boolean>>({})
   const [centres, setCentres] = useState<Record<string, number | null>>({})
   const [state, setState] = useState<State | null>(null)
   const [settings, setSettings] = useState<Settings>(loadSettings)
@@ -83,7 +87,8 @@ export default function App() {
     api.markets(sport).then(setMarkets).catch(e => { setMarkets([]); say(e.message, 'err') })
   }, [ready, sport, say])
 
-  const ids = Array.from(new Set(ladders.map(l => l.marketId)))
+  const shownIds = Array.from(new Set(ladders.map(l => l.marketId)))
+  const ids = Array.from(new Set([...openList.map(m => m.market_id), ...shownIds]))
   const refresh = useCallback(async () => {
     if (inFlight.current) return
     inFlight.current = true
@@ -211,11 +216,20 @@ export default function App() {
   }
 
   /** A market's runners are one unit (a tennis match is A and B, a football match is home, draw and away), so they open and close together. */
-  const openMarket = (m: MarketInfo) => {
+  const showMarket = (m: MarketInfo) => {
     const want = Object.keys(m.runners).map(selectionId => ({ marketId: m.market_id, selectionId }))
+    if (ladders.some(l => l.marketId === m.market_id)) return
+    if (want.length > MAX_LADDERS) return say(`${m.event} needs ${want.length} ladders, more than the ${MAX_LADDERS} that fit`, 'warn')
+    setLadders(cur => {
+      let out = cur
+      while (out.length + want.length > MAX_LADDERS) { const first = out[0].marketId; out = out.filter(l => l.marketId !== first) }   // the market shown longest steps back to its tab
+      return [...out, ...want]
+    })
+  }
+  const openMarket = (m: MarketInfo) => {
+    setOpenList(cur => (cur.some(x => x.market_id === m.market_id) ? cur : [...cur, m]))
     if (ladders.some(l => l.marketId === m.market_id)) return say('That market is already open', 'warn')
-    if (want.length > MAX_LADDERS - ladders.length) return say(`${m.event} needs ${want.length} ladders but only ${MAX_LADDERS - ladders.length} slot${MAX_LADDERS - ladders.length === 1 ? ' is' : 's are'} free — close a market first`, 'warn')
-    setLadders(cur => [...cur, ...want])
+    showMarket(m)
   }
   const switchRunner = (l: LadderRef, to: string) => {
     setLadders(cur => {
@@ -231,7 +245,7 @@ export default function App() {
     const risk = (state?.triggers ?? []).filter(t => t.market_id === marketId).length + (state?.orders ?? []).filter(o => o.market_id === marketId).length
     const pos = m?.outcomes && Math.max(...Object.values(m.outcomes)) - Math.min(...Object.values(m.outcomes)) > 0.004
     if ((risk || pos) && !window.confirm(`Close this market's ladders? ${pos ? 'You still have a position. ' : ''}${risk ? 'Unmatched orders and stops stay active. ' : ''}`)) return
-    setLadders(cur => cur.filter(l => l.marketId !== marketId))
+    setLadders(cur => cur.filter(l => l.marketId !== marketId)); setOpenList(cur => cur.filter(m => m.market_id !== marketId))
     setLadderStake(o => Object.fromEntries(Object.entries(o).filter(([k]) => !k.startsWith(marketId + ':'))))
   }
 
@@ -297,14 +311,41 @@ export default function App() {
           <div className="tabs">
             {(['tennis', 'football'] as const).map(s => <button key={s} className={sport === s ? 'on' : ''} onClick={() => setSport(s)}>{s === 'tennis' ? 'Tennis' : 'Football'}</button>)}
           </div>
+          <div className="msearch">
+            <input type="search" placeholder="Search players, teams, competitions…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search markets" />
+            <div className="chips">
+              <button className={'chip' + (fIn ? ' on' : '')} onClick={() => setFIn(v => !v)}>In-play</button>
+              <button className={'chip' + (fSoon ? ' on' : '')} onClick={() => setFSoon(v => !v)}>Next hour</button>
+              <button className={'chip' + (fMine ? ' on' : '')} onClick={() => setFMine(v => !v)}>Mine</button>
+              <button className="chip" onClick={() => setByVol(v => !v)} title="Sort order">{byVol ? 'By name' : 'By start'}</button>
+            </div>
+          </div>
           <div className="finder">
             {markets.length === 0 && <div className="muted pad">No markets found</div>}
-            {markets.map(m => (
-              <button key={m.market_id} className="market" onClick={() => openMarket(m)}>
-                <span>{m.event}</span>
-                <small className="muted">{m.competition} · {m.name}{m.start ? ' · ' + new Date(m.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</small>
-              </button>
-            ))}
+            {(() => {
+              const needle = q.trim().toLowerCase(), now = Date.now(), mine = new Set(ids)
+              const list = markets.filter(m => {
+                if (needle && !`${m.event} ${m.competition} ${m.name} ${Object.values(m.runners).join(' ')}`.toLowerCase().includes(needle)) return false
+                if (fIn && !m.in_play) return false
+                if (fSoon && !(m.start && new Date(m.start).getTime() - now < 3600_000)) return false
+                if (fMine && !mine.has(m.market_id)) return false
+                return true
+              }).sort((a, b) => (byVol ? a.event.localeCompare(b.event) : (a.start ?? '').localeCompare(b.start ?? '')))
+              if (markets.length && !list.length) return <div className="muted pad">Nothing matches. Clear the search or a filter.</div>
+              const groups = new Map<string, MarketInfo[]>()
+              for (const m of list) groups.set(m.competition || 'Other', [...(groups.get(m.competition || 'Other') ?? []), m])
+              return Array.from(groups.entries()).map(([comp, ms]) => (
+                <div key={comp} className="mgroup">
+                  <button className="mgroup-h" onClick={() => setFolded(o => ({ ...o, [comp]: !o[comp] }))}><span>{folded[comp] ? '▸' : '▾'} {comp}</span><i>{ms.length}</i></button>
+                  {!folded[comp] && ms.map(m => (
+                    <button key={m.market_id} className={'market' + (mine.has(m.market_id) ? ' open' : '')} onClick={() => openMarket(m)}>
+                      <span>{m.in_play && <b className="livedot" title="In play" />}{m.event}</span>
+                      <small className="muted">{m.name}{m.start ? ' · ' + new Date(m.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</small>
+                    </button>
+                  ))}
+                </div>
+              ))
+            })()}
           </div>
         </aside>
 
@@ -347,9 +388,28 @@ export default function App() {
               <button className="sm" onClick={() => go('SUSPENDED')}>Suspend</button><button className="sm" onClick={() => go('OPEN')}>Reopen</button>
               <button className="sm" onClick={() => go('CLOSED')}>Close</button><button className="sm" onClick={() => go('OPEN', false)}>Pre-match</button><button className="sm" onClick={() => go('OPEN', true)}>Go in play</button></div>
           })()}
-          {ladders.length === 0 && <div className="empty muted">Pick a market on the left to open its ladders (up to {MAX_LADDERS}).</div>}
+          {ladders.length === 0 && <div className="empty muted">Pick a market on the left to open its ladders ({MAX_LADDERS} on screen at once; open more and switch between them with the tabs).</div>}
+          {openList.length > 1 && (
+            <div className="mtabs" role="tablist">
+              {openList.map(m => {
+                const st = state?.markets[m.market_id], shown = shownIds.includes(m.market_id)
+                const vals = st?.outcomes ? Object.values(st.outcomes) : [], worst = vals.length ? Math.min(...vals) : 0
+                const hasPos = vals.length > 0 && Math.max(...vals) - Math.min(...vals) > 0.004
+                const nOrd = (state?.orders ?? []).filter(o => o.market_id === m.market_id).length
+                return (
+                  <div key={m.market_id} role="tab" aria-selected={shown} className={'mtab' + (shown ? ' on' : '') + (st?.status && st.status !== 'OPEN' ? ' susp' : '')} onClick={() => showMarket(m)} title={shown ? 'On screen' : 'Click to bring on screen (the longest-shown market steps back to its tab)'}>
+                    {(st?.in_play ?? m.in_play) && <b className="livedot" />}
+                    <span className="mtab-n">{m.event}</span>
+                    {hasPos && <i className={worst >= 0 ? 'gain' : 'loss'}>{money(worst)}</i>}
+                    {nOrd > 0 && <em title="Unmatched bets waiting">{nOrd}</em>}
+                    <button className="mtab-x" aria-label={'Close ' + m.event} onClick={e => { e.stopPropagation(); closeMarket(m.market_id) }}>×</button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
           <div className="mrow">
-            {ids.map(id => {
+            {shownIds.map(id => {
               const group = ladders.filter(l => l.marketId === id), m = state?.markets[id]
               const orders = (state?.orders ?? []).filter(o => o.market_id === id)
               return (

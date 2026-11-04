@@ -202,3 +202,19 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 /* The ladder block gets most of the window; the order/matched/info panels sit below it and the page scrolls to them */
 main { overflow-y: auto; }
 .mrow { flex: none; height: max(600px, calc(100vh - 150px)); }
+
+/* Market search, grouping and open-market tabs */
+.msearch { padding: 8px 10px 6px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.msearch input { width: 100%; box-sizing: border-box; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; } .chip { padding: 2px 9px; font-size: 11px; border-radius: var(--radius-pill); background: var(--surface-raised); }
+.chip.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+.mgroup-h { display: flex; justify-content: space-between; align-items: center; width: 100%; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: var(--surface-raised); padding: 5px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); text-align: left; }
+.mgroup-h i { font-style: normal; font-weight: 500; }
+.market.open { box-shadow: inset 3px 0 0 var(--brand); }
+.livedot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live-fill); margin-right: 6px; vertical-align: middle; }
+.mtabs { display: flex; gap: 4px; padding: 8px 10px 0; overflow-x: auto; flex: none; }
+.mtab { display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; border: 1px solid var(--border); border-bottom: 2px solid transparent; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--surface-raised); font-size: 12px; white-space: nowrap; cursor: pointer; }
+.mtab.on { background: var(--surface); border-bottom-color: var(--brand); font-weight: 600; } .mtab.susp { border-color: var(--warn-fill); }
+.mtab i { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; } .mtab i.gain { color: var(--profit-text, var(--profit)); } .mtab i.loss { color: var(--loss); }
+.mtab em { font-style: normal; font-size: 10px; background: var(--warn-fill); color: #1a1200; border-radius: var(--radius-pill); padding: 0 6px; font-weight: 700; }
+.mtab-x { border: 0; background: none; padding: 0 4px; font-size: 14px; line-height: 1; color: var(--text-muted); } .mtab-x:hover { color: var(--loss); }
