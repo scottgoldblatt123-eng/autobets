@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { groupMarkets } from './markets'
 import { api, setToken, type MarketInfo, type MatchCtx, type State } from './api'
 import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
@@ -26,29 +27,6 @@ export function resolveStakeText(t: string, bank: number, mode: 'fixed' | 'pct')
 const keyOf = (l: LadderRef) => `${l.marketId}:${l.selectionId}`
 const MAX_LADDERS = 4
 const PRESET_OFF = { stakeText: '' }
-
-const GROUPS: [string, RegExp][] = [
-  ['Result', /^(MATCH_ODDS|HALF_TIME|DRAW_NO_BET|TO_QUALIFY|ASIAN_HANDICAP|MATCH_ODDS_UNMANAGED|HALF_TIME_MATCH_ODDS)$|HANDICAP|WIN_|DOUBLE_CHANCE|WINNING_MARGIN/],
-  ['Match goals', /^(OVER_UNDER|FIRST_HALF_GOALS|BOTH_TEAMS|TOTAL_GOALS|GOAL_LINE|NEXT_GOAL|ODD_OR_EVEN|SECOND_HALF_GOALS|HALF_WITH_MOST)|CLEAN_SHEET/],
-  ['Score', /CORRECT_SCORE|HALF_TIME_SCORE|HALF_TIME_FULL_TIME|MATCH_ODDS_AND|FIRST_GOAL_ODDS|TIME_OF_FIRST/],
-]
-const line = (n: string) => Number((n.match(/(\d+(?:\.\d+)?)/) ?? [])[1] ?? 99)
-/** Group an event's markets for the picker. Team totals ("Real Madrid Over/Under 2.5 Goals") are a team's own goals, not the match, so they get their own heading. */
-function groupMarkets(ms: MarketInfo[], event = ''): [string, MarketInfo[]][] {
-  const teams = event.split(/ v | vs /i).map(t => t.trim().toLowerCase()).filter(Boolean)
-  const out = new Map<string, MarketInfo[]>()
-  for (const m of ms) {
-    const t = m.market_type ?? '', n = m.name.toLowerCase()
-    let g: string
-    if (/corner/.test(n)) g = 'Corners'
-    else if (/card|booking/.test(n)) g = 'Cards'
-    else if (/^team_.|TEAM_/.test(t) || teams.some(x => x && n.startsWith(x) && /goals|over|under/.test(n))) g = 'Team goals'
-    else g = (GROUPS.find(([, re]) => re.test(t)) ?? ['Other'])[0]
-    out.set(g, [...(out.get(g) ?? []), m])
-  }
-  const order = ['Result', 'Match goals', 'Team goals', 'Score', 'Corners', 'Cards', 'Other']
-  return order.filter(g => out.has(g)).map(g => [g, out.get(g)!.sort((x, y) => (x.name.replace(/[\d.]+/g, '') === y.name.replace(/[\d.]+/g, '') ? line(x.name) - line(y.name) : x.name.localeCompare(y.name)))] as [string, MarketInfo[]])
-}
 
 type Status = Record<string, unknown> | null
 const ago = (iso: unknown) => { if (typeof iso !== 'string') return 'never'; const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000)); return s < 90 ? `${s}s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago` }
