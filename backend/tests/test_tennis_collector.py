@@ -62,3 +62,9 @@ def test_polling_is_fast_only_around_play():
     st.upsert(match(1, "Not Started", t="12:30", result="-"))
     assert st.active_soon("2026-11-04T12:10:00+00:00")          # due in 20 minutes
     assert not st.active_soon("2026-11-04T06:00:00+00:00")
+
+
+def test_times_are_requested_in_utc():
+    fake = Fake(get_fixtures=[], get_livescore=[])
+    c, _ = make(fake); c.sync_fixtures("2026-11-01", "2026-11-02"); c.api.livescore()
+    assert all(call.get("timezone") == "UTC" for call in fake.calls)

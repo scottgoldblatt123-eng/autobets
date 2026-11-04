@@ -54,10 +54,10 @@ class ApiTennis:
         return out.get("result") or []
 
     def fixtures(self, start: str, stop: str) -> list:
-        return [m for m in self.get("get_fixtures", date_start=start, date_stop=stop) if wanted(m.get("event_type_type"))]
+        return [m for m in self.get("get_fixtures", date_start=start, date_stop=stop, timezone="UTC") if wanted(m.get("event_type_type"))]
 
     def livescore(self) -> list:
-        return [m for m in self.get("get_livescore") if wanted(m.get("event_type_type"))]
+        return [m for m in self.get("get_livescore", timezone="UTC") if wanted(m.get("event_type_type"))]
 
 
 if __name__ == "__main__":       # python -m autobets.tennis.apitennis : check the key and show what the API calls the match types
