@@ -239,6 +239,69 @@ sec("Layout and performance", "The app in different situations.", [
     c("Hover tooltips", "Either", ["Hover buttons, cells and chips."], "Tooltips explain each control."),
 ])
 
+sec("Ladder size and scrolling (added 4 Nov)", "How many ticks you see, and how the mouse wheel behaves.", [
+    c("Default is about 25 ticks", "Either", ["Open Ladder settings and note 'Ticks in view'.", "Open a market with the chart open on a normal laptop or monitor window."], "The setting reads 25. Ladders show up to 25 price rows (fewer only if the window is too small), rows are compressed neatly, text stays readable."),
+    c("Change ticks in view", "Either", ["Set Ticks in view to 15, then 35, then 0."], "15: bigger rows and a bigger chart. 35: smaller rows, chart squeezed or hidden, no scrollbar on the ladder. 0: as many normal-size rows as fit."),
+    c("Chart gives way to rows", "Either", ["Set 40 ticks with the chart open."], "The chart shrinks (then disappears) before the rows get unreadable. Prices stay clickable."),
+    c("Drag bar still works", "Either", ["Drag the bar under a ladder up and down."], "Rows are added or removed and the chart resizes. Dragging one ladder does not move another."),
+    c("Wheel over price rows moves only the ladder", "Either", ["Put the cursor over the price rows of each ladder in turn (left, middle, right on a football match).", "Scroll the mouse wheel."], "The prices move. The page does not scroll. Same for every ladder."),
+    c("Wheel elsewhere scrolls the page", "Either", ["Put the cursor on the chart, the market header or the panels and scroll."], "The page scrolls normally to reach the panels below the ladders."),
+    c("Reverse ladders and wheel direction", "Either", ["Turn Reverse on and scroll over a ladder."], "Prices still move in the direction you scroll (consistent with the reversed layout)."),
+])
+
+sec("Market list: search, filters, grouping (added 4 Nov)", "The left-hand list of markets.", [
+    c("Free-text search", "Either", ["Type part of a player, team, competition or market name in the search box."], "The list filters as you type. A search with no match says so and tells you how to clear it."),
+    c("Search matches both names in an event", "Either", ["Search for one team, then for the other team in the same match."], "The same match appears for either name."),
+    c("In-play, Next hour and Mine filters", "Either", ["Turn each filter on in turn, then combine them."], "In-play shows live events only. Next hour shows events starting within an hour. Mine shows markets you have open. Combined filters narrow further."),
+    c("Competition grouping and folding", "Either", ["Click a competition heading to fold it, again to unfold."], "Headings show a count. Folding hides that competition's matches."),
+    c("Sort by start or name", "Either", ["Toggle the sort chip."], "The order changes between start time and name."),
+    c("Open markets are marked", "Either", ["Open a market."], "Its row gets a coloured edge in the list."),
+])
+
+sec("Open-market tabs (added 4 Nov)", "More markets open than fit on screen.", [
+    c("Tabs appear with two or more markets open", "Demo", ["Open both tennis matches, then a football match."], "A tab bar appears above the ladders with one tab per open market."),
+    c("Two matches stay on screen; the rest wait behind tabs", "Demo", ["Open three tennis or football markets in a row."], "The market shown longest steps back to its tab so the new one fits. Nothing is closed."),
+    c("Click a tab to bring a market on screen", "Demo", ["Click a tab that is not shown."], "Its ladders appear; the oldest shown market goes back to its tab."),
+    c("Tab shows position, orders and state", "Demo", ["Place a bet and leave an unmatched bet in a market, then switch to another tab.", "Use the demo controls to suspend a market."], "The tab of the market with a position shows its worst-case P&L (green/red). Unmatched bets show a count badge. A suspended market's tab is outlined."),
+    c("Hidden markets stay live", "Demo", ["With a market hidden behind a tab, place a bet or let a stop trigger on it."], "It still matches, triggers and counts in Orders, Matched bets and exposure."),
+    c("Close from a tab", "Demo", ["Click the x on a tab."], "A warning if you hold a position or unmatched bets; otherwise the market closes and the tab disappears."),
+])
+
+sec("All markets on an event (added 4 Nov)", "Half time, goal lines, correct score and the rest, from the + button in the market list.", [
+    c("Expand an event", "Either", ["In the football list, click the + beside an event."], "The event's other markets appear, grouped (Result, Match goals, Team goals, Score, Corners, Cards, Other). Clicking again collapses them."),
+    c("Open a goal line market", "Either", ["Expand an event and open Over/Under 2.5 Goals."], "Two ladders (Under and Over) open. The tab and header name the market."),
+    c("Match goals are separate from team goals", "Practice", ["Expand an event and compare 'Over/Under 2.5 Goals' with '<Team> Over/Under 2.5 Goals'."], "The match line is under Match goals; each team's own goals lines are under Team goals. Lines are in order (0.5, 1.5, 2.5 ...)."),
+    c("Half-time and first-half markets", "Practice", ["Open Half Time and First Half Goals markets."], "Ladders open with the right runners and update."),
+    c("Runner picker for big markets", "Either", ["Open Correct Score."], "A picker lists every runner. You can choose up to 4; the rest are disabled once four are chosen."),
+    c("Swap a ladder to another runner", "Either", ["In a correct score market, use the selector at the top of a ladder to switch runner."], "The ladder shows the chosen runner. Positions are kept per runner."),
+    c("Several markets of one match together", "Either", ["Open Match Odds, Over/Under 2.5 and Half Time of the same match."], "All are open as tabs; you can bring any on screen. The live score line shows on each."),
+    c("Market-level P&L and green-up on a goals market", "Demo", ["Place back and lay bets in an Over/Under market.", "Use Green up from the market header."], "P&L if each runner wins is correct and green-up locks an equal profit."),
+    c("Tennis event markets", "Practice", ["Expand a tennis event with +."], "Set betting, total games and similar markets are listed and open correctly."),
+])
+
+sec("Live score and match line (added 4 Nov)", "Score, clock and serve under the market name. Needs the data collectors, so Practice mode only.", [
+    c("Tennis scoreboard", "Practice", ["Open a live ATP, WTA or Challenger match."], "A scoreboard shows a row per player: set scores, current game score and a dot by the server. It updates within about 5 seconds of a point."),
+    c("Players in the same order as the ladders", "Practice", ["Compare the scoreboard rows with the two ladders' runner names."], "The first row is the first Betfair runner, not whichever player the data feed lists first."),
+    c("Football clock and score", "Practice", ["Open a live match in a covered league (England, Scotland, Germany, Spain, Italy, France)."], "The match minute and score show and update. Before kick-off it shows the status instead."),
+    c("Other markets of the same match", "Practice", ["Open Over/Under or Correct Score for a live match."], "The same score line appears."),
+    c("No match found means no line", "Practice", ["Open a market from a competition we do not collect (for example a lower league or ITF)."], "No score line is shown and nothing is guessed. No error."),
+    c("Doubles and name oddities", "Practice", ["Open a doubles market, and a match with a hyphenated or accented name."], "Doubles show no line. Unusual names either match correctly or show nothing. Report any wrong match."),
+])
+
+sec("Data collection health (added 4 Nov)", "Checks on the server's football and tennis data collection. These use the status addresses until the Data screen exists.", [
+    c("Football status", "Practice", ["Call /api/football/status (with the token)."], "Fixtures in the thousands, with_details rising day by day, last_error null (a rate-limit message that clears itself is fine)."),
+    c("Tennis status", "Practice", ["Call /api/tennis/status."], "matches in the thousands, history_days_done rising to 730, live_now counts live matches, last_error null."),
+    c("Live matches are logged", "Practice", ["During a live match check live_snapshots in either status."], "The count rises as scores change."),
+    c("App survives a collector failure", "Practice", ["After any deploy check the app starts and ladders load."], "The app is up even if a collector reports an error."),
+])
+
+sec("Access and deploys (added 4 Nov)", "Reaching the server and getting changes onto it.", [
+    c("HTTPS address", "Practice", ["Open https://159-65-20-243.sslip.io/ from a tablet or phone."], "The app loads over HTTPS with a valid certificate and asks for the token."),
+    c("Token works and wrong token is refused", "Practice", ["Enter the current token, then try a wrong one in a private window."], "Right token: app loads. Wrong: refused."),
+    c("Push deploys itself", "Practice", ["After a change is pushed, wait 3 minutes and reload with Ctrl+F5."], "The change is live. The GitHub Actions run is green."),
+    c("Restart keeps your state", "Practice", ["Leave an unmatched bet and a stop in place, then trigger a deploy that restarts the app."], "After it comes back your unmatched bets, stops and matched bets are still shown."),
+])
+
 cases = []
 for si, (name, intro, cs) in enumerate(S, 1):
     for ci, k in enumerate(cs, 1):

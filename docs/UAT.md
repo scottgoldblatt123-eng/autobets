@@ -1553,3 +1553,413 @@ Steps:
 **Expected:** Tooltips explain each control.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 23. Ladder size and scrolling (added 4 Nov)
+
+_How many ticks you see, and how the mouse wheel behaves._
+
+### 23.1 Default is about 25 ticks  \[Either\]
+
+Steps:
+1. Open Ladder settings and note 'Ticks in view'.
+2. Open a market with the chart open on a normal laptop or monitor window.
+
+**Expected:** The setting reads 25. Ladders show up to 25 price rows (fewer only if the window is too small), rows are compressed neatly, text stays readable.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 23.2 Change ticks in view  \[Either\]
+
+Steps:
+1. Set Ticks in view to 15, then 35, then 0.
+
+**Expected:** 15: bigger rows and a bigger chart. 35: smaller rows, chart squeezed or hidden, no scrollbar on the ladder. 0: as many normal-size rows as fit.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 23.3 Chart gives way to rows  \[Either\]
+
+Steps:
+1. Set 40 ticks with the chart open.
+
+**Expected:** The chart shrinks (then disappears) before the rows get unreadable. Prices stay clickable.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 23.4 Drag bar still works  \[Either\]
+
+Steps:
+1. Drag the bar under a ladder up and down.
+
+**Expected:** Rows are added or removed and the chart resizes. Dragging one ladder does not move another.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 23.5 Wheel over price rows moves only the ladder  \[Either\]
+
+Steps:
+1. Put the cursor over the price rows of each ladder in turn (left, middle, right on a football match).
+2. Scroll the mouse wheel.
+
+**Expected:** The prices move. The page does not scroll. Same for every ladder.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 23.6 Wheel elsewhere scrolls the page  \[Either\]
+
+Steps:
+1. Put the cursor on the chart, the market header or the panels and scroll.
+
+**Expected:** The page scrolls normally to reach the panels below the ladders.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 23.7 Reverse ladders and wheel direction  \[Either\]
+
+Steps:
+1. Turn Reverse on and scroll over a ladder.
+
+**Expected:** Prices still move in the direction you scroll (consistent with the reversed layout).
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 24. Market list: search, filters, grouping (added 4 Nov)
+
+_The left-hand list of markets._
+
+### 24.1 Free-text search  \[Either\]
+
+Steps:
+1. Type part of a player, team, competition or market name in the search box.
+
+**Expected:** The list filters as you type. A search with no match says so and tells you how to clear it.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 24.2 Search matches both names in an event  \[Either\]
+
+Steps:
+1. Search for one team, then for the other team in the same match.
+
+**Expected:** The same match appears for either name.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 24.3 In-play, Next hour and Mine filters  \[Either\]
+
+Steps:
+1. Turn each filter on in turn, then combine them.
+
+**Expected:** In-play shows live events only. Next hour shows events starting within an hour. Mine shows markets you have open. Combined filters narrow further.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 24.4 Competition grouping and folding  \[Either\]
+
+Steps:
+1. Click a competition heading to fold it, again to unfold.
+
+**Expected:** Headings show a count. Folding hides that competition's matches.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 24.5 Sort by start or name  \[Either\]
+
+Steps:
+1. Toggle the sort chip.
+
+**Expected:** The order changes between start time and name.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 24.6 Open markets are marked  \[Either\]
+
+Steps:
+1. Open a market.
+
+**Expected:** Its row gets a coloured edge in the list.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 25. Open-market tabs (added 4 Nov)
+
+_More markets open than fit on screen._
+
+### 25.1 Tabs appear with two or more markets open  \[Demo\]
+
+Steps:
+1. Open both tennis matches, then a football match.
+
+**Expected:** A tab bar appears above the ladders with one tab per open market.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 25.2 Two matches stay on screen; the rest wait behind tabs  \[Demo\]
+
+Steps:
+1. Open three tennis or football markets in a row.
+
+**Expected:** The market shown longest steps back to its tab so the new one fits. Nothing is closed.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 25.3 Click a tab to bring a market on screen  \[Demo\]
+
+Steps:
+1. Click a tab that is not shown.
+
+**Expected:** Its ladders appear; the oldest shown market goes back to its tab.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 25.4 Tab shows position, orders and state  \[Demo\]
+
+Steps:
+1. Place a bet and leave an unmatched bet in a market, then switch to another tab.
+2. Use the demo controls to suspend a market.
+
+**Expected:** The tab of the market with a position shows its worst-case P&L (green/red). Unmatched bets show a count badge. A suspended market's tab is outlined.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 25.5 Hidden markets stay live  \[Demo\]
+
+Steps:
+1. With a market hidden behind a tab, place a bet or let a stop trigger on it.
+
+**Expected:** It still matches, triggers and counts in Orders, Matched bets and exposure.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 25.6 Close from a tab  \[Demo\]
+
+Steps:
+1. Click the x on a tab.
+
+**Expected:** A warning if you hold a position or unmatched bets; otherwise the market closes and the tab disappears.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 26. All markets on an event (added 4 Nov)
+
+_Half time, goal lines, correct score and the rest, from the + button in the market list._
+
+### 26.1 Expand an event  \[Either\]
+
+Steps:
+1. In the football list, click the + beside an event.
+
+**Expected:** The event's other markets appear, grouped (Result, Match goals, Team goals, Score, Corners, Cards, Other). Clicking again collapses them.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 26.2 Open a goal line market  \[Either\]
+
+Steps:
+1. Expand an event and open Over/Under 2.5 Goals.
+
+**Expected:** Two ladders (Under and Over) open. The tab and header name the market.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 26.3 Match goals are separate from team goals  \[Practice\]
+
+Steps:
+1. Expand an event and compare 'Over/Under 2.5 Goals' with '<Team> Over/Under 2.5 Goals'.
+
+**Expected:** The match line is under Match goals; each team's own goals lines are under Team goals. Lines are in order (0.5, 1.5, 2.5 ...).
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 26.4 Half-time and first-half markets  \[Practice\]
+
+Steps:
+1. Open Half Time and First Half Goals markets.
+
+**Expected:** Ladders open with the right runners and update.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 26.5 Runner picker for big markets  \[Either\]
+
+Steps:
+1. Open Correct Score.
+
+**Expected:** A picker lists every runner. You can choose up to 4; the rest are disabled once four are chosen.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 26.6 Swap a ladder to another runner  \[Either\]
+
+Steps:
+1. In a correct score market, use the selector at the top of a ladder to switch runner.
+
+**Expected:** The ladder shows the chosen runner. Positions are kept per runner.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 26.7 Several markets of one match together  \[Either\]
+
+Steps:
+1. Open Match Odds, Over/Under 2.5 and Half Time of the same match.
+
+**Expected:** All are open as tabs; you can bring any on screen. The live score line shows on each.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 26.8 Market-level P&L and green-up on a goals market  \[Demo\]
+
+Steps:
+1. Place back and lay bets in an Over/Under market.
+2. Use Green up from the market header.
+
+**Expected:** P&L if each runner wins is correct and green-up locks an equal profit.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 26.9 Tennis event markets  \[Practice\]
+
+Steps:
+1. Expand a tennis event with +.
+
+**Expected:** Set betting, total games and similar markets are listed and open correctly.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 27. Live score and match line (added 4 Nov)
+
+_Score, clock and serve under the market name. Needs the data collectors, so Practice mode only._
+
+### 27.1 Tennis scoreboard  \[Practice\]
+
+Steps:
+1. Open a live ATP, WTA or Challenger match.
+
+**Expected:** A scoreboard shows a row per player: set scores, current game score and a dot by the server. It updates within about 5 seconds of a point.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 27.2 Players in the same order as the ladders  \[Practice\]
+
+Steps:
+1. Compare the scoreboard rows with the two ladders' runner names.
+
+**Expected:** The first row is the first Betfair runner, not whichever player the data feed lists first.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 27.3 Football clock and score  \[Practice\]
+
+Steps:
+1. Open a live match in a covered league (England, Scotland, Germany, Spain, Italy, France).
+
+**Expected:** The match minute and score show and update. Before kick-off it shows the status instead.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 27.4 Other markets of the same match  \[Practice\]
+
+Steps:
+1. Open Over/Under or Correct Score for a live match.
+
+**Expected:** The same score line appears.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 27.5 No match found means no line  \[Practice\]
+
+Steps:
+1. Open a market from a competition we do not collect (for example a lower league or ITF).
+
+**Expected:** No score line is shown and nothing is guessed. No error.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 27.6 Doubles and name oddities  \[Practice\]
+
+Steps:
+1. Open a doubles market, and a match with a hyphenated or accented name.
+
+**Expected:** Doubles show no line. Unusual names either match correctly or show nothing. Report any wrong match.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 28. Data collection health (added 4 Nov)
+
+_Checks on the server's football and tennis data collection. These use the status addresses until the Data screen exists._
+
+### 28.1 Football status  \[Practice\]
+
+Steps:
+1. Call /api/football/status (with the token).
+
+**Expected:** Fixtures in the thousands, with_details rising day by day, last_error null (a rate-limit message that clears itself is fine).
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 28.2 Tennis status  \[Practice\]
+
+Steps:
+1. Call /api/tennis/status.
+
+**Expected:** matches in the thousands, history_days_done rising to 730, live_now counts live matches, last_error null.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 28.3 Live matches are logged  \[Practice\]
+
+Steps:
+1. During a live match check live_snapshots in either status.
+
+**Expected:** The count rises as scores change.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 28.4 App survives a collector failure  \[Practice\]
+
+Steps:
+1. After any deploy check the app starts and ladders load.
+
+**Expected:** The app is up even if a collector reports an error.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 29. Access and deploys (added 4 Nov)
+
+_Reaching the server and getting changes onto it._
+
+### 29.1 HTTPS address  \[Practice\]
+
+Steps:
+1. Open https://159-65-20-243.sslip.io/ from a tablet or phone.
+
+**Expected:** The app loads over HTTPS with a valid certificate and asks for the token.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 29.2 Token works and wrong token is refused  \[Practice\]
+
+Steps:
+1. Enter the current token, then try a wrong one in a private window.
+
+**Expected:** Right token: app loads. Wrong: refused.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 29.3 Push deploys itself  \[Practice\]
+
+Steps:
+1. After a change is pushed, wait 3 minutes and reload with Ctrl+F5.
+
+**Expected:** The change is live. The GitHub Actions run is green.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 29.4 Restart keeps your state  \[Practice\]
+
+Steps:
+1. Leave an unmatched bet and a stop in place, then trigger a deploy that restarts the app.
+
+**Expected:** After it comes back your unmatched bets, stops and matched bets are still shown.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

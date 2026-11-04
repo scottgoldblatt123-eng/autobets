@@ -1782,5 +1782,471 @@
    "Hover buttons, cells and chips."
   ],
   "expected": "Tooltips explain each control."
+ },
+ {
+  "id": "23.1",
+  "section": "Ladder size and scrolling (added 4 Nov)",
+  "intro": "How many ticks you see, and how the mouse wheel behaves.",
+  "title": "Default is about 25 ticks",
+  "mode": "Either",
+  "steps": [
+   "Open Ladder settings and note 'Ticks in view'.",
+   "Open a market with the chart open on a normal laptop or monitor window."
+  ],
+  "expected": "The setting reads 25. Ladders show up to 25 price rows (fewer only if the window is too small), rows are compressed neatly, text stays readable."
+ },
+ {
+  "id": "23.2",
+  "section": "Ladder size and scrolling (added 4 Nov)",
+  "intro": "How many ticks you see, and how the mouse wheel behaves.",
+  "title": "Change ticks in view",
+  "mode": "Either",
+  "steps": [
+   "Set Ticks in view to 15, then 35, then 0."
+  ],
+  "expected": "15: bigger rows and a bigger chart. 35: smaller rows, chart squeezed or hidden, no scrollbar on the ladder. 0: as many normal-size rows as fit."
+ },
+ {
+  "id": "23.3",
+  "section": "Ladder size and scrolling (added 4 Nov)",
+  "intro": "How many ticks you see, and how the mouse wheel behaves.",
+  "title": "Chart gives way to rows",
+  "mode": "Either",
+  "steps": [
+   "Set 40 ticks with the chart open."
+  ],
+  "expected": "The chart shrinks (then disappears) before the rows get unreadable. Prices stay clickable."
+ },
+ {
+  "id": "23.4",
+  "section": "Ladder size and scrolling (added 4 Nov)",
+  "intro": "How many ticks you see, and how the mouse wheel behaves.",
+  "title": "Drag bar still works",
+  "mode": "Either",
+  "steps": [
+   "Drag the bar under a ladder up and down."
+  ],
+  "expected": "Rows are added or removed and the chart resizes. Dragging one ladder does not move another."
+ },
+ {
+  "id": "23.5",
+  "section": "Ladder size and scrolling (added 4 Nov)",
+  "intro": "How many ticks you see, and how the mouse wheel behaves.",
+  "title": "Wheel over price rows moves only the ladder",
+  "mode": "Either",
+  "steps": [
+   "Put the cursor over the price rows of each ladder in turn (left, middle, right on a football match).",
+   "Scroll the mouse wheel."
+  ],
+  "expected": "The prices move. The page does not scroll. Same for every ladder."
+ },
+ {
+  "id": "23.6",
+  "section": "Ladder size and scrolling (added 4 Nov)",
+  "intro": "How many ticks you see, and how the mouse wheel behaves.",
+  "title": "Wheel elsewhere scrolls the page",
+  "mode": "Either",
+  "steps": [
+   "Put the cursor on the chart, the market header or the panels and scroll."
+  ],
+  "expected": "The page scrolls normally to reach the panels below the ladders."
+ },
+ {
+  "id": "23.7",
+  "section": "Ladder size and scrolling (added 4 Nov)",
+  "intro": "How many ticks you see, and how the mouse wheel behaves.",
+  "title": "Reverse ladders and wheel direction",
+  "mode": "Either",
+  "steps": [
+   "Turn Reverse on and scroll over a ladder."
+  ],
+  "expected": "Prices still move in the direction you scroll (consistent with the reversed layout)."
+ },
+ {
+  "id": "24.1",
+  "section": "Market list: search, filters, grouping (added 4 Nov)",
+  "intro": "The left-hand list of markets.",
+  "title": "Free-text search",
+  "mode": "Either",
+  "steps": [
+   "Type part of a player, team, competition or market name in the search box."
+  ],
+  "expected": "The list filters as you type. A search with no match says so and tells you how to clear it."
+ },
+ {
+  "id": "24.2",
+  "section": "Market list: search, filters, grouping (added 4 Nov)",
+  "intro": "The left-hand list of markets.",
+  "title": "Search matches both names in an event",
+  "mode": "Either",
+  "steps": [
+   "Search for one team, then for the other team in the same match."
+  ],
+  "expected": "The same match appears for either name."
+ },
+ {
+  "id": "24.3",
+  "section": "Market list: search, filters, grouping (added 4 Nov)",
+  "intro": "The left-hand list of markets.",
+  "title": "In-play, Next hour and Mine filters",
+  "mode": "Either",
+  "steps": [
+   "Turn each filter on in turn, then combine them."
+  ],
+  "expected": "In-play shows live events only. Next hour shows events starting within an hour. Mine shows markets you have open. Combined filters narrow further."
+ },
+ {
+  "id": "24.4",
+  "section": "Market list: search, filters, grouping (added 4 Nov)",
+  "intro": "The left-hand list of markets.",
+  "title": "Competition grouping and folding",
+  "mode": "Either",
+  "steps": [
+   "Click a competition heading to fold it, again to unfold."
+  ],
+  "expected": "Headings show a count. Folding hides that competition's matches."
+ },
+ {
+  "id": "24.5",
+  "section": "Market list: search, filters, grouping (added 4 Nov)",
+  "intro": "The left-hand list of markets.",
+  "title": "Sort by start or name",
+  "mode": "Either",
+  "steps": [
+   "Toggle the sort chip."
+  ],
+  "expected": "The order changes between start time and name."
+ },
+ {
+  "id": "24.6",
+  "section": "Market list: search, filters, grouping (added 4 Nov)",
+  "intro": "The left-hand list of markets.",
+  "title": "Open markets are marked",
+  "mode": "Either",
+  "steps": [
+   "Open a market."
+  ],
+  "expected": "Its row gets a coloured edge in the list."
+ },
+ {
+  "id": "25.1",
+  "section": "Open-market tabs (added 4 Nov)",
+  "intro": "More markets open than fit on screen.",
+  "title": "Tabs appear with two or more markets open",
+  "mode": "Demo",
+  "steps": [
+   "Open both tennis matches, then a football match."
+  ],
+  "expected": "A tab bar appears above the ladders with one tab per open market."
+ },
+ {
+  "id": "25.2",
+  "section": "Open-market tabs (added 4 Nov)",
+  "intro": "More markets open than fit on screen.",
+  "title": "Two matches stay on screen; the rest wait behind tabs",
+  "mode": "Demo",
+  "steps": [
+   "Open three tennis or football markets in a row."
+  ],
+  "expected": "The market shown longest steps back to its tab so the new one fits. Nothing is closed."
+ },
+ {
+  "id": "25.3",
+  "section": "Open-market tabs (added 4 Nov)",
+  "intro": "More markets open than fit on screen.",
+  "title": "Click a tab to bring a market on screen",
+  "mode": "Demo",
+  "steps": [
+   "Click a tab that is not shown."
+  ],
+  "expected": "Its ladders appear; the oldest shown market goes back to its tab."
+ },
+ {
+  "id": "25.4",
+  "section": "Open-market tabs (added 4 Nov)",
+  "intro": "More markets open than fit on screen.",
+  "title": "Tab shows position, orders and state",
+  "mode": "Demo",
+  "steps": [
+   "Place a bet and leave an unmatched bet in a market, then switch to another tab.",
+   "Use the demo controls to suspend a market."
+  ],
+  "expected": "The tab of the market with a position shows its worst-case P&L (green/red). Unmatched bets show a count badge. A suspended market's tab is outlined."
+ },
+ {
+  "id": "25.5",
+  "section": "Open-market tabs (added 4 Nov)",
+  "intro": "More markets open than fit on screen.",
+  "title": "Hidden markets stay live",
+  "mode": "Demo",
+  "steps": [
+   "With a market hidden behind a tab, place a bet or let a stop trigger on it."
+  ],
+  "expected": "It still matches, triggers and counts in Orders, Matched bets and exposure."
+ },
+ {
+  "id": "25.6",
+  "section": "Open-market tabs (added 4 Nov)",
+  "intro": "More markets open than fit on screen.",
+  "title": "Close from a tab",
+  "mode": "Demo",
+  "steps": [
+   "Click the x on a tab."
+  ],
+  "expected": "A warning if you hold a position or unmatched bets; otherwise the market closes and the tab disappears."
+ },
+ {
+  "id": "26.1",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Expand an event",
+  "mode": "Either",
+  "steps": [
+   "In the football list, click the + beside an event."
+  ],
+  "expected": "The event's other markets appear, grouped (Result, Match goals, Team goals, Score, Corners, Cards, Other). Clicking again collapses them."
+ },
+ {
+  "id": "26.2",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Open a goal line market",
+  "mode": "Either",
+  "steps": [
+   "Expand an event and open Over/Under 2.5 Goals."
+  ],
+  "expected": "Two ladders (Under and Over) open. The tab and header name the market."
+ },
+ {
+  "id": "26.3",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Match goals are separate from team goals",
+  "mode": "Practice",
+  "steps": [
+   "Expand an event and compare 'Over/Under 2.5 Goals' with '<Team> Over/Under 2.5 Goals'."
+  ],
+  "expected": "The match line is under Match goals; each team's own goals lines are under Team goals. Lines are in order (0.5, 1.5, 2.5 ...)."
+ },
+ {
+  "id": "26.4",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Half-time and first-half markets",
+  "mode": "Practice",
+  "steps": [
+   "Open Half Time and First Half Goals markets."
+  ],
+  "expected": "Ladders open with the right runners and update."
+ },
+ {
+  "id": "26.5",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Runner picker for big markets",
+  "mode": "Either",
+  "steps": [
+   "Open Correct Score."
+  ],
+  "expected": "A picker lists every runner. You can choose up to 4; the rest are disabled once four are chosen."
+ },
+ {
+  "id": "26.6",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Swap a ladder to another runner",
+  "mode": "Either",
+  "steps": [
+   "In a correct score market, use the selector at the top of a ladder to switch runner."
+  ],
+  "expected": "The ladder shows the chosen runner. Positions are kept per runner."
+ },
+ {
+  "id": "26.7",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Several markets of one match together",
+  "mode": "Either",
+  "steps": [
+   "Open Match Odds, Over/Under 2.5 and Half Time of the same match."
+  ],
+  "expected": "All are open as tabs; you can bring any on screen. The live score line shows on each."
+ },
+ {
+  "id": "26.8",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Market-level P&L and green-up on a goals market",
+  "mode": "Demo",
+  "steps": [
+   "Place back and lay bets in an Over/Under market.",
+   "Use Green up from the market header."
+  ],
+  "expected": "P&L if each runner wins is correct and green-up locks an equal profit."
+ },
+ {
+  "id": "26.9",
+  "section": "All markets on an event (added 4 Nov)",
+  "intro": "Half time, goal lines, correct score and the rest, from the + button in the market list.",
+  "title": "Tennis event markets",
+  "mode": "Practice",
+  "steps": [
+   "Expand a tennis event with +."
+  ],
+  "expected": "Set betting, total games and similar markets are listed and open correctly."
+ },
+ {
+  "id": "27.1",
+  "section": "Live score and match line (added 4 Nov)",
+  "intro": "Score, clock and serve under the market name. Needs the data collectors, so Practice mode only.",
+  "title": "Tennis scoreboard",
+  "mode": "Practice",
+  "steps": [
+   "Open a live ATP, WTA or Challenger match."
+  ],
+  "expected": "A scoreboard shows a row per player: set scores, current game score and a dot by the server. It updates within about 5 seconds of a point."
+ },
+ {
+  "id": "27.2",
+  "section": "Live score and match line (added 4 Nov)",
+  "intro": "Score, clock and serve under the market name. Needs the data collectors, so Practice mode only.",
+  "title": "Players in the same order as the ladders",
+  "mode": "Practice",
+  "steps": [
+   "Compare the scoreboard rows with the two ladders' runner names."
+  ],
+  "expected": "The first row is the first Betfair runner, not whichever player the data feed lists first."
+ },
+ {
+  "id": "27.3",
+  "section": "Live score and match line (added 4 Nov)",
+  "intro": "Score, clock and serve under the market name. Needs the data collectors, so Practice mode only.",
+  "title": "Football clock and score",
+  "mode": "Practice",
+  "steps": [
+   "Open a live match in a covered league (England, Scotland, Germany, Spain, Italy, France)."
+  ],
+  "expected": "The match minute and score show and update. Before kick-off it shows the status instead."
+ },
+ {
+  "id": "27.4",
+  "section": "Live score and match line (added 4 Nov)",
+  "intro": "Score, clock and serve under the market name. Needs the data collectors, so Practice mode only.",
+  "title": "Other markets of the same match",
+  "mode": "Practice",
+  "steps": [
+   "Open Over/Under or Correct Score for a live match."
+  ],
+  "expected": "The same score line appears."
+ },
+ {
+  "id": "27.5",
+  "section": "Live score and match line (added 4 Nov)",
+  "intro": "Score, clock and serve under the market name. Needs the data collectors, so Practice mode only.",
+  "title": "No match found means no line",
+  "mode": "Practice",
+  "steps": [
+   "Open a market from a competition we do not collect (for example a lower league or ITF)."
+  ],
+  "expected": "No score line is shown and nothing is guessed. No error."
+ },
+ {
+  "id": "27.6",
+  "section": "Live score and match line (added 4 Nov)",
+  "intro": "Score, clock and serve under the market name. Needs the data collectors, so Practice mode only.",
+  "title": "Doubles and name oddities",
+  "mode": "Practice",
+  "steps": [
+   "Open a doubles market, and a match with a hyphenated or accented name."
+  ],
+  "expected": "Doubles show no line. Unusual names either match correctly or show nothing. Report any wrong match."
+ },
+ {
+  "id": "28.1",
+  "section": "Data collection health (added 4 Nov)",
+  "intro": "Checks on the server's football and tennis data collection. These use the status addresses until the Data screen exists.",
+  "title": "Football status",
+  "mode": "Practice",
+  "steps": [
+   "Call /api/football/status (with the token)."
+  ],
+  "expected": "Fixtures in the thousands, with_details rising day by day, last_error null (a rate-limit message that clears itself is fine)."
+ },
+ {
+  "id": "28.2",
+  "section": "Data collection health (added 4 Nov)",
+  "intro": "Checks on the server's football and tennis data collection. These use the status addresses until the Data screen exists.",
+  "title": "Tennis status",
+  "mode": "Practice",
+  "steps": [
+   "Call /api/tennis/status."
+  ],
+  "expected": "matches in the thousands, history_days_done rising to 730, live_now counts live matches, last_error null."
+ },
+ {
+  "id": "28.3",
+  "section": "Data collection health (added 4 Nov)",
+  "intro": "Checks on the server's football and tennis data collection. These use the status addresses until the Data screen exists.",
+  "title": "Live matches are logged",
+  "mode": "Practice",
+  "steps": [
+   "During a live match check live_snapshots in either status."
+  ],
+  "expected": "The count rises as scores change."
+ },
+ {
+  "id": "28.4",
+  "section": "Data collection health (added 4 Nov)",
+  "intro": "Checks on the server's football and tennis data collection. These use the status addresses until the Data screen exists.",
+  "title": "App survives a collector failure",
+  "mode": "Practice",
+  "steps": [
+   "After any deploy check the app starts and ladders load."
+  ],
+  "expected": "The app is up even if a collector reports an error."
+ },
+ {
+  "id": "29.1",
+  "section": "Access and deploys (added 4 Nov)",
+  "intro": "Reaching the server and getting changes onto it.",
+  "title": "HTTPS address",
+  "mode": "Practice",
+  "steps": [
+   "Open https://159-65-20-243.sslip.io/ from a tablet or phone."
+  ],
+  "expected": "The app loads over HTTPS with a valid certificate and asks for the token."
+ },
+ {
+  "id": "29.2",
+  "section": "Access and deploys (added 4 Nov)",
+  "intro": "Reaching the server and getting changes onto it.",
+  "title": "Token works and wrong token is refused",
+  "mode": "Practice",
+  "steps": [
+   "Enter the current token, then try a wrong one in a private window."
+  ],
+  "expected": "Right token: app loads. Wrong: refused."
+ },
+ {
+  "id": "29.3",
+  "section": "Access and deploys (added 4 Nov)",
+  "intro": "Reaching the server and getting changes onto it.",
+  "title": "Push deploys itself",
+  "mode": "Practice",
+  "steps": [
+   "After a change is pushed, wait 3 minutes and reload with Ctrl+F5."
+  ],
+  "expected": "The change is live. The GitHub Actions run is green."
+ },
+ {
+  "id": "29.4",
+  "section": "Access and deploys (added 4 Nov)",
+  "intro": "Reaching the server and getting changes onto it.",
+  "title": "Restart keeps your state",
+  "mode": "Practice",
+  "steps": [
+   "Leave an unmatched bet and a stop in place, then trigger a deploy that restarts the app."
+  ],
+  "expected": "After it comes back your unmatched bets, stops and matched bets are still shown."
  }
 ]
