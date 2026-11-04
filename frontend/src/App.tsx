@@ -34,10 +34,10 @@ const num = (v: unknown) => (typeof v === 'number' ? v.toLocaleString() : '–')
 
 /** Football and tennis data collection at a glance, so nobody needs the server to see whether it is working. */
 function DataStatus({ onClose }: { onClose: () => void }) {
-  const [fb, setFb] = useState<Status>(null), [tn, setTn] = useState<Status>(null), [err, setErr] = useState('')
+  const [fb, setFb] = useState<Status>(null), [tn, setTn] = useState<Status>(null), [pl, setPl] = useState<Status>(null), [err, setErr] = useState('')
   useEffect(() => {
     let dead = false
-    const go = () => Promise.all([api.footballStatus(), api.tennisStatus()]).then(([f, t]) => { if (!dead) { setFb(f); setTn(t); setErr('') } }).catch(e => { if (!dead) setErr((e as Error).message) })
+    const go = () => Promise.all([api.footballStatus(), api.tennisStatus(), api.pricelogStatus()]).then(([f, t, p]) => { if (!dead) { setFb(f); setTn(t); setPl(p); setErr('') } }).catch(e => { if (!dead) setErr((e as Error).message) })
     go(); const t = window.setInterval(go, 5000)
     return () => { dead = true; window.clearInterval(t) }
   }, [])
@@ -57,6 +57,9 @@ function DataStatus({ onClose }: { onClose: () => void }) {
           row('Live now', num(s.live_now)), row('Live score changes logged', num(s.live_snapshots)), row('Requests used today', `${num(s.requests_used_today)} of 7,500`)])}
         {box('Tennis (api-tennis)', tn, s => [row('Matches stored', num(s.matches)), row('With match statistics', num(s.with_stats)), row('History reached', `${num(s.history_days_done)} of ${num(s.history_target)} days (back to ${String(s.earliest ?? '–')})`),
           row('Live now', num(s.live_now)), row('Live score changes logged', num(s.live_snapshots))])}
+        {pl && pl.enabled === false ? null : <div className="dbox"><h4>Betfair price log (prices with the live score)</h4>{!pl ? <div className="muted small">Loading…</div> :
+          <><table><tbody>{[row('Price changes recorded', num(pl.ticks)), row('Markets', num(pl.markets)), row('In-play changes', num(pl.in_play_ticks)), row('Last recorded', pl.last ? ago(new Date(Number(pl.last) * 1000).toISOString()) : '–')]}</tbody></table>
+            <div className={'small ' + (pl.last_error ? 'loss' : 'gain')}>{pl.last_error ? 'Last error: ' + String(pl.last_error) : 'No errors'}</div></>}</div>}
         <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end' }}><button onClick={onClose}>Close</button></div>
       </div>
     </div>

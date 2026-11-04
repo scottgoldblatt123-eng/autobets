@@ -135,6 +135,21 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     from ..context import MatchContext
     match_context = MatchContext(tennis.store if tennis else None, football.store if football else None)
 
+    pricelog = None
+    try:
+        if engine.mode != "demo" and os.environ.get("AUTOBETS_PRICELOG", "1") != "0":
+            from ..pricelog import PriceLogger, PriceStore
+            data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
+            pricelog = PriceLogger(engine, match_context, PriceStore(data + "/prices.db"))
+            threading.Thread(target=pricelog.run_forever, name="price-logger", daemon=True).start()
+    except Exception as e:      # the logger must never stop the trading app from starting
+        _applog.exception("price logger not started: %s", e)
+        pricelog = None
+
+    @app.get("/api/pricelog/status")
+    def pricelog_status(_=Depends(auth)):
+        return pricelog.status() if pricelog else {"enabled": False}
+
     @app.get("/api/context")
     def context(ids: str = "", _=Depends(auth)):
         """Live score / clock / serve for the open markets, where the stored data matches them clearly."""
