@@ -220,6 +220,10 @@ class MatchContext:
                 from .tennis import ratings
                 bo = 5 if tour == "ATP" and any(g in (m.get("tournament_name") or "").lower() for g in ("australian open", "french open", "roland", "wimbledon", "us open")) else 3
                 model_out = ratings.price(ratings.build(self.tennis, tour, day), keys[0], keys[1], bo)
+                if model_out:
+                    from .tennis import model3
+                    elo, _ = model3.ratings(self.tennis, day)
+                    model_out["v3"] = model3.price(model_out["v2"]["p_a"] / 100, elo, keys[0], keys[1])
         except Exception:
             model_out = None
         return {"kind": "tennis", "tour": tour, "players": players, "model": model_out, "h2h": h2h, "h2h_wins": [sum(1 for x in h2h if x["winner"] == a), sum(1 for x in h2h if x["winner"] == b)],

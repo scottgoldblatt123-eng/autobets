@@ -4,7 +4,7 @@ Reports accuracy, Brier score and log loss against a 50/50 baseline, plus v2 cal
 Usage: python3 backend/tools/tennis_model_backtest.py [--db /opt/autobets/data/tennis_api.db] [--since 2025-11-01]"""
 import argparse, collections, datetime as dt, json, math, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from autobets.tennis import model, model2, tables
+from autobets.tennis import model, model2, model3, tables
 from autobets.tennis.livestore import TennisStore
 from autobets.tennis.matching import tour_group
 
@@ -80,13 +80,7 @@ def run(store, since: str, window: int = WINDOW):
     return results
 
 
-def logit(p):
-    p = min(0.99, max(0.01, p)); return math.log(p / (1 - p))
-
-
-def blend(p2, pe, w):
-    """v3: weighted average of v2 and Elo on the log-odds scale, mapped back to a probability."""
-    return 1 / (1 + math.exp(-(w * logit(p2) + (1 - w) * logit(pe))))
+blend = model3.blend
 
 
 def score(rows, idx):

@@ -33,7 +33,7 @@ export interface MatchDetails {
   teams?: { name: string; table: { place?: number; points?: number; played?: number; gd?: number; form?: string; record?: string } | null; form: FormRow[] }[]
   why?: string
   fmodel?: { home: number; draw: number; away: number; btts: number; mu: number[]; games: number[]; correct: [string, number][]; [k: string]: unknown } | null
-  model?: { v1: { p_a: number; p_b: number; odds_a: number; odds_b: number }; v2: { p_a: number; p_b: number; odds_a: number; odds_b: number }; matches: number[] } | null
+  model?: { v1: { p_a: number; p_b: number; odds_a: number; odds_b: number }; v2: { p_a: number; p_b: number; odds_a: number; odds_b: number }; v3?: { p_a: number; p_b: number; odds_a: number; odds_b: number; elo: number[] }; matches: number[] } | null
   h2h?: { day: string; tournament?: string; winner?: string; home?: string; away?: string; score: string }[]; h2h_wins?: number[]
 }
 export interface MarketInfo { market_id: string; event_id?: string; market_type?: string; shown?: string[]; name: string; event: string; competition: string; start: string | null; runners: Record<string, string>; in_play?: boolean }
