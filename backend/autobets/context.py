@@ -183,7 +183,15 @@ class MatchContext:
             players.append({"name": name, "rank": rank, "form": [{"day": r[0], "opponent": r[4] if r[3] == k else r[2], "won": won(r, k), "score": r[6], "tournament": r[1]} for r in rows]})
         h2h_rows = [r for r in finished_with(keys[0], keys[1])][:8]
         h2h = [{"day": r[0], "tournament": r[1], "winner": a if won(r, keys[0]) else b, "score": r[6]} for r in h2h_rows]
-        return {"kind": "tennis", "tour": tour, "players": players, "h2h": h2h, "h2h_wins": [sum(1 for x in h2h if x["winner"] == a), sum(1 for x in h2h if x["winner"] == b)],
+        model_out = None
+        try:
+            if tour and day:
+                from .tennis import ratings
+                bo = 5 if tour == "ATP" and any(g in (m.get("tournament_name") or "").lower() for g in ("australian open", "french open", "roland", "wimbledon", "us open")) else 3
+                model_out = ratings.price(ratings.build(self.tennis, tour, day), keys[0], keys[1], bo)
+        except Exception:
+            model_out = None
+        return {"kind": "tennis", "tour": tour, "players": players, "model": model_out, "h2h": h2h, "h2h_wins": [sum(1 for x in h2h if x["winner"] == a), sum(1 for x in h2h if x["winner"] == b)],
                 "note": "Head-to-head and form come from matches stored since the data collection began, so older meetings may be missing."}
 
     def _football_details(self, info: dict) -> dict | None:

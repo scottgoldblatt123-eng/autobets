@@ -71,6 +71,10 @@ export default function InfoPanel({ markets, active }: Props) {
                 : (det.teams ?? []).map(t => <tr key={t.name}><td><b>{t.name}</b></td><td className="num">{t.table?.place ?? '–'}</td><td className="num">{t.table?.points ?? '–'}</td><td className="num">{t.table?.played ?? '–'}</td><td className="num">{t.table?.gd ?? '–'}</td><td className="num">{t.table?.record ?? '–'}</td><td>{chips(t.form)}</td></tr>)}
             </tbody>
           </table>
+          {det.kind === 'tennis' && det.model && <div className="h2h"><b>Model prices</b> <span className="muted small">(recommendation only; last 12 months, {det.model.matches[0]} and {det.model.matches[1]} matches)</span>
+            <table><thead><tr><th></th><th>{names[0]}</th><th>{names[1]}</th></tr></thead><tbody>
+              <tr><td>v1 workbook</td><td className="num">{det.model.v1.odds_a.toFixed(2)} ({det.model.v1.p_a.toFixed(0)}%)</td><td className="num">{det.model.v1.odds_b.toFixed(2)} ({det.model.v1.p_b.toFixed(0)}%)</td></tr>
+              <tr><td>v2 point model</td><td className="num">{det.model.v2.odds_a.toFixed(2)} ({det.model.v2.p_a.toFixed(0)}%)</td><td className="num">{det.model.v2.odds_b.toFixed(2)} ({det.model.v2.p_b.toFixed(0)}%)</td></tr></tbody></table></div>}
           <div className="h2h"><b>Head-to-head</b>{det.h2h && det.h2h.length ? <> <span className="muted">{names[0]} {det.h2h_wins?.[0] ?? 0} – {det.h2h_wins?.[1] ?? 0} {names[1]}</span>
             <table><tbody>{det.h2h.map((x, i) => <tr key={i}><td className="muted num">{x.day}</td><td>{x.winner ? <b>{x.winner}</b> : `${x.home} v ${x.away}`}</td><td className="num">{x.score}</td><td className="muted small">{x.tournament ?? ''}</td></tr>)}</tbody></table></> : <span className="muted"> no meetings in the stored data</span>}</div>
           {det.note && <div className="muted small">{det.note}</div>}
