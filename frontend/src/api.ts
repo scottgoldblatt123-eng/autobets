@@ -47,6 +47,8 @@ export const api = {
   ping: () => call<{ needs_token: boolean; mode: string }>('/api/ping'),
   context: (ids: string[]) => call<Record<string, MatchCtx>>(`/api/context?ids=${ids.join(',')}`),
   eventMarkets: (eventId: string) => call<MarketInfo[]>(`/api/event_markets?event_id=${encodeURIComponent(eventId)}`),
+  footballStatus: () => call<Record<string, unknown>>('/api/football/status'),
+  tennisStatus: () => call<Record<string, unknown>>('/api/tennis/status'),
   markets: (sport: string) => call<MarketInfo[]>(`/api/markets?sport=${sport}`),
   state: (ids: string[], shortS = 60, longS = 300) => call<State>(`/api/state?ids=${ids.join(',')}&short_s=${shortS}&long_s=${longS}`),
   place: (b: { market_id: string; selection_id: string; side: Side; price: number; size: number; persistence?: string; fok_s?: number; offset?: number; stop?: number }) =>

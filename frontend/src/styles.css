@@ -236,3 +236,6 @@ main { overflow-y: auto; }
 .pickgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; margin-top: 8px; }
 .pick { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; } .pick.on { border-color: var(--brand); background: var(--surface-raised); }
 .ladder .rows { overscroll-behavior: contain; }
+
+.dbox { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 12px; margin-top: 10px; } .dbox h4 { margin: 0 0 4px; border: 0; }
+.dbox table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; } .dbox td { padding: 2px 0; } .dbox td:last-child { text-align: right; }

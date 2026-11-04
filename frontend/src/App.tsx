@@ -50,6 +50,41 @@ function groupMarkets(ms: MarketInfo[], event = ''): [string, MarketInfo[]][] {
   return order.filter(g => out.has(g)).map(g => [g, out.get(g)!.sort((x, y) => (x.name.replace(/[\d.]+/g, '') === y.name.replace(/[\d.]+/g, '') ? line(x.name) - line(y.name) : x.name.localeCompare(y.name)))] as [string, MarketInfo[]])
 }
 
+type Status = Record<string, unknown> | null
+const ago = (iso: unknown) => { if (typeof iso !== 'string') return 'never'; const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000)); return s < 90 ? `${s}s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago` }
+const num = (v: unknown) => (typeof v === 'number' ? v.toLocaleString() : '–')
+
+/** Football and tennis data collection at a glance, so nobody needs the server to see whether it is working. */
+function DataStatus({ onClose }: { onClose: () => void }) {
+  const [fb, setFb] = useState<Status>(null), [tn, setTn] = useState<Status>(null), [err, setErr] = useState('')
+  useEffect(() => {
+    let dead = false
+    const go = () => Promise.all([api.footballStatus(), api.tennisStatus()]).then(([f, t]) => { if (!dead) { setFb(f); setTn(t); setErr('') } }).catch(e => { if (!dead) setErr((e as Error).message) })
+    go(); const t = window.setInterval(go, 5000)
+    return () => { dead = true; window.clearInterval(t) }
+  }, [])
+  const row = (k: string, v: React.ReactNode) => <tr key={k}><td className="muted">{k}</td><td><b>{v}</b></td></tr>
+  const box = (title: string, s: Status, rows: (s: Record<string, unknown>) => React.ReactNode[]) => (
+    <div className="dbox"><h4>{title}</h4>
+      {!s ? <div className="muted small">Loading…</div> : s.enabled === false ? <div className="muted small">Not running. Its key is not set on the server.</div> :
+        <><table><tbody>{rows(s)}</tbody></table>
+          <div className={'small ' + (s.last_error ? 'loss' : 'gain')}>{s.last_error ? 'Last error: ' + String(s.last_error) : 'No errors. Last update ' + ago(s.last_tick)}</div></>}
+    </div>)
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="card scroll" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <h3>Data collection</h3>
+        {err && <div className="loss small">{err}</div>}
+        {box('Football (API-Football)', fb, s => [row('Fixtures stored', num(s.fixtures)), row('Finished matches', num(s.finished)), row('With full details (stats, events, lineups)', `${num(s.with_details)} of ${num(s.finished)}`),
+          row('Live now', num(s.live_now)), row('Live score changes logged', num(s.live_snapshots)), row('Requests used today', `${num(s.requests_used_today)} of 7,500`)])}
+        {box('Tennis (api-tennis)', tn, s => [row('Matches stored', num(s.matches)), row('With match statistics', num(s.with_stats)), row('History reached', `${num(s.history_days_done)} of ${num(s.history_target)} days (back to ${String(s.earliest ?? '–')})`),
+          row('Live now', num(s.live_now)), row('Live score changes logged', num(s.live_snapshots))])}
+        <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end' }}><button onClick={onClose}>Close</button></div>
+      </div>
+    </div>
+  )
+}
+
 function loadSettings(): Settings {
   try { const s = JSON.parse(localStorage.getItem('autobets.settings') ?? '{}'); if (s.rows === 21 || s.rows === 0) delete s.rows
     return { ...DEFAULTS, ...s, keys: { ...KEYS, ...(s.keys ?? {}) } } } catch { return DEFAULTS }
@@ -74,6 +109,7 @@ export default function App() {
   const [state, setState] = useState<State | null>(null)
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
+  const [showData, setShowData] = useState(false)
   const [layouts, setLayouts] = useState<Record<string, Settings>>(() => { try { return JSON.parse(localStorage.getItem('autobets.layouts') ?? '{}') } catch { return {} } })
   const [layoutName, setLayoutName] = useState('')
   useEffect(() => { try { localStorage.setItem('autobets.layouts', JSON.stringify(layouts)) } catch { /* ignore */ } }, [layouts])
@@ -341,6 +377,7 @@ export default function App() {
           return <span className={'stat totalpl ' + (Math.round(total * 100) >= 0 ? 'gain' : 'loss')} title="All open markets together: what you would lock by hard-closing each one now (or your guaranteed result where there is nothing left to hedge)">P&L <b>{money(total)}</b></span>
         })()}
         <span className="stat">Exposure <b>£{(tot?.exposure ?? 0).toFixed(2)}</b></span>
+        <button className="sm" onClick={() => setShowData(true)} title="What the football and tennis data collectors have stored">Data</button>
         <button className="sm" onClick={() => setShowSettings(true)}>Ladder settings</button>
         <button className="sm" onClick={() => setSettings(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }))}>{theme === 'dark' ? 'Light' : 'Dark'}</button>
       </header>
@@ -511,6 +548,7 @@ export default function App() {
         </div>
       )}
 
+      {showData && <DataStatus onClose={() => setShowData(false)} />}
       {picker && (
         <div className="overlay" onClick={() => setPicker(null)}>
           <div className="card scroll" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
