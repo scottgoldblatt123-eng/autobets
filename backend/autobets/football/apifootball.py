@@ -3,6 +3,7 @@ can be rebuilt from our own history later; the key comes from the API_FOOTBALL_K
 from __future__ import annotations
 
 import hashlib
+import logging
 import json
 import os
 import time
@@ -12,6 +13,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable
 
+log = logging.getLogger("autobets.football")
 HOST = "https://v3.football.api-sports.io"
 
 
@@ -52,7 +54,10 @@ class ApiFootball:
         if errs:       # the API reports problems (bad key, plan limits) inside a 200 response
             raise ApiFootballError("; ".join(f"{k}: {v}" for k, v in errs.items()) if isinstance(errs, dict) else str(errs))
         if _save:
-            self._save(path, params, out)
+            try:
+                self._save(path, params, out)
+            except OSError as e:      # the raw copy is a bonus: never let a disk or permission problem stop the data flowing
+                log.warning("could not save raw API-Football response: %s", e)
         return out
 
     def _save(self, path: str, params: dict, out: dict) -> None:

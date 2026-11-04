@@ -35,3 +35,9 @@ def test_season_rolls_over_in_july():
     assert current_season(time.strptime("2026-11-04", "%Y-%m-%d")) == 2026
     assert current_season(time.strptime("2027-03-01", "%Y-%m-%d")) == 2026
     assert current_season(time.strptime("2027-07-01", "%Y-%m-%d")) == 2027
+
+
+def test_unwritable_raw_store_does_not_stop_the_data(tmp_path):
+    blocked = tmp_path / "f"; blocked.write_text("a file, not a folder")      # saving under it fails with an OSError
+    api = ApiFootball(key="k", store_dir=str(blocked), fetch=fake({"errors": [], "response": [1]}))
+    assert api.get("fixtures")["response"] == [1]
