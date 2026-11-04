@@ -11,7 +11,24 @@ from .matching import tour_group
 MIN_MATCHES = 5
 
 
+_BUILD_CACHE: dict = {}
+
+
 def build(store, tour: str, day: str, days: int = 365) -> dict:
+    """Cached for an hour per (tour, day): the tables only change as new matches finish."""
+    import time
+    k = (id(store), tour, day, days)
+    hit = _BUILD_CACHE.get(k)
+    if hit and time.time() - hit[0] < 3600:
+        return hit[1]
+    if len(_BUILD_CACHE) > 12:
+        _BUILD_CACHE.clear()
+    rows = _build(store, tour, day, days)
+    _BUILD_CACHE[k] = (time.time(), rows)
+    return rows
+
+
+def _build(store, tour: str, day: str, days: int = 365) -> dict:
     """-> {player_key(str): {name, matches, service_pts, return_pts, hold, opp_hold}} (percentages)."""
     start = (dt.date.fromisoformat(day) - dt.timedelta(days=days)).isoformat()
     with store.lock:
@@ -47,4 +64,4 @@ def price(rows: dict, key_a, key_b, best_of: int = 3) -> dict | None:
     v2 = model2.price(a, b, avg, best_of)
     v1 = model.price(a, b, model.Averages(avg["return_pts"], sum(r["opp_hold"] for r in rows.values()) / n))
     return {"v1": {k: v1[k] for k in ("p_a", "p_b", "odds_a", "odds_b", "version")}, "v2": {k: v2[k] for k in ("p_a", "p_b", "odds_a", "odds_b", "version")},
-            "matches": [a["matches"], b["matches"]], "players_in_table": n}
+            "matches": [a["matches"], b["matches"]], "players_in_table": n, "serve": [v2["serve_a"], v2["serve_b"]]}

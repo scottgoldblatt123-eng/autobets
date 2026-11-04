@@ -49,6 +49,7 @@ def _iso(x) -> dt.datetime | None:
 class MatchContext:
     def __init__(self, tennis=None, football=None):
         self.tennis, self.football = tennis, football          # the live stores, or None when that collector is off
+        self._pre: dict = {}                                    # event_key -> calibrated pre-match serve rates (API first, second player)
 
     def for_market(self, info: dict) -> dict | None:
         try:
@@ -101,7 +102,12 @@ class MatchContext:
         serve = {"First Player": 0, "Second Player": 1}.get(m.get("event_serve") or "")
         if serve is not None and swapped:
             serve = 1 - serve
-        return {"kind": "tennis", "source": "api-tennis", "status": m.get("event_status"), "live": str(m.get("event_live")) == "1",
+        live_model = None
+        try:
+            live_model = self._live_model(m, swapped)
+        except Exception:
+            live_model = None
+        return {"kind": "tennis", "source": "api-tennis", "status": m.get("event_status"), "live": str(m.get("event_live")) == "1", "model": live_model,
                 "tournament": m.get("tournament_name"), "round": m.get("tournament_round"),
                 "players": [a, b], "sets": [list(s) for s in sets], "sets_won": res if len(res) == 2 else None,
                 "game": game if len(game) == 2 and game != ["-"] else None, "serving": serve}
@@ -180,6 +186,45 @@ class MatchContext:
             return None
         return None
 
+    def _live_model(self, m: dict, swapped: bool) -> dict | None:
+        """In-play win probability from the live score. API first player is 'A'; the result is returned in Betfair order."""
+        from .tennis import livemodel, model3, ratings
+        if str(m.get("event_live")) != "1":
+            return None
+        tour, day = tour_group(m.get("event_type_type")), m.get("event_date") or ""
+        k1, k2 = m.get("first_player_key"), m.get("second_player_key")
+        if not tour or not day or not k1 or not k2:
+            return None
+        bo = _best_of(tour, m)
+        ek = (m.get("event_key"), bo)
+        if ek not in self._pre:
+            pr = ratings.price(ratings.build(self.tennis, tour, day), k1, k2, bo)
+            if not pr:
+                self._pre[ek] = None
+            else:
+                elo, _ = model3.ratings(self.tennis, day)
+                p3 = model3.price(pr["v2"]["p_a"] / 100, elo, k1, k2)["p_a"] / 100
+                self._pre[ek] = livemodel.calibrate(pr["serve"][0], pr["serve"][1], p3, bo)
+        rates = self._pre[ek]
+        if not rates:
+            return None
+        sets, games = [0, 0], (0, 0)
+        scores = [(int(s.get("score_first")), int(s.get("score_second"))) for s in (m.get("scores") or []) if str(s.get("score_first")).isdigit() and str(s.get("score_second")).isdigit()]
+        for i, (x, y) in enumerate(scores):
+            done = (max(x, y) >= 6 and abs(x - y) >= 2) or max(x, y) == 7
+            if done:
+                sets[0 if x > y else 1] += 1
+            else:
+                games = (x, y)
+        g = (m.get("event_game_result") or "").split(" - ")
+        pts = livemodel.parse_points(g[0].strip(), g[1].strip()) if len(g) == 2 else None
+        serve = {"First Player": True, "Second Player": False}.get(m.get("event_serve") or "")
+        if serve is None or max(sets) >= bo // 2 + 1:
+            return None
+        pa = livemodel.live_prob(rates[0], rates[1], tuple(sets), games, pts or (0, 0), serve, bo)
+        p = [1 - pa, pa] if swapped else [pa, 1 - pa]
+        return {"p": [round(100 * x, 1) for x in p], "odds": [round(1 / x, 2) for x in p], "version": "live-v1"}
+
     def _tennis_details(self, info: dict) -> dict | None:
         found = self._find_tennis(info)
         if not found:
@@ -218,7 +263,7 @@ class MatchContext:
         try:
             if tour and day:
                 from .tennis import ratings
-                bo = 5 if tour == "ATP" and any(g in (m.get("tournament_name") or "").lower() for g in ("australian open", "french open", "roland", "wimbledon", "us open")) else 3
+                bo = _best_of(tour, m)
                 model_out = ratings.price(ratings.build(self.tennis, tour, day), keys[0], keys[1], bo)
                 if model_out:
                     from .tennis import model3
@@ -278,3 +323,8 @@ class MatchContext:
             fb_model = None
         return {"kind": "football", "league": league, "fmodel": fb_model, "teams": [{"name": h, "table": team_row(hid), "form": last(hid)}, {"name": a, "table": team_row(aid), "form": last(aid)}],
                 "h2h": h2h, "h2h_wins": wins}
+
+
+def _best_of(tour: str, m: dict) -> int:
+    name = (m.get("tournament_name") or "").lower()
+    return 5 if tour == "ATP" and any(g in name for g in ("australian open", "french open", "roland", "wimbledon", "us open")) and "challenger" not in (m.get("event_type_type") or "").lower() else 3

@@ -1,3 +1,4 @@
+import pytest
 import json
 from autobets.tennis import ratings
 from autobets.tennis.livestore import TennisStore
@@ -31,3 +32,24 @@ def test_table_and_price_no_lookahead():
     out = ratings.price(rows, 1, 2)
     assert out["v2"]["p_a"] > 70 and out["v1"]["version"] == "v1-sheet"
     assert ratings.price(rows, 1, 999) is None
+
+
+def test_live_model_from_score():
+    from autobets.context import MatchContext
+    st = TennisStore(); i = 0
+    for rnd in range(6):
+        i += 1; st.upsert(match(i, f"2026-10-0{rnd + 1}", 1, 2, (68, 46, 11, 8), (55, 34, 4, 1)))
+    for k in range(3, 23):
+        for j in range(5):
+            i += 1; st.upsert(match(i, f"2026-09-1{j}", k, k + 100, (60, 40, 9, 5), (60, 40, 9, 5)))
+    live = match(9999, "2026-11-03", 1, 2, (0, 0, 0, 0), (0, 0, 0, 0))
+    live.update({"event_status": "Set 2", "event_live": "1", "event_winner": None, "event_serve": "Second Player", "event_game_result": "15 - 40",
+                 "scores": [{"score_first": "6", "score_second": "4"}, {"score_first": "1", "score_second": "3"}], "statistics": []})
+    st.upsert(live)
+    ctx = MatchContext(tennis=st)
+    m = {"event": "P1 v P2"}
+    import json
+    row = json.loads(st.db.execute("SELECT raw FROM matches WHERE event_key=9999").fetchone()[0])
+    out = ctx._live_model(row, False)
+    assert out and out["p"][0] + out["p"][1] == pytest.approx(100, abs=0.2)
+    assert out["p"][0] > 50                                   # dominant player up a set, behind a break in the second: still ahead

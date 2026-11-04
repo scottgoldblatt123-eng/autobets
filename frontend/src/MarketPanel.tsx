@@ -125,6 +125,7 @@ function MatchLine({ ctx }: { ctx: MatchCtx }) {
             <span className="mname">{ctx.serving === i && <i title="Serving">●</i>}{last(i ? b : a)}</span>
             {(ctx.sets ?? []).map((s, k) => <span key={k} className="mset">{s[i]}</span>)}
             {ctx.game && ctx.live && <span className="mgame">{ctx.game[i]}</span>}
+            {ctx.model && ctx.live && <span className="muted small" title={`Live model: ${ctx.model.p[i]}% to win the match (recommendation only; compare with the Betfair price)`}>model <b>{ctx.model.odds[i].toFixed(2)}</b></span>}
           </span>
         ))}
       </div>
