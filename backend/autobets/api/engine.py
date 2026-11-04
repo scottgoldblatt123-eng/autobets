@@ -159,6 +159,15 @@ class Engine:
             res = self.feed.list_markets(sport)
         else:
             res = self.feed.list_markets({"tennis": "2", "football": "1"}[sport], "MATCH_ODDS", max_results=100)
+            try:                      # the catalogue does not say which markets are in play; the books do (<= 40 markets per call)
+                flags = {}
+                for i in range(0, len(res), 40):
+                    for b in self.feed.get_books([m["market_id"] for m in res[i:i + 40]]):
+                        flags[b.market_id] = b.in_play
+                for m in res:
+                    m["in_play"] = flags.get(m["market_id"], False)
+            except Exception:
+                pass
         for m in res:
             self._info[m["market_id"]] = m
         self._markets_cache[sport] = (time.time(), res)

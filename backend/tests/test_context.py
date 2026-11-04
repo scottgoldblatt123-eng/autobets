@@ -71,3 +71,10 @@ def test_football_details_have_table_form_and_head_to_head():
     d = MatchContext(football=st).details({"event": "Man Utd v Liverpool", "start": ko.isoformat()})
     assert d["teams"][0]["table"]["place"] == 3 and d["teams"][1]["table"] is None
     assert d["h2h_wins"] == [0, 1] and len(d["h2h"]) == 2 and d["teams"][0]["form"][0]["result"] == "L"
+
+
+def test_surname_only_betfair_names():
+    from autobets.tennis.matching import same_player
+    assert same_player("T. Paul", "Paul") and same_player("Q. Halys", "Halys")
+    assert not same_player("T. Paul", "Halys") and not same_player("T. Paul", "Pau")
+    assert same_player("M. Andreeva", "Andreeva") and same_player("A. De Minaur", "Minaur")

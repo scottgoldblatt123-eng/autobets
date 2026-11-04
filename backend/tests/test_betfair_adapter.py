@@ -69,7 +69,7 @@ def test_practice_engine_on_betfair_shaped_data():
         {"selectionId": 10, "lastPriceTraded": 3.4, "ex": {"availableToBack": [{"price": 3.35, "size": 120.5}, {"price": 3.3, "size": 40}],
                                                          "availableToLay": [{"price": 3.4, "size": 80}], "tradedVolume": [{"price": 3.4, "size": 900}]}},
         {"selectionId": 11, "ex": {"availableToBack": [], "availableToLay": []}}]}
-    fake = Fake([LOGIN_OK, (200, cat), (200, [book]), (200, [book]), (200, [book])])
+    fake = Fake([LOGIN_OK, (200, cat), (200, [book]), (200, [book]), (200, [book]), (200, [book])])
     eng = Engine(BetfairAdapter("k", "u", "p", fake), "practice")
     ms = eng.markets("tennis")
     assert ms[0]["runners"] == {"10": "A", "11": "B"}
@@ -80,3 +80,12 @@ def test_practice_engine_on_betfair_shaped_data():
     assert r["order"]["status"] == "MATCHED"
     assert eng.state(["1.1"])["markets"]["1.1"]["positions"]["10"]["lose"] == -10
     assert not any("order" in url for url, _ in fake.calls)       # nothing was ever sent to the order endpoints
+
+
+def test_market_list_carries_in_play_flag():
+    from autobets.api.engine import Engine
+    cat = [{"marketId": "1.1", "marketName": "Match Odds", "event": {"name": "A v B"}, "runners": []},
+           {"marketId": "1.2", "marketName": "Match Odds", "event": {"name": "C v D"}, "runners": []}]
+    live, pre = dict(BOOK, marketId="1.1", inplay=True), dict(BOOK, marketId="1.2", inplay=False)
+    eng = Engine(BetfairAdapter("k", "u", "p", Fake([LOGIN_OK, (200, cat), (200, [live, pre])])), "practice")
+    assert {m["market_id"]: m["in_play"] for m in eng.markets("tennis")} == {"1.1": True, "1.2": False}

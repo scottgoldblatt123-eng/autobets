@@ -10,6 +10,8 @@ def tokens(s):
 def same_player(api_name, other_name):
     """True if 'J. Sinner' / 'Jannik Sinner' / 'Sinner J' plausibly name the same person (surname words + first initial)."""
     a, o = tokens(api_name), tokens(other_name)
+    if len(o) == 1 and len(a) >= 2:             # Betfair tennis events often give the surname only: 'Paul v Halys'
+        return o[0] == a[-1] or (len(a[0]) == 1 and o[0] in a[1:])
     if len(a) < 2 or len(o) < 2:
         return False
     init = a[0][0] if len(a[0]) == 1 else a[-1][0] if len(a[-1]) == 1 else a[0][0]
