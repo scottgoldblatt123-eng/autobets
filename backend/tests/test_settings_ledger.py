@@ -133,3 +133,34 @@ def test_settings_endpoints(client):
     assert client.get("/api/pnl").json()["limits"]["daily"] == 30
     assert client.post("/api/automation/stop").json()["automation"] is False
     assert client.get("/api/pnl").json()["automation"] is False
+
+
+def test_ledger_tracks_stake_for_roi_and_home_summary(eng):
+    import time
+    _back(eng, 10)
+    eng.feed.status[MID] = "CLOSED"
+    orig = eng.feed.get_books
+
+    def settled(ids, depth=False):
+        bs = orig(ids, depth=depth)
+        for b in bs:
+            for sid, s in b.selections.items():
+                s.status = "WINNER" if sid == "101" else "LOSER"
+        return bs
+    eng.feed.get_books = settled
+    eng.settle_check()
+    p = eng.ledger.periods(time.time())
+    assert p["month_staked"] == 10 and p["month_roi"] == round(100 * p["month"] / 10, 1) and p["last7"] == p["month"]
+    h = eng.home()
+    assert h["kpis"]["month"] == p["month"] and h["kpis"]["roi"] == p["month_roi"] and h["kpis"]["win_rate"] == 100
+
+
+def test_home_lists_open_manual_positions_and_planned_markets():
+    e = Engine.demo()
+    _back(e, 5)
+    e.settle_check()
+    s = e.scripts.create({"name": "S", "sport": "any", "rules": [{"id": "r1", "kind": "entry", "when": [{"type": "in_play", "value": True}], "then": [{"type": "back", "price": "best", "stake": 5}]}]})
+    e.plan.add("1.900002", "201", s["id"], "C v D", "Match Odds", "C", "ai")
+    ov = {o["market_id"]: o for o in e.home()["overview"]}
+    assert ov[MID]["strategy"] == "Manual" and ov[MID]["matched"] == 5 and ov[MID]["pnl"] is not None
+    assert ov["1.900002"]["by"] == "ai" and ov["1.900002"]["strategy"] == "S"

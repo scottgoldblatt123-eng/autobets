@@ -87,6 +87,7 @@ export interface AlertRow { id: string; t: number; type: string; text: string; a
 export interface HealthItem { key: string; name: string; level: 'ok' | 'bad' | 'off'; detail: string }
 
 export const api = {
+  home: () => call<Record<string, unknown>>('/api/home'),
   recs: (kind = 'all') => call<{ items: Rec[]; stats: RecStats }>(`/api/recs?kind=${kind}`),
   recApply: (id: string, b: { price?: number; stake?: number } = {}) => call<{ rec: Rec; order: Order; warnings: string[] }>(`/api/recs/${id}/apply`, { method: 'POST', body: JSON.stringify(b) }),
   recDismiss: (id: string, reason: string) => call<Rec>(`/api/recs/${id}/dismiss`, { method: 'POST', body: JSON.stringify({ reason }) }),

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type PlanBet, type PlanRow, type PlanView, type Script } from './api'
 import MarketPicker from './MarketPicker'
+import AttachDialog from './AttachDialog'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
 const gbp = (v: number | null | undefined) => (v == null ? '–' : '£' + v.toFixed(2))
@@ -51,12 +52,7 @@ export default function PlanScreen({ say }: { say: Say }) {
             <td>{(b.status === 'UNMATCHED' || b.status === 'PARTIAL') && <button className="sm" onClick={() => act(() => api.cancel(b.order_id), 'Cancelled.')}>Cancel</button>}</td></tr>)}
             {!tabBets.length && <tr><td colSpan={8} className="muted pad">No {tab.toLowerCase()} bets.</td></tr>}</tbody></table></div>
       {adding && <MarketPicker needRunner={false} onClose={() => setAdding(false)} onPick={m => { setAdding(false); setPickScript({ m: m.market_id, sid: null, name: m.event }) }} />}
-      {pickScript && <div className="overlay" onClick={() => setPickScript(null)}><div className="card" role="dialog" aria-label="Attach a script" onClick={e => e.stopPropagation()} style={{ width: 460 }}>
-        <h3>{pickScript.name}</h3><div className="muted small">Attach a script, or just watch the market.</div>
-        <div className="pickerlist"><button className="pickrow" onClick={() => act(() => api.planAdd({ market_id: pickScript.m, selection_id: null, script_id: null }), 'Added (watching).').then(() => setPickScript(null))}>None (watching only)</button>
-          {scripts.map(s => <button key={s.id} className="pickrow" onClick={() => setPickScript({ ...pickScript, sid: s.id })}>{s.name}<small className="muted"> v{s.version}{s.enabled ? ' · on' : ' · off'}</small></button>)}</div>
-        {pickScript.sid && <PickRunner marketId={pickScript.m} onPick={sid => act(() => api.planAdd({ market_id: pickScript.m, selection_id: sid, script_id: pickScript.sid }), 'Added to your Plan.').then(() => setPickScript(null))} />}
-        <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={() => setPickScript(null)}>Cancel</button></div></div></div>}
+      {pickScript && <AttachDialog marketId={pickScript.m} title={pickScript.name} onClose={() => setPickScript(null)} onDone={(m, k) => { say(m, k); void load() }} />}
       {edit && <div className="overlay" onClick={() => setEdit(null)}><div className="card" role="dialog" aria-label="Edit plan row" onClick={e => e.stopPropagation()} style={{ width: 420 }}>
         <h3>Edit before applying</h3><div className="muted small">{edit.event} · {edit.market_name} · {edit.strategy}</div>
         <label>Stake (£), blank = the script's own<input inputMode="decimal" value={stake} onChange={e => setStake(e.target.value)} /></label>
@@ -67,10 +63,4 @@ export default function PlanScreen({ say }: { say: Say }) {
         <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={() => setRm(null)}>Keep</button><button className="stopbtn" onClick={() => act(() => api.planRemove(rm.id), 'Removed.').then(() => setRm(null))}>Remove</button></div></div></div>}
     </div>
   )
-}
-
-function PickRunner({ marketId, onPick }: { marketId: string; onPick: (sid: string) => void }) {
-  const [runners, setRunners] = useState<Record<string, string>>({})
-  useEffect(() => { api.state([marketId]).then(s => setRunners(s.markets[marketId]?.runners ?? {})).catch(() => undefined) }, [marketId])
-  return <><div className="muted small">Which runner does it act on?</div><div className="pickerlist">{Object.entries(runners).map(([sid, n]) => <button key={sid} className="pickrow" onClick={() => onPick(sid)}>{n}</button>)}</div></>
 }

@@ -133,6 +133,7 @@ class Engine:
         self.recs = Recs()
         self.context_fn = None                         # set by the app: market info -> live score / set / minute, when known
         self._susp: dict[str, float] = {}
+        self._mtm_m: dict[str, dict] = {}
         self._mtm = 0.0                                # open positions marked to market (what closing them now would lock in)
         self._load()
         self._apply_settings()
@@ -416,14 +417,20 @@ class Engine:
             winners = [sid for sid, s in b.selections.items() if s.status == "WINNER"]
             if b.status == "CLOSED" and winners:
                 ev = self._info.get(b.market_id, {}).get("event", "") or b.market_id
-                if self.ledger.add(b.market_id, ev, now, out.get(winners[0], 0.0), winners[0]):
+                if self.ledger.add(b.market_id, ev, now, out.get(winners[0], 0.0), winners[0], self._staked(b.market_id)):
                     booked += 1
                     self._log(f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "info")
                     self.alerts.add("trade", f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "Result booked to today's P&L", False, {"kind": "market", "id": b.market_id})
             elif b.status != "CLOSED":
+                held_m = out and any(abs(p.win) > 0.004 or abs(p.lose) > 0.004 for p in full.values())
                 plan = pnl.green_plan(out, {k: (v.backs[0].price if v.backs else None) for k, v in b.selections.items()},
                                       {k: (v.lays[0].price if v.lays else None) for k, v in b.selections.items()}) if out else None
-                mtm += plan["locked"] if plan else (min(out.values()) if out else 0.0)
+                mv = plan["locked"] if plan else (min(out.values()) if out else 0.0)
+                mtm += mv
+                self._mtm_m[b.market_id] = {"pnl": round(mv, 2), "exposure": round(max(0.0, -min(out.values())), 2) if out else 0.0}
+        for mid in list(self._mtm_m):
+            if mid not in pos:
+                del self._mtm_m[mid]
         self._mtm = round(mtm, 2)
         self._refresh_guard()
         return booked
@@ -432,6 +439,48 @@ class Engine:
     def update_locked(self, fn):
         """Run a change to scripts or the plan under the engine lock so it is saved with everything else."""
         return fn()
+
+    def _staked(self, market_id: str) -> float:
+        """Money put at risk on a market: back stakes plus lay liabilities, over everything matched."""
+        tot = 0.0
+        for f in self.ex.fills():
+            r = self.ex.get_order(f.order_id).request
+            if r.market_id == market_id:
+                tot += f.size if r.side is Side.BACK else f.size * (r.price - 1)
+        return tot
+
+    @locked
+    def home(self) -> dict:
+        """Everything the Home screen shows, in one call."""
+        self._refresh_guard()
+        now = time.time()
+        per = self.ledger.periods(now)
+        rec = self.recs.stats()
+        running = [r for r in self.plan.rows.values() if r["state"] in ("armed", "running") and r["script_id"] and self.scripts.scripts.get(r["script_id"], {}).get("enabled")]
+        pos = self.positions()
+        vol: dict[str, float] = defaultdict(float)
+        for f in self.ex.fills():
+            vol[self.ex.get_order(f.order_id).request.market_id] += f.size
+        overview, seen = [], set()
+        for r in self.plan.rows.values():
+            v = self._row_view(r)
+            m = self._mtm_m.get(r["market_id"], {})
+            seen.add(r["market_id"])
+            overview.append({"market_id": r["market_id"], "event": r["event"], "market": r["market_name"], "strategy": v["strategy"], "rules": v["trigger"], "by": r["added_by"],
+                             "state": r["state"], "pnl": m.get("pnl"), "exposure": m.get("exposure"), "matched": round(vol.get(r["market_id"], 0.0), 2), "start": v["start"]})
+        for mid in pos:
+            if mid not in seen:
+                info = self._info.get(mid, {})
+                m = self._mtm_m.get(mid, {})
+                overview.append({"market_id": mid, "event": info.get("event", mid), "market": info.get("name", ""), "strategy": "Manual", "rules": "", "by": "you", "state": "open",
+                                 "pnl": m.get("pnl"), "exposure": m.get("exposure"), "matched": round(vol.get(mid, 0.0), 2), "start": info.get("start")})
+        open_orders = [self._order(o) | {"event": self._info.get(o.request.market_id, {}).get("event", ""), "runner": self._name(o.request.market_id, o.request.selection_id)}
+                       for o in self.ex.open_orders() if o.status in OPEN]
+        return {"today": round(per["today"] + self._mtm, 2), "exposure": self._open_liability(True), "automation": self.settings.automation_enabled,
+                "kpis": {"month": per["month"], "roi": per["month_roi"], "last7": per["last7"], "win_rate": per["month_win_rate"], "markets": per["month_markets"],
+                         "clv": rec["avg_clv_pts"], "scripts_running": len(running), "recs_pending": rec["pending"]},
+                "overview": sorted(overview, key=lambda x: x["start"] or "~"), "open_orders": open_orders[:20],
+                "recs": self.recs.list("all", "pending")[:4], "alerts": self.alerts.list("all")[:6]}
 
     @locked
     def pnl_summary(self) -> dict:

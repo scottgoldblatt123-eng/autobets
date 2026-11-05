@@ -275,6 +275,10 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     if engine.mode != "demo":
         threading.Thread(target=_monitor, name="monitor", daemon=True).start()
 
+    @app.get("/api/home")
+    def home(_=Depends(auth)):
+        return engine.home()
+
     @app.get("/api/recs")
     def recs_list(kind: str = "all", status: str = "pending", _=Depends(auth)):
         return {"items": engine.recs.list(kind, status), "stats": engine.recs.stats(time.time() - 30 * 86400)}
