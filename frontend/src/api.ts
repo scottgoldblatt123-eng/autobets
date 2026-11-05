@@ -100,6 +100,7 @@ export interface ModelsData { available: boolean; reason?: string; live?: Record
 export interface AiLearning { stats: RecStats; dismiss_reasons: { reason: string; n: number }[]; clv_by_confidence: Record<string, { n: number; avg_clv_pts: number }>; ideas: number }
 
 export const api = {
+  credentials: () => call<{ items: { name: string; set: boolean; detail: string }[]; where: string }>('/api/credentials'),
   perf: (days: number) => call<PerfData>(`/api/analyse/performance?days=${days}`),
   anModels: () => call<ModelsData>('/api/analyse/models'),
   anAi: () => call<AiLearning>('/api/analyse/ai'),

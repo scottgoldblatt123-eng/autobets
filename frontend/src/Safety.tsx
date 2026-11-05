@@ -44,7 +44,7 @@ export function StatusStrip({ onOpenSafety, onNotice }: { onOpenSafety: () => vo
 const FIELD = (v: number) => (v === 0 ? '' : String(v))
 
 /** Safety and limits: the rules that sit between scripts / the AI and the exchange. Saved on the server, so they hold with the browser closed. */
-export function SafetyPanel({ onClose, onNotice }: { onClose: () => void; onNotice: (text: string, kind?: 'ok' | 'warn' | 'err') => void }) {
+export function SafetyForm({ heading = true }: { heading?: boolean }) {
   const [s, setS] = useState<SafetySettings | null>(null), [err, setErr] = useState('')
   useEffect(() => { api.settings().then(setS).catch(e => setErr((e as Error).message)) }, [])
   const save = async (patch: Partial<SafetySettings>) => {
@@ -60,9 +60,8 @@ export function SafetyPanel({ onClose, onNotice }: { onClose: () => void; onNoti
   const check = (key: keyof SafetySettings, label: string, hint?: string) => s && (
     <label className="check" title={hint}><input type="checkbox" checked={s[key] as boolean} onChange={e => save({ [key]: e.target.checked })} />{label}</label>)
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="card scroll" role="dialog" aria-label="Safety and limits" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
-        <h3>Safety and limits</h3>
+    <>
+        {heading && <h3>Safety and limits</h3>}
         {err && <div className="loss small">{err}</div>}
         {!s ? <div className="muted small">Loading…</div> : <>
           <div className="small muted">These rules are plain code on the server. The AI cannot change or bypass them. Leave a limit empty for no limit. Manual trading is never blocked; if you set a loss limit, your manual results count toward it.</div>
@@ -90,6 +89,16 @@ export function SafetyPanel({ onClose, onNotice }: { onClose: () => void; onNoti
           {money_('ai_max_stake', 'Largest stake the AI may propose (£)', 'Proposals above this are refused.')}
           {money_('ai_monthly_cap', 'Monthly AI spend cap (£, estimated)', 'AI calls stop when the estimate reaches this. Set the same cap in the Anthropic Console as a hard backstop.')}
         </>}
+    </>
+  )
+}
+
+/** Safety and limits as a popup from the top bar. */
+export function SafetyPanel({ onClose, onNotice }: { onClose: () => void; onNotice: (text: string, kind?: 'ok' | 'warn' | 'err') => void }) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="card scroll" role="dialog" aria-label="Safety and limits" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <SafetyForm />
         <div className="row" style={{ marginTop: 6, justifyContent: 'flex-end' }}><button onClick={() => { onNotice('Safety settings are saved as you change them.', 'ok'); onClose() }}>Done</button></div>
       </div>
     </div>

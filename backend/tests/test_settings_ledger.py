@@ -164,3 +164,9 @@ def test_home_lists_open_manual_positions_and_planned_markets():
     ov = {o["market_id"]: o for o in e.home()["overview"]}
     assert ov[MID]["strategy"] == "Manual" and ov[MID]["matched"] == 5 and ov[MID]["pnl"] is not None
     assert ov["1.900002"]["by"] == "ai" and ov["1.900002"]["strategy"] == "S"
+
+
+def test_credentials_endpoint_reports_presence_never_values(client, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-secret-value")
+    body = client.get("/api/credentials").text
+    assert "sk-secret-value" not in body and '"Anthropic (Claude)"' in body

@@ -323,6 +323,18 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         engine.backtests[:] = engine.backtests[-10:]
         return res
 
+    @app.get("/api/credentials")
+    def credentials(_=Depends(auth)):
+        """Which secrets the server has. Only yes/no: values are never sent to the browser."""
+        bf = os.environ.get("AUTOBETS_BETFAIR_ENV", "/opt/autobets/secrets/betfair.env")
+        return {"items": [
+            {"name": "Betfair", "set": engine.mode == "demo" or os.path.exists(bf), "detail": "delayed application key" if engine.mode != "demo" else "demo mode needs none"},
+            {"name": "API-Football", "set": bool(os.environ.get("API_FOOTBALL_KEY")), "detail": "football fixtures, live scores, line-ups"},
+            {"name": "api-tennis", "set": bool(os.environ.get("API_TENNIS_KEY")), "detail": "tennis matches, live scores, statistics"},
+            {"name": "Anthropic (Claude)", "set": bool(os.environ.get("ANTHROPIC_API_KEY")), "detail": f"model {copilot.claude.model}"},
+            {"name": "App access token", "set": bool(os.environ.get("AUTOBETS_TOKEN")), "detail": "protects this app"}],
+            "where": "Keys live on the server only (/opt/autobets/secrets). To change one, edit the file there and restart the service."}
+
     @app.get("/api/home")
     def home(_=Depends(auth)):
         return engine.home()
