@@ -8,13 +8,13 @@ const load = (): Msg[] => { try { return JSON.parse(localStorage.getItem(KEY) ??
 const SUGGEST = ['What stands out in these markets right now?', 'Is the market over- or under-reacting to the score?', 'Where would I green up, and what does holding cost me?', 'What would make this idea wrong?']
 
 /** Advisor-mode copilot: asks Claude about the open markets. It sees prices, score, model fair prices, gaps and the position; it cannot place anything. */
-export default function Copilot({ marketIds, onClose, seed, docked = false }: { marketIds: string[]; onClose?: () => void; seed?: string; docked?: boolean }) {
+export default function Copilot({ marketIds, onClose, seed, docked = false, startBuild = false }: { marketIds: string[]; onClose?: () => void; seed?: string; docked?: boolean; startBuild?: boolean }) {
   const [msgs, setMsgs] = useState<Msg[]>(load), [text, setText] = useState(seed ?? ''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
   const [status, setStatus] = useState<{ enabled: boolean; estimated_gbp: number; cap_gbp: number } | null>(null)
   const [mode, setModeState] = useState<'advisor' | 'supervised'>(() => { try { return localStorage.getItem(MODE_KEY) === 'supervised' ? 'supervised' : 'advisor' } catch { return 'advisor' } })
   useEffect(() => { api.settings().then(s => setModeState(s.ai_mode === 'supervised' ? 'supervised' : 'advisor')).catch(() => undefined) }, [])     // the saved setting (Safety and limits) is the source of truth
   const setMode = (m: 'advisor' | 'supervised') => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* storage unavailable */ }; api.saveSettings({ ai_mode: m }).catch(() => undefined) }
-  const [build, setBuild] = useState(false), [acting, setActing] = useState<string | null>(null)
+  const [build, setBuild] = useState(startBuild), [acting, setActing] = useState<string | null>(null)
   const act = async (mi: number, p: AiProposal, approve: boolean) => {
     setActing(p.id); setErr('')
     try {
@@ -27,7 +27,7 @@ export default function Copilot({ marketIds, onClose, seed, docked = false }: { 
     setActing('draft' + mi); setErr('')
     try {
       const sc = await api.createScript({ ...d.script, _origin: 'ai' })
-      setMsgs(ms => ms.map((m, i) => i === mi ? { ...m, saved: sc.name } : m)); window.dispatchEvent(new Event('autobets:scripts-changed'))
+      setMsgs(ms => ms.map((m, i) => i === mi ? { ...m, saved: sc.name } : m)); window.dispatchEvent(new CustomEvent('autobets:scripts-changed', { detail: sc.id }))
     } catch (e) { setErr((e as Error).message) } finally { setActing(null) }
   }
   const end = useRef<HTMLDivElement>(null)
@@ -77,7 +77,7 @@ export default function Copilot({ marketIds, onClose, seed, docked = false }: { 
           {m.draft && <div className="draft">
             {m.draft.error && <div className="loss small">{m.draft.error}</div>}
             {m.draft.script && <><div className="small"><b>{String(m.draft.script.name)}</b></div><RuleCards text={m.draft.text ?? []} />
-              {m.saved ? <div className="gain small">Saved as “{m.saved}” (off). It is now in the script list: add it to a market from the Plan, or enable it on Scripts.</div>
+              {m.saved ? <div className="gain small">Saved as “{m.saved}” (off). It is now in the script list: review and enable it on Scripts, or add it to a market from the Plan.</div>
                 : <div className="row"><button className="primary sm" disabled={acting === 'draft' + i} onClick={() => saveDraft(i, m.draft!)}>Save as draft script</button><span className="muted small">or type a change to refine it</span></div>}</>}
           </div>}
           {m.notes?.map((n, k) => <div key={k} className="muted small">Not offered: {n}</div>)}

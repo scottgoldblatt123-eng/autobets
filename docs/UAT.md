@@ -2105,10 +2105,10 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 31.6 Build with Claude  \[Practice\]
+### 31.6 Build a script with the Copilot  \[Practice\]
 
 Steps:
-1. Describe a strategy in plain English in Build with Claude.
+1. Open the Copilot panel on the right of Scripts (it opens in Build a script mode) and describe a strategy in plain English.
 
 **Expected:** A draft script is returned, validated, and can be saved. Invalid drafts are not saved.
 

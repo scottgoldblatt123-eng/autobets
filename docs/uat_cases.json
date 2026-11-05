@@ -2414,10 +2414,10 @@
   "id": "31.6",
   "section": "Scripts (added 5 Nov)",
   "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
-  "title": "Build with Claude",
+  "title": "Build a script with the Copilot",
   "mode": "Practice",
   "steps": [
-   "Describe a strategy in plain English in Build with Claude."
+   "Open the Copilot panel on the right of Scripts (it opens in Build a script mode) and describe a strategy in plain English."
   ],
   "expected": "A draft script is returned, validated, and can be saved. Invalid drafts are not saved."
  },

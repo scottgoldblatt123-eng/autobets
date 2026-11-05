@@ -6,7 +6,7 @@ AutoBets runs in **Practice mode**: real (delayed) Betfair prices, simulated mon
 - **Home**: today, week and month profit, automation state, open positions, pending recommendations, recent alerts.
 - **Recommendations**: ideas where the model and the market disagree. Apply or Dismiss. They are guidance, not tips; confidence is never High.
 - **Plan**: which scripts are armed on which markets, with status and bets taken.
-- **Scripts**: your trading rules. Create from a template, paste JSON, or describe it to Claude (Build with Claude). Enable, clone, view history, Add to Plan.
+- **Scripts**: your trading rules. Create from a template, paste JSON, or describe it to Claude (the Copilot panel beside Scripts, Plan and Home, in Build a script mode). Enable, clone, view history, Add to Plan.
 - **Manual Trading**: the ladders, Bet Angel style. Open a market from the left list (tennis, football). Click blue to back, pink to lay. Stops, auto-greens, Dutching and Green up are on each market.
 - **Analyse**: Performance, Strategies (script vs manual), Models, Backtesting, AI learning.
 - **Alerts**: what the system flagged. **Settings**: all configuration.

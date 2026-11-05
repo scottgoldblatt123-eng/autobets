@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type Script, type ScriptDraft, type ScriptRuleText } from './api'
+import { api, type Script, type ScriptRuleText } from './api'
 import MarketPicker from './MarketPicker'
 import { markScriptUsed } from './ScriptSelect'
 
@@ -19,16 +19,14 @@ export function RuleCards({ text }: { text: ScriptRuleText[] }) {
 /** Scripts: build with Claude or by hand, review in plain English, clone, version, enable, and put on the Plan. */
 export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () => void }) {
   const [list, setList] = useState<Script[]>([]), [sel, setSel] = useState<string>(''), [q, setQ] = useState('')
-  const [prompt, setPrompt] = useState(''), [busy, setBusy] = useState(false), [draft, setDraft] = useState<ScriptDraft | null>(null)
   const [editing, setEditing] = useState<string | null>(null), [err, setErr] = useState(''), [hist, setHist] = useState(false), [pick, setPick] = useState(false), [importing, setImporting] = useState<string | null>(null)
   const load = useCallback(() => api.scripts().then(l => { setList(l); setSel(s => (l.some(x => x.id === s) ? s : l[0]?.id ?? '')) }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load() }, [load])
+  useEffect(() => { const f = (e: Event) => { void load().then(() => { const id = (e as CustomEvent<string>).detail; if (id) setSel(id) }) }; window.addEventListener('autobets:scripts-changed', f); return () => window.removeEventListener('autobets:scripts-changed', f) }, [load])
   const cur = list.find(s => s.id === sel)
   const [lf, setLf] = useState('all')
   const shown = list.filter(s => (!q || (s.name + ' ' + s.description).toLowerCase().includes(q.toLowerCase())) && (lf === 'all' || (lf === 'on' ? s.enabled : lf === 'off' ? !s.enabled : lf === 'ai' ? s.origin === 'ai' : s.sport === lf || s.sport === 'any')))
   const guard = async (f: () => Promise<unknown>, ok?: string) => { setErr(''); try { await f(); if (ok) say(ok); await load() } catch (e) { setErr((e as Error).message) } }
-  const build = async () => { setBusy(true); setErr(''); setDraft(null); try { setDraft(await api.buildScript(prompt)) } catch (e) { setErr((e as Error).message) } finally { setBusy(false) } }
-  const saveDraft = () => draft?.script && guard(async () => { const s = await api.createScript({ ...draft.script, _origin: 'ai' }); setSel(s.id); setDraft(null); setPrompt('') }, 'Draft saved (off). Review it, backtest it, then add it to the Plan.')
   const full = (s: Script) => JSON.stringify({ name: s.name, sport: s.sport, description: s.description, rules: s.rules }, null, 2)
   return (
     <div className="screen">
@@ -37,16 +35,6 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
         <button onClick={() => setImporting('')}>Import</button>
         <button className="primary" onClick={() => setEditing(JSON.stringify(TEMPLATE, null, 2))}>New script</button></div>
       {err && <div className="loss small">{err}</div>}
-      <div className="card buildbox"><label htmlFor="sp" className="cap">Describe a script and Claude builds it</label>
-        <div className="row" style={{ flexWrap: 'nowrap' }}><textarea id="sp" rows={2} style={{ flex: 1 }} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="e.g. Lay player A in a tennis match if the price reaches 2.2 and it isn't the third set, then hedge to full green at 1.7" />
-          <button className="primary" disabled={busy || prompt.trim().length < 8} onClick={build}>{busy ? 'Building…' : 'Build script'}</button></div>
-        {draft && <div className="draft">
-          <div className="small">{draft.explanation}</div>
-          {draft.error && <div className="loss small">{draft.error}</div>}
-          {draft.script && <><div className="small"><b>{String(draft.script.name)}</b></div><RuleCards text={draft.text ?? []} />
-            <div className="row"><button className="primary" onClick={saveDraft}>Save as draft script</button><button onClick={() => setDraft(null)}>Discard</button><span className="muted small">Saved scripts are off until you enable them. Cost about £{draft.cost_gbp.toFixed(3)}.</span></div></>}
-        </div>}
-      </div>
       <div className="split">
         <aside className="card library"><div className="cap">Library ({shown.length}{shown.length !== list.length ? ` of ${list.length}` : ''})</div>
           <div className="chips">{[['all', 'All'], ['on', 'On'], ['off', 'Off'], ['ai', 'AI drafts'], ['tennis', 'Tennis'], ['football', 'Football']].map(([k, l]) => <button key={k} className={'chip' + (lf === k ? ' on' : '')} onClick={() => setLf(k)}>{l}</button>)}</div>

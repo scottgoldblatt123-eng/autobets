@@ -410,7 +410,7 @@ export default function App() {
       {screen === 'settings' && <SettingsScreen theme={theme} onTheme={() => setSettings(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }))} onLadderSettings={() => setShowSettings(true)} />}
       {screen === 'analyse' && <AnalyseScreen say={say} />}
       {screen === 'alerts' && <AlertsScreen say={say} onGo={s => setScreen(s)} onChanged={refreshBadges} />}
-      {screen === 'scripts' && <ScriptsScreen say={say} onPlan={() => setScreen('plan')} />}
+      {screen === 'scripts' && <div className="body workbench"><div className="wbmain"><ScriptsScreen say={say} onPlan={() => setScreen('plan')} /></div><div className="wbright"><Copilot docked startBuild marketIds={ids} /></div></div>}
       <div className="body" style={screen === 'manual' ? undefined : { display: 'none' }}>
         <aside>
           <div className="tabs">

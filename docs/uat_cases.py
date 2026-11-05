@@ -320,7 +320,7 @@ sec("Scripts (added 5 Nov)", "Rules that enter and exit trades for you. Written 
     c("Import a script", "Either", ["Paste valid script JSON into Import."], "It appears in the library, disabled."),
     c("Enable, disable and clone", "Either", ["Enable a script, disable it, then clone it."], "State changes immediately; the clone is a separate disabled script."),
     c("Version history", "Either", ["Edit and save a script twice.", "Open History."], "Each save is a version with a timestamp. You can view earlier versions."),
-    c("Build with Claude", "Practice", ["Describe a strategy in plain English in Build with Claude."], "A draft script is returned, validated, and can be saved. Invalid drafts are not saved."),
+    c("Build a script with the Copilot", "Practice", ["Open the Copilot panel on the right of Scripts (it opens in Build a script mode) and describe a strategy in plain English."], "A draft script is returned, validated, and can be saved. Invalid drafts are not saved."),
     c("Add to Plan", "Either", ["From a script, click Add to Plan and pick a market and runner."], "A Plan row is created binding the script to that market and runner."),
     c("Script fires on a live demo market", "Demo", ["Enable a simple price-based entry script, add it to the Plan on a demo market, let the price cross the condition."], "An order is placed with source script:<name>, appears on the ladder and in the activity log, and the exit rule closes it as defined."),
     c("Discuss with Claude", "Practice", ["Click Discuss with Claude on a script."], "The copilot opens with the script as context."),
