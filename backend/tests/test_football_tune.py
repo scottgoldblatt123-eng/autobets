@@ -8,12 +8,13 @@ def test_total_shrink_keeps_ratio_and_moves_total():
     from collections import defaultdict
     st["gf"], st["ga"], st["wt"] = defaultdict(lambda: [20.0, 18.0]), defaultdict(lambda: [14.0, 12.0]), defaultdict(lambda: [10.0, 10.0])
     st["gf"][1] = [30.0, 30.0]; st["wt"][1] = [10.0, 10.0]
+    orig = model.TOT_W
     model.TOT_W = 0.0
     a = model.expected_goals(st, 1, 2)
     model.TOT_W = 0.8
     try:
         b = model.expected_goals(st, 1, 2)
     finally:
-        model.TOT_W = 0.0
+        model.TOT_W = orig
     assert abs(a[0] / a[1] - b[0] / b[1]) < 1e-9
     assert abs((b[0] + b[1]) - 2.7) < abs((a[0] + a[1]) - 2.7)

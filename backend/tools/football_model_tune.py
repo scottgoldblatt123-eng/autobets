@@ -27,7 +27,7 @@ def main():
         rows = bt.run(store, a.since)[::a.every]
         return score([r for r in rows if r["ko"] < a.split]), score([r for r in rows if r["ko"] >= a.split])
 
-    base = dict(HALF_LIFE=270.0, SHRINK=6.0, TOT_W=0.0)
+    base = dict(HALF_LIFE=model.HALF_LIFE, SHRINK=model.SHRINK, TOT_W=model.TOT_W)
     print("Stage 1: 1X2 log loss  (fit | hold-out)   lower is better")
     best = None
     for hl in (150.0, 270.0, 450.0):

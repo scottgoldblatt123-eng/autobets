@@ -12,8 +12,8 @@ import math
 from collections import defaultdict
 
 VERSION = "fb-v1-poisson"
-DAYS, HALF_LIFE, SHRINK, RHO, MIN_GAMES, MAXG = 730, 270.0, 6.0, -0.05, 8, 10
-TOT_W = 0.0        # weight pulling a match's expected total goals toward the league average (keeps the home/away ratio); tuned by tools/football_model_tune.py
+DAYS, HALF_LIFE, SHRINK, RHO, MIN_GAMES, MAXG = 730, 450.0, 6.0, -0.05, 8, 10
+TOT_W = 0.5        # weight pulling a match's expected total goals toward the league average (keeps the home/away ratio); tuned by tools/football_model_tune.py
 
 
 def strengths(db, lock, league_id: int, kickoff: str):
