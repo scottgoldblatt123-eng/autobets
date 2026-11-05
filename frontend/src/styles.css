@@ -245,3 +245,10 @@ main { overflow-y: auto; }
 .formchips { display: inline-flex; gap: 3px; } .fchip { display: inline-block; width: 18px; text-align: center; font-size: 10px; font-weight: 700; border-radius: 3px; padding: 1px 0; cursor: default; }
 .fchip.w { background: var(--profit); color: #06210f; } .fchip.l { background: var(--loss); color: #fff; } .fchip.d { background: var(--surface-raised); border: 1px solid var(--border); }
 .h2h > b { margin-right: 6px; }
+
+.copilot { position: fixed; right: 12px; bottom: 12px; width: min(440px, calc(100vw - 24px)); height: min(640px, calc(100vh - 80px)); z-index: 40; display: flex; flex-direction: column; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+.cpmsgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
+.cpmsg { white-space: pre-wrap; padding: 8px 10px; border-radius: 8px; max-width: 92%; line-height: 1.4; }
+.cpmsg.user { align-self: flex-end; background: var(--surface-raised); border: 1px solid var(--brand); }
+.cpmsg.assistant { align-self: flex-start; background: var(--bg); border: 1px solid var(--border); }

@@ -150,6 +150,27 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     def pricelog_status(_=Depends(auth)):
         return pricelog.status() if pricelog else {"enabled": False}
 
+    from ..ai.claude import AiError, Claude
+    from ..ai.copilot import Copilot
+    from ..ai.usage import Usage
+    ai_usage = Usage((os.environ.get("AUTOBETS_DATA", "/opt/autobets/data") + "/ai.db") if engine.mode != "demo" else ":memory:")
+    copilot = Copilot(Claude(), ai_usage)
+
+    @app.get("/api/ai/status")
+    def ai_status(_=Depends(auth)):
+        return {"enabled": copilot.claude.enabled, "model": copilot.claude.model, **ai_usage.status()}
+
+    @app.post("/api/ai/chat")
+    def ai_chat(body: dict, _=Depends(auth)):
+        """Copilot reply to the conversation so far, grounded in a snapshot of the given open markets. Advisor mode: no orders."""
+        ids = [str(i) for i in (body.get("market_ids") or [])][:5]
+        try:
+            st = engine.state(ids) if ids else {"markets": {}}
+            ctxs = {i: c for i in ids if i in st["markets"] and (c := match_context.for_market({**st["markets"][i], "market_id": i}))}
+            return copilot.chat(body.get("messages") or [], st["markets"], ctxs)
+        except AiError as e:
+            raise HTTPException(502, str(e))
+
     @app.get("/api/context")
     def context(ids: str = "", _=Depends(auth)):
         """Live score / clock / serve for the open markets, where the stored data matches them clearly."""

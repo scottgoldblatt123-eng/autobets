@@ -58,6 +58,8 @@ export const api = {
   context: (ids: string[]) => call<Record<string, MatchCtx>>(`/api/context?ids=${ids.join(',')}`),
   eventMarkets: (eventId: string) => call<MarketInfo[]>(`/api/event_markets?event_id=${encodeURIComponent(eventId)}`),
   footballStatus: () => call<Record<string, unknown>>('/api/football/status'),
+  aiStatus: () => call<{ enabled: boolean; estimated_gbp: number; cap_gbp: number }>('/api/ai/status'),
+  aiChat: (messages: { role: string; content: string }[], market_ids: string[]) => call<{ reply: string; cost_gbp: number }>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ messages, market_ids }) }),
   pricelogStatus: () => call<Record<string, unknown>>('/api/pricelog/status'),
   tennisStatus: () => call<Record<string, unknown>>('/api/tennis/status'),
   matchDetails: (marketId: string) => call<MatchDetails>(`/api/match_details?market_id=${encodeURIComponent(marketId)}`),
