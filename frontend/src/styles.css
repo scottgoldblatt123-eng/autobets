@@ -295,3 +295,24 @@ textarea.code { font-family: ui-monospace, monospace; font-size: 12px; width: 10
 .pickrow.on { background: var(--surface-raised); }
 .tab { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--text-muted); font-weight: 600; padding: 8px 12px; } .tab.on { color: var(--text); border-bottom-color: var(--brand); }
 .screen select { width: auto; max-width: 100%; }
+
+/* ---- tablet and phone ---- */
+@media (max-width: 900px) {
+  header { flex-wrap: wrap; gap: 6px 10px; padding: 6px 10px; }
+  header .badge { white-space: nowrap; }
+  .screen { padding: 12px 10px; }
+  .library { width: 100% !important; }
+  .detail { min-width: 0; width: 100%; }
+  .homecols { grid-template-columns: 1fr !important; }
+  .screen .row input[type=search] { width: 100%; }
+  .card.wide { min-width: 0; width: calc(100vw - 24px); }
+  .card { min-width: 0; }
+}
+@media (max-width: 600px) {
+  .body { flex-direction: column; }
+  .body > aside { width: 100%; max-height: 38vh; border-right: 0; border-bottom: 1px solid var(--border); }
+  .ladders { grid-template-columns: 1fr !important; }
+  .kpis, .kpis7 { grid-template-columns: repeat(2, 1fr); }
+  .navbar { padding: 0 6px; }
+  .navbar button { padding: 9px 8px; }
+}
