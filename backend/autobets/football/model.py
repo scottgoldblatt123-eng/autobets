@@ -13,6 +13,7 @@ from collections import defaultdict
 
 VERSION = "fb-v1-poisson"
 DAYS, HALF_LIFE, SHRINK, RHO, MIN_GAMES, MAXG = 730, 270.0, 6.0, -0.05, 8, 10
+TOT_W = 0.0        # weight pulling a match's expected total goals toward the league average (keeps the home/away ratio); tuned by tools/football_model_tune.py
 
 
 def strengths(db, lock, league_id: int, kickoff: str):
@@ -66,6 +67,10 @@ def expected_goals(st: dict, home_id: int, away_id: int):
         return None
     mh = st["lh"] * (ah / st["lh"]) * (da / st["lh"])
     ma = st["la"] * (aa / st["la"]) * (dh / st["la"])
+    if TOT_W:
+        t, t0 = mh + ma, st["lh"] + st["la"]
+        k = ((1 - TOT_W) * t + TOT_W * t0) / t
+        mh, ma = mh * k, ma * k
     return mh, ma, wh, wa
 
 

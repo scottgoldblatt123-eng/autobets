@@ -76,6 +76,7 @@ export default function InfoPanel({ markets, active }: Props) {
               <table><tbody>
                 <tr><td>{names[0]}</td><td>Draw</td><td>{names[1]}</td></tr>
                 <tr className="num"><td>{o(f.home)}</td><td>{o(f.draw)}</td><td>{o(f.away)}</td></tr>
+                <tr><td colSpan={3} className="loss small">Goal-line and both-teams-to-score prices below did no better than the league average in testing — do not rely on them.</td></tr>
                 <tr><td>Over 1.5</td><td>Over 2.5</td><td>Over 3.5</td></tr>
                 <tr className="num"><td>{o(ov('1.5'))}</td><td>{o(ov('2.5'))}</td><td>{o(ov('3.5'))}</td></tr>
                 <tr><td>Both teams score</td><td colSpan={2}>Likely scores</td></tr>

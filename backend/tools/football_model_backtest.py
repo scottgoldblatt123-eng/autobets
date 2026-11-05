@@ -28,7 +28,7 @@ def run(store, since: str):
         if not pr or b[0] < 100:
             continue
         res = 0 if gh > ga else 1 if gh == ga else 2
-        out.append({"league": lg, "res": res, "p": (pr["home"], pr["draw"], pr["away"]), "over": gh + ga > 2, "p_over": pr["over_2.5"],
+        out.append({"league": lg, "ko": ko, "res": res, "p": (pr["home"], pr["draw"], pr["away"]), "over": gh + ga > 2, "p_over": pr["over_2.5"],
                     "btts": gh > 0 and ga > 0, "p_btts": pr["btts"], "b": (b[1] / b[0], b[2] / b[0], b[3] / b[0]), "b_over": b[4] / b[0], "b_btts": b[5] / b[0]})
     return out
 
