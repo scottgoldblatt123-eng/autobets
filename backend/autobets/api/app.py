@@ -31,7 +31,7 @@ def make_engine() -> Engine:
                    os.environ.get("AUTOBETS_STATE", "/opt/autobets/data/state.json"))
         e.start_background()
         return e
-    raise SystemExit(f"unknown AUTOBETS_MODE {mode!r} (live mode is not built yet)")
+    raise SystemExit(f"unknown AUTOBETS_MODE {mode!r} (live mode is deliberately not started: the Betfair order methods are built and mock-tested but not wired into the engine until the live key is in place)")
 
 
 class DutchIn(BaseModel):

@@ -8,7 +8,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from ..domain import MarketBook, Order, OrderRequest, PriceLevel, SelectionBook
+from ..domain import MarketBook, Order, OrderRequest, OrderType, Persistence, PriceLevel, SelectionBook, Side, Status
 from .base import ExchangeAdapter, ExchangeError
 
 API = "https://api.betfair.com/exchange/betting/rest/v1.0/"
@@ -144,16 +144,95 @@ class BetfairAdapter(ExchangeAdapter):
             )
         return book
 
-    def _no_trading(self, *_a, **_k):
-        raise ExchangeError("order placing is not enabled on the Betfair adapter yet (read-only)")
+    # ---- real orders: OFF unless trading_enabled is set explicitly ------------------------
+    trading_enabled = False
+    _PERSIST = {Persistence.CANCEL: "LAPSE", Persistence.KEEP: "PERSIST", Persistence.TAKE_SP: "MARKET_ON_CLOSE"}
 
-    place_order = cancel_order = replace_order = _no_trading
+    def enable_trading(self, confirm: str) -> None:
+        """Real money. Only the live mode start-up calls this, and only with the exact confirmation phrase."""
+        if confirm != "SEND-REAL-ORDERS":
+            raise ExchangeError("real orders need the explicit confirmation phrase")
+        self.trading_enabled = True
+
+    def _require_trading(self) -> None:
+        if not self.trading_enabled:
+            raise ExchangeError("real order placing is switched off (practice mode never sends orders to Betfair)")
+
+    @staticmethod
+    def _status(o: dict) -> Status:
+        matched, remaining = o.get("sizeMatched", 0) or 0, o.get("sizeRemaining", 0) or 0
+        if o.get("status") == "EXECUTABLE":
+            return Status.PARTIAL if matched > 0 else Status.UNMATCHED
+        if remaining > 0 or (o.get("sizeCancelled") or 0) > 0 or (o.get("sizeLapsed") or 0) > 0:
+            if matched > 0:
+                return Status.MATCHED                    # the matched part stands; the rest was cancelled or lapsed
+            return Status.LAPSED if (o.get("sizeLapsed") or 0) > 0 else Status.CANCELLED
+        return Status.MATCHED
+
+    def _to_order(self, o: dict) -> Order:
+        ps = o.get("priceSize", {})
+        req = OrderRequest(o["marketId"], str(o["selectionId"]), Side(o["side"]), ps.get("price", 0.0), ps.get("size", 0.0),
+                           OrderType.LIMIT, {"LAPSE": Persistence.CANCEL, "PERSIST": Persistence.KEEP,
+                                             "MARKET_ON_CLOSE": Persistence.TAKE_SP}.get(o.get("persistenceType"), Persistence.KEEP),
+                           client_ref=o.get("customerOrderRef", ""))
+        return Order(o["betId"], req, self._status(o), round(o.get("sizeMatched", 0) or 0, 2), o.get("averagePriceMatched", 0.0) or 0.0)
+
+    def place_order(self, req: OrderRequest) -> Order:
+        self._require_trading()
+        if req.order_type is not OrderType.LIMIT:
+            raise ExchangeError("only limit orders are sent to Betfair")
+        if req.client_ref:
+            existing = self.find_by_ref(req.client_ref)          # idempotent: never place the same reference twice
+            if existing:
+                return existing
+        ins = {"selectionId": int(req.selection_id), "handicap": 0, "side": req.side.value, "orderType": "LIMIT",
+               "limitOrder": {"size": round(req.size, 2), "price": req.price, "persistenceType": self._PERSIST[req.persistence]}}
+        if req.client_ref:
+            ins["customerOrderRef"] = req.client_ref[:32]
+        res = self._call("placeOrders", {"marketId": req.market_id, "instructions": [ins], "customerRef": req.client_ref[:32]})
+        rep = (res.get("instructionReports") or [{}])[0]
+        if res.get("status") != "SUCCESS" or rep.get("status") != "SUCCESS":
+            raise ExchangeError(f"placeOrders refused: {rep.get('errorCode') or res.get('errorCode') or res.get('status')}")
+        matched = rep.get("sizeMatched", 0) or 0
+        st = Status.MATCHED if matched >= req.size - 0.005 else Status.PARTIAL if matched > 0 else Status.UNMATCHED
+        return Order(rep["betId"], req, st, round(matched, 2), rep.get("averagePriceMatched", 0.0) or 0.0)
+
+    def cancel_order(self, order_id: str) -> Order:
+        self._require_trading()
+        cur = self.get_order(order_id)
+        res = self._call("cancelOrders", {"marketId": cur.request.market_id, "instructions": [{"betId": order_id}]})
+        rep = (res.get("instructionReports") or [{}])[0]
+        if rep.get("status") != "SUCCESS":
+            raise ExchangeError(f"cancelOrders refused: {rep.get('errorCode') or res.get('status')}")
+        return self.get_order(order_id)
+
+    def replace_order(self, order_id: str, new_price: float) -> Order:
+        self._require_trading()
+        cur = self.get_order(order_id)
+        res = self._call("replaceOrders", {"marketId": cur.request.market_id, "instructions": [{"betId": order_id, "newPrice": new_price}]})
+        rep = (res.get("instructionReports") or [{}])[0]
+        if rep.get("status") != "SUCCESS":
+            raise ExchangeError(f"replaceOrders refused: {rep.get('errorCode') or res.get('status')}")
+        return self.get_order(rep["placeInstructionReport"]["betId"])
+
+    def _current(self, **flt) -> list[dict]:
+        out, start = [], 0
+        while True:
+            res = self._call("listCurrentOrders", {"orderProjection": "ALL", "fromRecord": start, **flt})
+            out += res.get("currentOrders", [])
+            if not res.get("moreAvailable"):
+                return out
+            start = len(out)
 
     def open_orders(self) -> list[Order]:
-        return []
+        return [self._to_order(o) for o in self._current()]
 
     def get_order(self, order_id: str) -> Order:
-        raise ExchangeError("not available while read-only")
+        rows = self._current(betIds=[order_id])
+        if not rows:
+            raise ExchangeError(f"unknown order {order_id}")
+        return self._to_order(rows[0])
 
     def find_by_ref(self, client_ref: str):
-        return None
+        rows = self._current(customerOrderRefs=[client_ref[:32]])
+        return self._to_order(rows[0]) if rows else None

@@ -89,3 +89,62 @@ def test_market_list_carries_in_play_flag():
     live, pre = dict(BOOK, marketId="1.1", inplay=True), dict(BOOK, marketId="1.2", inplay=False)
     eng = Engine(BetfairAdapter("k", "u", "p", Fake([LOGIN_OK, (200, cat), (200, [live, pre])])), "practice")
     assert {m["market_id"]: m["in_play"] for m in eng.markets("tennis")} == {"1.1": True, "1.2": False}
+
+
+# ---- real orders (mock transport only; nothing here touches Betfair) -------------------
+from autobets.domain import Persistence, Status
+
+
+def _live(responses):
+    fake = Fake([LOGIN_OK] + responses)
+    a = BetfairAdapter("k", "u", "p", fake)
+    a.enable_trading("SEND-REAL-ORDERS")
+    return a, fake
+
+
+REQ = OrderRequest("1.1", "10", Side.BACK, 3.5, 10.0, client_ref="ref-1")
+
+
+def test_orders_are_off_by_default_and_need_the_phrase():
+    a = BetfairAdapter("k", "u", "p", Fake([]))
+    with pytest.raises(ExchangeError):
+        a.place_order(REQ)
+    with pytest.raises(ExchangeError):
+        a.enable_trading("yes")
+    assert not a.trading_enabled
+
+
+def test_place_order_sends_expected_instruction_and_parses_fill():
+    a, fake = _live([(200, {"currentOrders": [], "moreAvailable": False}),
+                     (200, {"status": "SUCCESS", "instructionReports": [{"status": "SUCCESS", "betId": "B1", "sizeMatched": 4.0, "averagePriceMatched": 3.5}]})])
+    o = a.place_order(REQ)
+    assert o.order_id == "B1" and o.status is Status.PARTIAL and o.matched == 4.0 and o.avg_price == 3.5
+    assert [c[0].rsplit("/", 2)[-2] for c in fake.calls[1:]] == ["listCurrentOrders", "placeOrders"]
+
+
+def test_place_order_is_idempotent_on_client_ref():
+    cur = {"betId": "B9", "marketId": "1.1", "selectionId": 10, "side": "BACK", "priceSize": {"price": 3.5, "size": 10.0},
+           "sizeMatched": 0, "sizeRemaining": 10.0, "status": "EXECUTABLE", "customerOrderRef": "ref-1"}
+    a, fake = _live([(200, {"currentOrders": [cur], "moreAvailable": False})])
+    assert a.place_order(REQ).order_id == "B9" and len(fake.calls) == 2      # login + lookup, no placeOrders
+
+
+def test_refused_order_raises_with_code_only():
+    a, _ = _live([(200, {"currentOrders": []}), (200, {"status": "FAILURE", "instructionReports": [{"status": "FAILURE", "errorCode": "BET_TAKEN_OR_LAPSED"}]})])
+    with pytest.raises(ExchangeError) as e:
+        a.place_order(REQ)
+    assert "BET_TAKEN_OR_LAPSED" in str(e.value)
+
+
+def test_cancel_and_status_mapping():
+    row = {"betId": "B1", "marketId": "1.1", "selectionId": 10, "side": "LAY", "priceSize": {"price": 2.0, "size": 5.0},
+           "sizeMatched": 0, "sizeRemaining": 5.0, "status": "EXECUTABLE"}
+    done = dict(row, sizeRemaining=0, sizeCancelled=5.0, status="EXECUTION_COMPLETE")
+    a, fake = _live([(200, {"currentOrders": [row]}), (200, {"status": "SUCCESS", "instructionReports": [{"status": "SUCCESS"}]}),
+                     (200, {"currentOrders": [done]})])
+    assert a.cancel_order("B1").status is Status.CANCELLED
+    assert fake.calls[2][0].endswith("cancelOrders/")
+
+
+def test_take_sp_persistence_maps_to_market_on_close():
+    assert BetfairAdapter._PERSIST[Persistence.TAKE_SP] == "MARKET_ON_CLOSE"
