@@ -28,3 +28,25 @@ def test_logs_only_changes_and_slims_context():
     assert "junk" not in st.db.execute("SELECT ctx FROM ticks").fetchone()[0]
     Ctx.score = {**Ctx.score, "sets": [["6", "4"], ["1", "0"]]}
     lg.once(); assert st.counts()["ticks"] == 3                         # a score change alone is recorded
+
+
+def test_results_are_recorded_for_markets_that_finished():
+    from autobets.domain import MarketBook, PriceLevel, SelectionBook
+    store = PriceStore()
+    live = MarketBook("1.7", in_play=True, selections={"A": SelectionBook("A", [PriceLevel(2.0, 5)], [PriceLevel(2.02, 5)])})
+    store.add(1000.0, {"market_id": "1.7", "sport": "tennis", "event": "A v B", "start": "x"}, live, None)
+    assert store.unresolved(older_than=2000, newer_than=0) == ["1.7"]
+    store.set_result("1.7", "A", 3000.0)
+    assert store.unresolved(older_than=2000, newer_than=0) == []
+
+    class Eng:
+        lock = __import__("threading").RLock()
+        class feed:
+            @staticmethod
+            def get_books(ids, depth=False):
+                return [MarketBook("1.8", status="CLOSED", selections={"A": SelectionBook("A", status="LOSER"), "B": SelectionBook("B", status="WINNER")})]
+    store.add(1000.0, {"market_id": "1.8", "sport": "tennis", "event": "C v D", "start": "x"},
+              MarketBook("1.8", in_play=True, selections={"A": SelectionBook("A", [PriceLevel(2.0, 5)], [PriceLevel(2.02, 5)])}), None)
+    pl = PriceLogger(Eng(), None, store)
+    assert pl.record_results(2000.0 + 15 * 60) == 1
+    assert store.db.execute("SELECT winner FROM results WHERE market_id='1.8'").fetchone()[0] == "B"

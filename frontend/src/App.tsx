@@ -9,6 +9,7 @@ import RecsScreen from './RecsScreen'
 import AlertsScreen from './AlertsScreen'
 import HealthBadge from './Health'
 import HomeScreen from './HomeScreen'
+import AnalyseScreen from './AnalyseScreen'
 import AttachDialog from './AttachDialog'
 import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
@@ -103,8 +104,8 @@ export default function App() {
   const [attach, setAttach] = useState<{ id: string; title: string } | null>(null)
   const [badge, setBadge] = useState({ recs: 0, needs: 0 }), [discuss, setDiscuss] = useState<{ marketId: string; text: string } | null>(null)
   const refreshBadges = useCallback(() => api.alerts('all', 30).then(r => setBadge({ recs: r.counts.recs, needs: r.counts.needs_action })).catch(() => undefined), [])
-  type Screen = 'home' | 'manual' | 'plan' | 'scripts' | 'recs' | 'alerts'
-  const [screen, setScreenState] = useState<Screen>(() => { const h = window.location.hash.replace('#', ''); return (['home', 'manual', 'plan', 'scripts', 'recs', 'alerts'] as string[]).includes(h) ? (h as Screen) : 'home' })
+  type Screen = 'home' | 'analyse' | 'manual' | 'plan' | 'scripts' | 'recs' | 'alerts'
+  const [screen, setScreenState] = useState<Screen>(() => { const h = window.location.hash.replace('#', ''); return (['home', 'analyse', 'manual', 'plan', 'scripts', 'recs', 'alerts'] as string[]).includes(h) ? (h as Screen) : 'home' })
   const setScreen = (s: Screen) => { setScreenState(s); try { window.history.replaceState(null, '', '#' + s) } catch { /* ignore */ } }
   const [showData, setShowData] = useState(false), [showAi, setShowAi] = useState(false), [showSafety, setShowSafety] = useState(false)
   const [layouts, setLayouts] = useState<Record<string, Settings>>(() => { try { return JSON.parse(localStorage.getItem('autobets.layouts') ?? '{}') } catch { return {} } })
@@ -390,10 +391,11 @@ export default function App() {
       </header>
 
       <nav className="navbar" aria-label="Screens">
-        {([['home', 'Home'], ['recs', 'Recommendations'], ['plan', 'Plan'], ['scripts', 'Scripts'], ['manual', 'Manual Trading'], ['alerts', 'Alerts']] as [Screen, string][]).map(([k, l]) => <button key={k} className={screen === k ? 'on' : ''} onClick={() => setScreen(k)}>{l}{k === 'recs' && badge.recs > 0 && <span className="nbadge">{badge.recs}</span>}{k === 'alerts' && badge.needs > 0 && <span className="nbadge bad">{badge.needs}</span>}</button>)}
+        {([['home', 'Home'], ['recs', 'Recommendations'], ['plan', 'Plan'], ['scripts', 'Scripts'], ['manual', 'Manual Trading'], ['analyse', 'Analyse'], ['alerts', 'Alerts']] as [Screen, string][]).map(([k, l]) => <button key={k} className={screen === k ? 'on' : ''} onClick={() => setScreen(k)}>{l}{k === 'recs' && badge.recs > 0 && <span className="nbadge">{badge.recs}</span>}{k === 'alerts' && badge.needs > 0 && <span className="nbadge bad">{badge.needs}</span>}</button>)}
       </nav>
       {screen === 'home' && <HomeScreen say={say} go={s => setScreen(s)} openMarket={async id => { try { const st = await api.state([id]); const m = st.markets[id]; if (!m) throw new Error('market not available'); openMarket({ market_id: id, name: m.name, event: m.event, competition: m.competition, start: m.start, runners: m.runners, in_play: m.in_play }); setScreen('manual') } catch (e) { say((e as Error).message, 'err') } }} />}
       {screen === 'recs' && <RecsScreen say={say} onPlan={() => setScreen('plan')} onDiscuss={r => { setDiscuss({ marketId: r.market_id, text: `Why does the model like ${r.side === 'BACK' ? 'backing' : 'laying'} ${r.runner} in ${r.event}? What would make this wrong?` }); setShowAi(true) }} />}
+      {screen === 'analyse' && <AnalyseScreen say={say} />}
       {screen === 'alerts' && <AlertsScreen say={say} onGo={s => setScreen(s)} onChanged={refreshBadges} />}
       {screen === 'plan' && <PlanScreen say={say} />}
       {screen === 'scripts' && <ScriptsScreen say={say} onPlan={() => setScreen('plan')} />}

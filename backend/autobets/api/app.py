@@ -275,6 +275,54 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     if engine.mode != "demo":
         threading.Thread(target=_monitor, name="monitor", daemon=True).start()
 
+    engine.price_store = pricelog.store if pricelog else None
+
+    from .. import analyse, backtest as bt
+
+    @app.get("/api/analyse/performance")
+    def an_perf(days: int = 30, _=Depends(auth)):
+        return analyse.performance(engine.ledger, engine.recs, ai_usage.month_gbp(), max(1, min(days, 365)))
+
+    @app.get("/api/analyse/models")
+    def an_models(_=Depends(auth)):
+        return analyse.models(engine.price_store)
+
+    @app.get("/api/analyse/ai")
+    def an_ai(_=Depends(auth)):
+        return analyse.ai_learning(engine.recs)
+
+    @app.get("/api/backtests")
+    def bt_list(_=Depends(auth)):
+        return {"items": [{k: v for k, v in r.items() if k != "trade_list"} for r in reversed(engine.backtests)],
+                "data": engine.price_store.counts() if engine.price_store else None}
+
+    @app.get("/api/backtests/{bid}")
+    def bt_get(bid: str, _=Depends(auth)):
+        r = next((x for x in engine.backtests if x["id"] == bid), None)
+        if r is None:
+            raise HTTPException(404, "unknown backtest")
+        return r
+
+    @app.post("/api/backtests")
+    def bt_run(body: dict, _=Depends(auth)):
+        if engine.price_store is None:
+            raise HTTPException(422, "There is no recorded price data to test on: the Betfair price log is not running.")
+        try:
+            sc = engine.scripts.current(str(body.get("script_id", "")))
+        except KeyError:
+            raise HTTPException(404, "unknown script")
+        target = body.get("target", "favourite")
+        if target not in bt.TARGETS:
+            raise HTTPException(422, f"target must be one of {bt.TARGETS}")
+        days = max(1, min(int(body.get("days", 90)), 3650))
+        markets = bt.load(engine.price_store, sc["sport"], time.time() - days * 86400)
+        res = bt.run(sc, markets, target, body.get("stake"), 0.05, float(body.get("oos", 0.3)))
+        res.update(id=f"b{int(time.time() * 1000)}", t=time.time(), script_id=body["script_id"], version=len(engine.scripts.get(body["script_id"])["versions"]), days=days)
+        res["data"] = engine.price_store.counts()
+        engine.update_locked(lambda: engine.backtests.append(res))
+        engine.backtests[:] = engine.backtests[-10:]
+        return res
+
     @app.get("/api/home")
     def home(_=Depends(auth)):
         return engine.home()

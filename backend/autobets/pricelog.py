@@ -27,6 +27,7 @@ class PriceStore:
             CREATE INDEX IF NOT EXISTS tk_m ON ticks(market_id, t);
             CREATE INDEX IF NOT EXISTS tk_t ON ticks(t);
             CREATE TABLE IF NOT EXISTS runners(market_id TEXT PRIMARY KEY, names TEXT);
+            CREATE TABLE IF NOT EXISTS results(market_id TEXT PRIMARY KEY, winner TEXT, t REAL);
             """)
             self.db.commit()
         self.last: dict[str, tuple] = {}
@@ -45,9 +46,21 @@ class PriceStore:
             self.db.commit()
         return True
 
+    def set_result(self, market_id: str, winner: str, t: float) -> None:
+        with self.lock:
+            self.db.execute("INSERT OR REPLACE INTO results VALUES(?,?,?)", (market_id, winner, t))
+            self.db.commit()
+
+    def unresolved(self, older_than: float, newer_than: float) -> list[str]:
+        """Markets that were seen going in play, have no recorded result, and last changed between the two times."""
+        with self.lock:
+            rows = self.db.execute("""SELECT market_id FROM ticks GROUP BY market_id HAVING MAX(in_play)=1 AND MAX(t) < ? AND MAX(t) > ?
+                                   AND market_id NOT IN (SELECT market_id FROM results)""", (older_than, newer_than)).fetchall()
+        return [r[0] for r in rows]
+
     @staticmethod
     def _slim(ctx: dict) -> dict:
-        keep = ("kind", "status", "live", "sets", "game", "serving", "elapsed", "goals", "model")
+        keep = ("kind", "status", "live", "sets", "game", "serving", "elapsed", "goals", "model", "players", "teams")
         return {k: ctx[k] for k in keep if k in ctx}
 
     def counts(self) -> dict:
@@ -82,7 +95,26 @@ class PriceLogger:
                     except Exception:
                         ctx = None
                     self.store.add(t, {**m, "sport": sport}, b, ctx)
+        self.record_results(t)
         return any_live
+
+    def record_results(self, t: float) -> int:
+        """Once a market has stopped changing, ask Betfair who won and keep it: results are what turn the price log into a test of the models and scripts."""
+        n = 0
+        ids = self.store.unresolved(t - 15 * 60, t - 3 * 86400)
+        for i in range(0, len(ids), 40):
+            try:
+                with self.engine.lock:
+                    books = self.engine.feed.get_books(ids[i:i + 40])
+            except Exception as e:      # noqa: BLE001
+                log.warning("price logger results: %s", e)
+                return n
+            for b in books:
+                win = [sid for sid, s in b.selections.items() if s.status == "WINNER"]
+                if b.status == "CLOSED" and win:
+                    self.store.set_result(b.market_id, win[0], t)
+                    n += 1
+        return n
 
     def run_forever(self) -> None:
         wait = SLOW

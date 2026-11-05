@@ -16,14 +16,17 @@ class Ledger:
     def __init__(self, entries: list[dict] | None = None) -> None:
         self.entries: list[dict] = list(entries or [])
 
-    def add(self, market_id: str, event: str, t: float, result: float, winner: str | None, staked: float = 0.0) -> bool:
+    def add(self, market_id: str, event: str, t: float, result: float, winner: str | None, staked: float = 0.0, parts: dict | None = None) -> bool:
         if any(e["market_id"] == market_id for e in self.entries):
             return False                                                # a market is only ever booked once
-        self.entries.append({"market_id": market_id, "event": event, "t": t, "result": round(result, 2), "winner": winner, "staked": round(staked, 2)})
+        self.entries.append({"market_id": market_id, "event": event, "t": t, "result": round(result, 2), "winner": winner, "staked": round(staked, 2), "parts": {k: round(v, 2) for k, v in (parts or {}).items()}})
         return True
 
     def _sum(self, since: dt.date, until: dt.date | None = None) -> float:
         return round(sum(e["result"] for e in self.entries if uk_date(e["t"]) >= since and (until is None or uk_date(e["t"]) <= until)), 2)
+
+    def window(self, since: float, until: float | None = None) -> list[dict]:
+        return [e for e in self.entries if e["t"] >= since and (until is None or e["t"] < until)]
 
     def periods(self, now: float) -> dict:
         d = uk_date(now)

@@ -130,6 +130,8 @@ class Engine:
         self.scripts = ScriptStore()
         self.plan = Plan()
         self.alerts = Alerts()
+        self.price_store = None                        # set by the app when the price log is running
+        self.backtests: list[dict] = []
         self.recs = Recs()
         self.context_fn = None                         # set by the app: market info -> live score / set / minute, when known
         self._susp: dict[str, float] = {}
@@ -143,7 +145,7 @@ class Engine:
         return {"v": 1, "triggers": [asdict(t) for t in self.triggers.values()], "mtriggers": [asdict(t) for t in self.mtriggers.values()],
                 "entries": [asdict(t) for t in self.entries.values()], "fok": self.fok, "log": self.log[-200:],
                 "exchange": self.ex.export_state(), "settings": self.settings.to_dict(), "ledger": self.ledger.entries,
-                "scripts": self.scripts.export(), "plan": self.plan.export(), "alerts": self.alerts.export(), "recs": self.recs.export()}
+                "scripts": self.scripts.export(), "plan": self.plan.export(), "alerts": self.alerts.export(), "recs": self.recs.export(), "backtests": self.backtests[-10:]}
 
     def _save(self) -> None:
         """Write stops, entries, auto-greens, fill-or-kill timers and (in practice) the practice orders and positions to disk, so a restart or
@@ -182,6 +184,7 @@ class Engine:
             self.plan = Plan.load(st.get("plan"))
             self.alerts = Alerts.load(st.get("alerts"))
             self.recs = Recs.load(st.get("recs"))
+            self.backtests = list(st.get("backtests", []))
             top = max([int(i[1:]) for i in list(self.triggers) + list(self.mtriggers) if i[1:].isdigit()] or [0])
             self._trigger_ids = itertools.count(top + 1)
             self._last_saved = json.dumps(self._snapshot(), sort_keys=True)
@@ -417,7 +420,7 @@ class Engine:
             winners = [sid for sid, s in b.selections.items() if s.status == "WINNER"]
             if b.status == "CLOSED" and winners:
                 ev = self._info.get(b.market_id, {}).get("event", "") or b.market_id
-                if self.ledger.add(b.market_id, ev, now, out.get(winners[0], 0.0), winners[0], self._staked(b.market_id)):
+                if self.ledger.add(b.market_id, ev, now, out.get(winners[0], 0.0), winners[0], self._staked(b.market_id), self._parts(b.market_id, winners[0], b.selections)):
                     booked += 1
                     self._log(f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "info")
                     self.alerts.add("trade", f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "Result booked to today's P&L", False, {"kind": "market", "id": b.market_id})
@@ -439,6 +442,23 @@ class Engine:
     def update_locked(self, fn):
         """Run a change to scripts or the plan under the engine lock so it is saved with everything else."""
         return fn()
+
+    @staticmethod
+    def _label(source: str) -> str:
+        return "Manual trades" if source == "manual" else ("AI ideas" if source == "ai" else source.split(":", 1)[1].removesuffix(":exit"))
+
+    def _parts(self, market_id: str, winner: str, selections) -> dict:
+        """The market's result split by who placed the bets: each script, AI ideas, manual trades."""
+        by: dict[str, dict[str, Position]] = defaultdict(lambda: defaultdict(Position))
+        for f in self.ex.fills():
+            r = self.ex.get_order(f.order_id).request
+            if r.market_id == market_id:
+                by[self._label(r.source)][r.selection_id] = pnl.apply_fill(by[self._label(r.source)][r.selection_id], r.side, f.price, f.size)
+        out = {}
+        for label, held in by.items():
+            full = {sid: held.get(sid, Position()) for sid in set(selections) | set(held)}
+            out[label] = pnl.market_outcomes(full).get(winner, 0.0)
+        return out
 
     def _staked(self, market_id: str) -> float:
         """Money put at risk on a market: back stakes plus lay liabilities, over everything matched."""
