@@ -6,6 +6,7 @@ import itertools
 import json
 import os
 import threading
+import re
 import time
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
@@ -101,6 +102,15 @@ class _TrackedFeed:
             self._engine.feed_ok_at = time.time()
             return out
         return call
+
+
+_PLACEHOLDER = re.compile(r"^\s*(test|demo|dummy|placeholder)\b|\bvirtual\b|\(virtual\)", re.I)
+
+
+def is_placeholder(m: dict) -> bool:
+    """Betfair's own test events ('Test W v Test F') and virtual fixtures are not real matches and never belong in the list."""
+    sides = [x for x in re.split(r"\s+v(?:s\.?)?\s+", m.get("event", ""), flags=re.I) if x.strip()]
+    return bool(sides) and (all(_PLACEHOLDER.search(x) for x in sides) or bool(_PLACEHOLDER.search(m.get("competition", "") or "")) and any(_PLACEHOLDER.search(x) for x in sides))
 
 
 class Engine:
@@ -210,6 +220,7 @@ class Engine:
             res = self.feed.list_markets(sport)
         else:
             res = self.feed.list_markets({"tennis": "2", "football": "1"}[sport], "MATCH_ODDS", max_results=100)
+            res = [m for m in res if not is_placeholder(m)]
             try:                      # the catalogue does not say which markets are in play; the books do (<= 40 markets per call)
                 flags = {}
                 for i in range(0, len(res), 40):

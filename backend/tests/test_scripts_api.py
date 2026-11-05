@@ -70,3 +70,11 @@ def test_ai_draft_parses_validates_and_rejects_bad_json():
     assert bad["script"] is None and "not a valid script" in bad["error"]
     none = fake("That needs a condition I do not have.")
     assert none["script"] is None and none["error"] is None
+
+
+def test_placeholder_events_are_recognised():
+    from autobets.api.engine import is_placeholder
+    for ev in ("Test W v Test F", "test a v test b", "Test C v Test V", "Demo A v Demo B"):
+        assert is_placeholder({"event": ev, "competition": "Other"})
+    for ev in ("Arsenal v Chelsea", "Testimonial XI v Celtic", "A. Player v B. Player", "Tester FC v Real Madrid"):
+        assert not is_placeholder({"event": ev, "competition": "Friendlies"})
