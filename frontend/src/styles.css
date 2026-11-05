@@ -338,3 +338,12 @@ textarea.code { font-family: ui-monospace, monospace; font-size: 12px; width: 10
   .wbtoggle { display: block; margin: 8px 10px 0; }
   .wbleft { display: none; width: 100%; max-height: 50vh; border-right: 0; border-bottom: 1px solid var(--border); } .wbleft.show { display: flex; }
 }
+
+/* ---- script chooser ---- */
+.scriptselect { position: relative; }
+.ssbtn { width: 100%; display: flex; justify-content: space-between; align-items: center; text-align: left; }
+.sspanel { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 60; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.sspanel input { width: 100%; box-sizing: border-box; }
+.sslist { max-height: 260px; overflow: auto; display: flex; flex-direction: column; }
+.sslist .pickrow { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.copilot .draft { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }

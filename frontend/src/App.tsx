@@ -402,7 +402,7 @@ export default function App() {
       <nav className="navbar" aria-label="Screens">
         {([['home', 'Home'], ['recs', 'Recommendations'], ['plan', 'Plan'], ['scripts', 'Scripts'], ['manual', 'Manual Trading'], ['analyse', 'Analyse'], ['alerts', 'Alerts'], ['settings', 'Settings']] as [Screen, string][]).map(([k, l]) => <button key={k} className={screen === k ? 'on' : ''} onClick={() => setScreen(k)}>{l}{k === 'recs' && badge.recs > 0 && <span className="nbadge">{badge.recs}</span>}{k === 'alerts' && badge.needs > 0 && <span className="nbadge bad">{badge.needs}</span>}</button>)}
       </nav>
-      {(screen === 'home' || screen === 'plan') && <Workbench say={say} withCopilot={screen === 'home'} openIds={ids} onOpenLadder={openById}>
+      {(screen === 'home' || screen === 'plan') && <Workbench say={say} withCopilot openIds={ids} onOpenLadder={openById}>
         {screen === 'home' && <HomeScreen say={say} go={s => setScreen(s)} openMarket={openById} />}
         {screen === 'plan' && <PlanScreen say={say} />}
       </Workbench>}

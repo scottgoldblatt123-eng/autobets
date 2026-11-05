@@ -2510,3 +2510,90 @@ Steps:
 **Expected:** A 'Market list' button reveals the list above the screen; the AI panel is available from the Copilot button in the header.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 40. Script chooser and Copilot script builder (added 5 Nov)
+
+_Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home._
+
+### 40.1 Copilot is on Plan as well as Home  \[Either\]
+
+Steps:
+1. Open Plan on a wide screen.
+
+**Expected:** The Copilot panel is docked on the right of both Home and Plan.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 40.2 Build a script from the Copilot  \[Practice\]
+
+Steps:
+1. Click Build a script in the Copilot.
+2. Describe a strategy in plain English and send.
+
+**Expected:** A draft appears with Entry / Exit / Safety rule cards. An invalid draft shows a clear error and cannot be saved.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 40.3 Refine a draft  \[Practice\]
+
+Steps:
+1. With an unsaved draft showing, type a change (e.g. 'make the stake 5 and add a 10 pound stop').
+
+**Expected:** A full updated draft replaces it, keeping the earlier rules unless you changed them.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 40.4 Save the draft and use it straight away  \[Practice\]
+
+Steps:
+1. Click Save as draft script.
+2. Tick a market in the list, Add to Plan, open the script chooser.
+
+**Expected:** The new script is in the chooser (off, tagged AI draft) without reloading the page.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 40.5 Chooser search  \[Either\]
+
+Steps:
+1. Open the script chooser and type part of a name or description.
+
+**Expected:** The list narrows as you type; with no match it says so.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 40.6 Chooser sport filter  \[Either\]
+
+Steps:
+1. Choose Tennis, then Football.
+
+**Expected:** Only scripts for that sport (plus 'Any sport' scripts) are shown.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 40.7 Recently used and On/Off sections  \[Either\]
+
+Steps:
+1. Add a script to the Plan, then reopen the chooser.
+
+**Expected:** It appears under Recently used at the top; the rest are grouped On then Off.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 40.8 Chooser in all three places  \[Either\]
+
+Steps:
+1. Check Add to Plan from the list, the market ▤ button on Manual Trading, and Edit on a Plan row.
+
+**Expected:** Each uses the same searchable chooser.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 40.9 Scripts library filters  \[Either\]
+
+Steps:
+1. On Scripts use the All / On / Off / AI drafts / Tennis / Football chips and the search box.
+
+**Expected:** The library narrows and its heading shows 'N of M'.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

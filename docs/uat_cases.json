@@ -2865,5 +2865,106 @@
    "Open Home on a phone or narrow window."
   ],
   "expected": "A 'Market list' button reveals the list above the screen; the AI panel is available from the Copilot button in the header."
+ },
+ {
+  "id": "40.1",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Copilot is on Plan as well as Home",
+  "mode": "Either",
+  "steps": [
+   "Open Plan on a wide screen."
+  ],
+  "expected": "The Copilot panel is docked on the right of both Home and Plan."
+ },
+ {
+  "id": "40.2",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Build a script from the Copilot",
+  "mode": "Practice",
+  "steps": [
+   "Click Build a script in the Copilot.",
+   "Describe a strategy in plain English and send."
+  ],
+  "expected": "A draft appears with Entry / Exit / Safety rule cards. An invalid draft shows a clear error and cannot be saved."
+ },
+ {
+  "id": "40.3",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Refine a draft",
+  "mode": "Practice",
+  "steps": [
+   "With an unsaved draft showing, type a change (e.g. 'make the stake 5 and add a 10 pound stop')."
+  ],
+  "expected": "A full updated draft replaces it, keeping the earlier rules unless you changed them."
+ },
+ {
+  "id": "40.4",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Save the draft and use it straight away",
+  "mode": "Practice",
+  "steps": [
+   "Click Save as draft script.",
+   "Tick a market in the list, Add to Plan, open the script chooser."
+  ],
+  "expected": "The new script is in the chooser (off, tagged AI draft) without reloading the page."
+ },
+ {
+  "id": "40.5",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Chooser search",
+  "mode": "Either",
+  "steps": [
+   "Open the script chooser and type part of a name or description."
+  ],
+  "expected": "The list narrows as you type; with no match it says so."
+ },
+ {
+  "id": "40.6",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Chooser sport filter",
+  "mode": "Either",
+  "steps": [
+   "Choose Tennis, then Football."
+  ],
+  "expected": "Only scripts for that sport (plus 'Any sport' scripts) are shown."
+ },
+ {
+  "id": "40.7",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Recently used and On/Off sections",
+  "mode": "Either",
+  "steps": [
+   "Add a script to the Plan, then reopen the chooser."
+  ],
+  "expected": "It appears under Recently used at the top; the rest are grouped On then Off."
+ },
+ {
+  "id": "40.8",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Chooser in all three places",
+  "mode": "Either",
+  "steps": [
+   "Check Add to Plan from the list, the market \u25a4 button on Manual Trading, and Edit on a Plan row."
+  ],
+  "expected": "Each uses the same searchable chooser."
+ },
+ {
+  "id": "40.9",
+  "section": "Script chooser and Copilot script builder (added 5 Nov)",
+  "intro": "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.",
+  "title": "Scripts library filters",
+  "mode": "Either",
+  "steps": [
+   "On Scripts use the All / On / Off / AI drafts / Tennis / Football chips and the search box."
+  ],
+  "expected": "The library narrows and its heading shows 'N of M'."
  }
 ]

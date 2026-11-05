@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
-import { api, type MarketInfo, type Script } from './api'
+import { useState } from 'react'
+import { api, type MarketInfo } from './api'
+import ScriptSelect, { markScriptUsed } from './ScriptSelect'
 
 type Rule = 'fav' | 'dog' | 'first' | 'second' | 'draw'
 const RULES: [Rule, string][] = [['fav', 'Favourite (shortest price)'], ['dog', 'Outsider (longest price)'], ['first', 'First listed (home / player 1)'], ['second', 'Second listed (away / player 2)'], ['draw', 'The Draw']]
 
 /** Add several markets to the Plan at once: watch them, or attach one script to all of them with a rule for which runner it acts on. */
 export default function BulkAddDialog({ markets, onClose, onDone }: { markets: MarketInfo[]; onClose: () => void; onDone: (msg: string, kind?: 'ok' | 'warn' | 'err') => void }) {
-  const [scripts, setScripts] = useState<Script[]>([]), [sid, setSid] = useState(''), [rule, setRule] = useState<Rule>('fav'), [stake, setStake] = useState(''), [busy, setBusy] = useState(false), [report, setReport] = useState<string[]>([])
-  useEffect(() => { api.scripts().then(setScripts).catch(() => undefined) }, [])
+  const [sid, setSid] = useState(''), [rule, setRule] = useState<Rule>('fav'), [stake, setStake] = useState(''), [busy, setBusy] = useState(false), [report, setReport] = useState<string[]>([])
   const go = async () => {
     const v = Number(stake)
     if (stake.trim() && !(v >= 1)) { onDone('Stake must be at least £1.', 'err'); return }
@@ -27,6 +27,7 @@ export default function BulkAddDialog({ markets, onClose, onDone }: { markets: M
         try { await api.planAdd({ market_id: m.market_id, selection_id: selection, script_id: sid || null, stake: stake.trim() ? v : null }); added++ } catch (e) { skipped.push(`${m.event} · ${m.name}: ${(e as Error).message}`) }
       }
     } finally { setBusy(false) }
+    if (sid) markScriptUsed(sid)
     if (!skipped.length) { onDone(`Added ${added} market${added === 1 ? '' : 's'} to your Plan.`); onClose() } else { onDone(`Added ${added}; ${skipped.length} skipped.`, 'warn'); setReport(skipped) }
   }
   return (
@@ -34,7 +35,7 @@ export default function BulkAddDialog({ markets, onClose, onDone }: { markets: M
       <h3>Add {markets.length} market{markets.length === 1 ? '' : 's'} to your Plan</h3>
       <div className="pickerlist" style={{ maxHeight: 110 }}>{markets.map(m => <div key={m.market_id} className="small" style={{ padding: '2px 8px' }}>{m.event} <span className="muted">· {m.name}</span></div>)}</div>
       <label>Script (leave as watching to attach one later)
-        <select value={sid} onChange={e => setSid(e.target.value)}><option value="">None: watch only</option>{scripts.map(s => <option key={s.id} value={s.id}>{s.name} v{s.version}{s.enabled ? '' : ' (off)'}</option>)}</select></label>
+        <ScriptSelect value={sid} onChange={setSid} allowNone /></label>
       {sid && <>
         <label>Which runner it acts on in each market<select value={rule} onChange={e => setRule(e.target.value as Rule)}>{RULES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
         <label>Stake (£), blank = the script's own<input inputMode="decimal" value={stake} onChange={e => setStake(e.target.value)} /></label>

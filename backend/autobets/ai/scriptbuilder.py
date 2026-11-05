@@ -32,7 +32,7 @@ def draft(claude: Claude, usage: Usage, prompt: str) -> dict:
         raise AiError("The script builder needs ANTHROPIC_API_KEY on the server.")
     if not usage.allowed():
         raise AiError(f"The monthly AI spend limit (£{usage.cap:g}, estimated) has been reached.")
-    res = claude.message(SYSTEM, [{"role": "user", "content": prompt[:2000]}], max_tokens=1500)
+    res = claude.message(SYSTEM, [{"role": "user", "content": prompt[:6000]}], max_tokens=1500)
     gbp = usage.record("script-builder", res["model"], res["input_tokens"], res["output_tokens"])
     text = res["text"]
     m = re.search(r"```script\s*(.*?)```", text, re.S)

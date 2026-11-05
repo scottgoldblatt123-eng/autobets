@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Script, type ScriptDraft, type ScriptRuleText } from './api'
 import MarketPicker from './MarketPicker'
+import { markScriptUsed } from './ScriptSelect'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
 const when = (t: number) => new Date(t * 1000).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -23,7 +24,8 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
   const load = useCallback(() => api.scripts().then(l => { setList(l); setSel(s => (l.some(x => x.id === s) ? s : l[0]?.id ?? '')) }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load() }, [load])
   const cur = list.find(s => s.id === sel)
-  const shown = list.filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase()))
+  const [lf, setLf] = useState('all')
+  const shown = list.filter(s => (!q || (s.name + ' ' + s.description).toLowerCase().includes(q.toLowerCase())) && (lf === 'all' || (lf === 'on' ? s.enabled : lf === 'off' ? !s.enabled : lf === 'ai' ? s.origin === 'ai' : s.sport === lf || s.sport === 'any')))
   const guard = async (f: () => Promise<unknown>, ok?: string) => { setErr(''); try { await f(); if (ok) say(ok); await load() } catch (e) { setErr((e as Error).message) } }
   const build = async () => { setBusy(true); setErr(''); setDraft(null); try { setDraft(await api.buildScript(prompt)) } catch (e) { setErr((e as Error).message) } finally { setBusy(false) } }
   const saveDraft = () => draft?.script && guard(async () => { const s = await api.createScript({ ...draft.script, _origin: 'ai' }); setSel(s.id); setDraft(null); setPrompt('') }, 'Draft saved (off). Review it, backtest it, then add it to the Plan.')
@@ -46,7 +48,8 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
         </div>}
       </div>
       <div className="split">
-        <aside className="card library"><div className="cap">Library</div>
+        <aside className="card library"><div className="cap">Library ({shown.length}{shown.length !== list.length ? ` of ${list.length}` : ''})</div>
+          <div className="chips">{[['all', 'All'], ['on', 'On'], ['off', 'Off'], ['ai', 'AI drafts'], ['tennis', 'Tennis'], ['football', 'Football']].map(([k, l]) => <button key={k} className={'chip' + (lf === k ? ' on' : '')} onClick={() => setLf(k)}>{l}</button>)}</div>
           {shown.map(s => <button key={s.id} className={'librow' + (s.id === sel ? ' on' : '')} onClick={() => setSel(s.id)}>{s.name}<span className="muted small">{s.sport === 'any' ? 'Any' : s.sport[0].toUpperCase() + s.sport.slice(1)} · v{s.version} · {s.origin === 'ai' ? 'AI built' : 'yours'}{s.enabled ? ' · ON' : ''}</span></button>)}
           {!shown.length && <div className="muted small pad">{list.length ? 'No script matches.' : 'No scripts yet. Describe one above, or start from New script.'}</div>}
         </aside>
@@ -86,7 +89,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
         {[...cur.history].reverse().map(h => <div key={h.version} className="small">v{h.version} · {when(h.t)} · {h.note}</div>)}
         <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={() => setHist(false)}>Close</button></div></div></div>}
       {pick && cur && <MarketPicker say={say} needRunner title={`Add "${cur.name}" to Plan`} onClose={() => setPick(false)}
-        onPick={(m, sid) => { setPick(false); void guard(() => api.planAdd({ market_id: m.market_id, selection_id: sid, script_id: cur.id }), `Added to your Plan: ${m.event}.`).then(onPlan) }} />}
+        onPick={(m, sid) => { setPick(false); markScriptUsed(cur.id); void guard(() => api.planAdd({ market_id: m.market_id, selection_id: sid, script_id: cur.id }), `Added to your Plan: ${m.event}.`).then(onPlan) }} />}
     </div>
   )
 }

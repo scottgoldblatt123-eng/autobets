@@ -387,6 +387,18 @@ sec("Market list on Home and Plan, bulk add, AI panel (added 5 Nov)", "The same 
     c("Narrow screens", "Either", ["Open Home on a phone or narrow window."], "A 'Market list' button reveals the list above the screen; the AI panel is available from the Copilot button in the header."),
 ])
 
+sec("Script chooser and Copilot script builder (added 5 Nov)", "Scales as the number of scripts grows; scripts can be created from the Copilot beside Plan and Home.", [
+    c("Copilot is on Plan as well as Home", "Either", ["Open Plan on a wide screen."], "The Copilot panel is docked on the right of both Home and Plan."),
+    c("Build a script from the Copilot", "Practice", ["Click Build a script in the Copilot.", "Describe a strategy in plain English and send."], "A draft appears with Entry / Exit / Safety rule cards. An invalid draft shows a clear error and cannot be saved."),
+    c("Refine a draft", "Practice", ["With an unsaved draft showing, type a change (e.g. 'make the stake 5 and add a 10 pound stop')."], "A full updated draft replaces it, keeping the earlier rules unless you changed them."),
+    c("Save the draft and use it straight away", "Practice", ["Click Save as draft script.", "Tick a market in the list, Add to Plan, open the script chooser."], "The new script is in the chooser (off, tagged AI draft) without reloading the page."),
+    c("Chooser search", "Either", ["Open the script chooser and type part of a name or description."], "The list narrows as you type; with no match it says so."),
+    c("Chooser sport filter", "Either", ["Choose Tennis, then Football."], "Only scripts for that sport (plus 'Any sport' scripts) are shown."),
+    c("Recently used and On/Off sections", "Either", ["Add a script to the Plan, then reopen the chooser."], "It appears under Recently used at the top; the rest are grouped On then Off."),
+    c("Chooser in all three places", "Either", ["Check Add to Plan from the list, the market ▤ button on Manual Trading, and Edit on a Plan row."], "Each uses the same searchable chooser."),
+    c("Scripts library filters", "Either", ["On Scripts use the All / On / Off / AI drafts / Tennis / Football chips and the search box."], "The library narrows and its heading shows 'N of M'."),
+])
+
 cases = []
 for si, (name, intro, cs) in enumerate(S, 1):
     for ci, k in enumerate(cs, 1):

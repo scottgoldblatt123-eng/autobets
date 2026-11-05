@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type PlanBet, type PlanRow, type PlanView, type Script } from './api'
+import { api, type PlanBet, type PlanRow, type PlanView } from './api'
 import AttachDialog from './AttachDialog'
+import ScriptSelect from './ScriptSelect'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
 const gbp = (v: number | null | undefined) => (v == null ? '–' : '£' + v.toFixed(2))
@@ -11,10 +12,10 @@ const TABS: Record<BetTab, string[]> = { Unmatched: ['UNMATCHED'], 'Partially ma
 
 /** The Plan: everything planned or running, chosen by you or recommended by the AI, and every bet on it. */
 export default function PlanScreen({ say }: { say: Say }) {
-  const [view, setView] = useState<PlanView | null>(null), [bets, setBets] = useState<PlanBet[]>([]), [scripts, setScripts] = useState<Script[]>([])
+  const [view, setView] = useState<PlanView | null>(null), [bets, setBets] = useState<PlanBet[]>([])
   const [filter, setFilter] = useState<Filter>('all'), [tab, setTab] = useState<BetTab>('Unmatched'), [err, setErr] = useState('')
   const [edit, setEdit] = useState<PlanRow | null>(null), [stake, setStake] = useState(''), [rm, setRm] = useState<PlanRow | null>(null), [pickScript, setPickScript] = useState<{ m: string; sid: string | null; name: string } | null>(null)
-  const load = useCallback(() => Promise.all([api.plan(), api.planBets(), api.scripts()]).then(([p, b, s]) => { setView(p); setBets(b); setScripts(s); setErr('') }).catch(e => setErr((e as Error).message)), [])
+  const load = useCallback(() => Promise.all([api.plan(), api.planBets()]).then(([p, b]) => { setView(p); setBets(b); setErr('') }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load(); const t = window.setInterval(() => void load(), 4000); return () => window.clearInterval(t) }, [load])
   const act = async (f: () => Promise<unknown>, ok: string) => { try { await f(); say(ok); await load() } catch (e) { say((e as Error).message, 'err') } }
   const clash = new Set((view?.clashes ?? []).flatMap(c => c.rows))
@@ -55,7 +56,7 @@ export default function PlanScreen({ say }: { say: Say }) {
       {edit && <div className="overlay" onClick={() => setEdit(null)}><div className="card" role="dialog" aria-label="Edit plan row" onClick={e => e.stopPropagation()} style={{ width: 420 }}>
         <h3>Edit before applying</h3><div className="muted small">{edit.event} · {edit.market_name} · {edit.strategy}</div>
         <label>Stake (£), blank = the script's own<input inputMode="decimal" value={stake} onChange={e => setStake(e.target.value)} /></label>
-        <label>Strategy<select defaultValue={edit.script_id ?? ''} onChange={e => e.target.value && act(() => api.planEdit(edit.id, { script_id: e.target.value }), 'Script changed.')}><option value="">{edit.script_id ? '(keep)' : 'None'}</option>{scripts.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+        <label>Strategy<ScriptSelect value={edit.script_id ?? ''} onChange={id => id && act(() => api.planEdit(edit.id, { script_id: id }), 'Script changed.')} allowNone noneLabel={edit.script_id ? '(keep current)' : 'None'} /></label>
         <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={() => setEdit(null)}>Cancel</button><button className="primary" onClick={() => { const v = Number(stake); if (stake.trim() && !(v >= 1)) { say('Stake must be at least £1.', 'err'); return } void act(() => api.planEdit(edit.id, stake.trim() ? { stake: v } : {}), 'Changes saved.').then(() => setEdit(null)) }}>Save changes</button></div></div></div>}
       {rm && <div className="overlay" onClick={() => setRm(null)}><div className="card" role="dialog" aria-label="Remove from plan" onClick={e => e.stopPropagation()} style={{ width: 420 }}>
         <h3>Remove?</h3><div className="small">{rm.event} · {rm.market_name} · {rm.strategy}</div><div className="muted small">Cancels this script's unmatched orders on the market. Matched bets and open positions stay as they are.</div>
