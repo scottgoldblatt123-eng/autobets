@@ -3,6 +3,8 @@ import { groupMarkets } from './markets'
 import { api, setToken, type MarketInfo, type MatchCtx, type State } from './api'
 import Copilot from './Copilot'
 import { SafetyPanel, StatusStrip } from './Safety'
+import ScriptsScreen from './ScriptsScreen'
+import PlanScreen from './PlanScreen'
 import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
 import MatchedPanel from './MatchedPanel'
@@ -93,6 +95,9 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
   const [synced, setSynced] = useState(false)
+  type Screen = 'manual' | 'plan' | 'scripts'
+  const [screen, setScreenState] = useState<Screen>(() => { const h = window.location.hash.replace('#', ''); return (['manual', 'plan', 'scripts'] as string[]).includes(h) ? (h as Screen) : 'manual' })
+  const setScreen = (s: Screen) => { setScreenState(s); try { window.history.replaceState(null, '', '#' + s) } catch { /* ignore */ } }
   const [showData, setShowData] = useState(false), [showAi, setShowAi] = useState(false), [showSafety, setShowSafety] = useState(false)
   const [layouts, setLayouts] = useState<Record<string, Settings>>(() => { try { return JSON.parse(localStorage.getItem('autobets.layouts') ?? '{}') } catch { return {} } })
   const [layoutName, setLayoutName] = useState('')
@@ -374,7 +379,12 @@ export default function App() {
         <button className="sm" onClick={() => setSettings(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }))}>{theme === 'dark' ? 'Light' : 'Dark'}</button>
       </header>
 
-      <div className="body">
+      <nav className="navbar" aria-label="Screens">
+        {([['manual', 'Manual Trading'], ['plan', 'Plan'], ['scripts', 'Scripts']] as [Screen, string][]).map(([k, l]) => <button key={k} className={screen === k ? 'on' : ''} onClick={() => setScreen(k)}>{l}</button>)}
+      </nav>
+      {screen === 'plan' && <PlanScreen say={say} />}
+      {screen === 'scripts' && <ScriptsScreen say={say} onPlan={() => setScreen('plan')} />}
+      <div className="body" style={screen === 'manual' ? undefined : { display: 'none' }}>
         <aside>
           <div className="tabs">
             {(['tennis', 'football'] as const).map(s => <button key={s} className={sport === s ? 'on' : ''} onClick={() => setSport(s)}>{s === 'tennis' ? 'Tennis' : 'Football'}</button>)}

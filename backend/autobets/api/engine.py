@@ -15,7 +15,9 @@ from ..domain import Order, OrderRequest, Persistence, Position, Side, Status
 from ..guardrails import Guardrails, Limits
 from ..journal import Journal
 from ..ledger import Ledger
+from ..plan import Plan
 from ..order_service import Blocked, OrderService
+from ..scripts import ScriptStore, describe, evaluate
 from ..settings import Settings
 from .demo import DemoFeed
 from .history import Tracker, load_logged
@@ -99,6 +101,9 @@ class Engine:
         self.state_path, self._last_saved = state_path, ""
         self.settings = Settings()
         self.ledger = Ledger()
+        self.scripts = ScriptStore()
+        self.plan = Plan()
+        self.context_fn = None                         # set by the app: market info -> live score / set / minute, when known
         self._mtm = 0.0                                # open positions marked to market (what closing them now would lock in)
         self._load()
         self._apply_settings()
@@ -107,7 +112,8 @@ class Engine:
     def _snapshot(self) -> dict:
         return {"v": 1, "triggers": [asdict(t) for t in self.triggers.values()], "mtriggers": [asdict(t) for t in self.mtriggers.values()],
                 "entries": [asdict(t) for t in self.entries.values()], "fok": self.fok, "log": self.log[-200:],
-                "exchange": self.ex.export_state(), "settings": self.settings.to_dict(), "ledger": self.ledger.entries}
+                "exchange": self.ex.export_state(), "settings": self.settings.to_dict(), "ledger": self.ledger.entries,
+                "scripts": self.scripts.export(), "plan": self.plan.export()}
 
     def _save(self) -> None:
         """Write stops, entries, auto-greens, fill-or-kill timers and (in practice) the practice orders and positions to disk, so a restart or
@@ -142,6 +148,8 @@ class Engine:
             self.log = list(st.get("log", []))
             self.settings = Settings.from_dict(st.get("settings", {}))
             self.ledger = Ledger(st.get("ledger", []))
+            self.scripts = ScriptStore(st.get("scripts"))
+            self.plan = Plan.load(st.get("plan"))
             top = max([int(i[1:]) for i in list(self.triggers) + list(self.mtriggers) if i[1:].isdigit()] or [0])
             self._trigger_ids = itertools.count(top + 1)
             self._last_saved = json.dumps(self._snapshot(), sort_keys=True)
@@ -361,6 +369,11 @@ class Engine:
         return booked
 
     @locked
+    def update_locked(self, fn):
+        """Run a change to scripts or the plan under the engine lock so it is saved with everything else."""
+        return fn()
+
+    @locked
     def pnl_summary(self) -> dict:
         self._refresh_guard()
         per = self.ledger.periods(time.time())
@@ -392,6 +405,185 @@ class Engine:
                 self.entries.pop(o.order_id, None); n += 1
         self._log(f"STOP ALL AUTOMATION: cancelled {n} unmatched automated order{'s' if n != 1 else ''}; scripts and the AI can no longer place orders", "warn")
         return {"cancelled": n, "automation": False}
+
+    # ---- scripts and the plan ---------------------------------------------
+    @staticmethod
+    def _uk_clock() -> str:
+        import datetime as dt
+        from ..ledger import UK
+        return dt.datetime.now(UK).strftime("%H:%M")
+
+    def _cancel_source(self, market_id: str, source: str) -> int:
+        n = 0
+        for o in self.ex.open_orders():
+            if o.status in OPEN and o.request.market_id == market_id and o.request.source == source:
+                self.ex.cancel_order(o.order_id); self.fok.pop(o.order_id, None); n += 1
+        return n
+
+    def _script_view(self, row: dict, book) -> dict:
+        sel = book.selections.get(row["selection_id"])
+        held = {sid: p for sid, p in self.positions().get(row["market_id"], {}).items()}
+        full = {sid: held.get(sid, Position()) for sid in book.selections}
+        out = list(pnl.market_outcomes(full).values()) if held else [0.0]
+        info = self.info([row["market_id"]]).get(row["market_id"], {})
+        ctx = None
+        if self.context_fn:
+            try:
+                ctx = self.context_fn({**info, "market_id": row["market_id"]})
+            except Exception:       # noqa: BLE001
+                ctx = None
+        return {"prices": {"last": sel.last_traded if sel else None, "back": sel.backs[0].price if sel and sel.backs else None,
+                           "lay": sel.lays[0].price if sel and sel.lays else None},
+                "in_play": book.in_play, "ctx": ctx, "position_loss": max(0.0, -min(out)), "clock": self._uk_clock()}
+
+    def _fire(self, row: dict, rule: dict, act: dict, script: dict, book) -> None:
+        mid, sid, t = row["market_id"], row["selection_id"], act["type"]
+        src = f"script:{script['name']}" + (":exit" if rule["kind"] != "entry" else "")
+        if t in ("back", "lay"):
+            sel = book.selections[sid]
+            side = t.upper()
+            price = act["price"]
+            if price == "best":
+                lv = sel.backs if side == "BACK" else sel.lays
+                if not lv:
+                    raise ValueError("no price available to bet at")
+                price = lv[0].price
+            price = ticks.nearest(float(price))
+            stake = float(row["stake"] or act["stake"])
+            size = round(stake / (price - 1), 2) if (act["basis"] == "liability" and side == "LAY") else round(stake, 2)
+            r = self.place(mid, sid, side, price, size, act["persistence"], source=src)
+            row["orders"].append(r["order"]["order_id"])
+            row["state"] = "running"
+        elif t in ("green", "close"):
+            self._cancel_source(mid, f"script:{script['name']}")
+            res = self.green_market(mid, hard=(t == "close"), source=src)
+            if not res.get("greened") and "nothing to green" not in res.get("reason", ""):
+                raise RuntimeError(res.get("reason", "could not close"))
+            row["state"] = "done"
+        elif t == "stop":
+            self._cancel_source(mid, f"script:{script['name']}")
+            row["state"] = "stopped"
+
+    @locked
+    def run_scripts(self) -> int:
+        """One pass of the script runner: evaluate every live plan row against current prices and score, and act on rules that fire."""
+        if not self.settings.automation_enabled:
+            return 0
+        rows = [r for r in self.plan.active() if r["script_id"] in self.scripts.scripts and self.scripts.get(r["script_id"])["enabled"]]
+        if not rows:
+            return 0
+        acted = 0
+        books = {}
+        mids = sorted({r["market_id"] for r in rows})
+        for i in range(0, len(mids), 40):
+            for b in self.feed.get_books(mids[i:i + 40], depth=False):
+                books[b.market_id] = b
+        for row in rows:
+            book = books.get(row["market_id"])
+            if book is None or book.status != "OPEN":
+                continue
+            self.ex.refresh([book])
+            script = self.scripts.current(row["script_id"])
+            fired = set(row["fired"])
+            for rule, act in evaluate(script, self._script_view(row, book), fired):
+                ok = True
+                try:
+                    self._fire(row, rule, act, script, book)
+                    acted += 1
+                except Exception as ex:        # noqa: BLE001
+                    ok = False
+                    row["note"] = f"{rule['id']}: {ex}"
+                    self._log(f"Script '{script['name']}' on {row['event']}: {rule['id']} could not act: {ex}", "warn")
+                    if rule["kind"] == "entry":
+                        row["state"] = "stopped"
+                if (ok or rule["kind"] == "entry") and rule["id"] not in row["fired"]:
+                    row["fired"].append(rule["id"])      # entries are never retried; exits are retried on the next pass
+                if row["state"] in ("done", "stopped") or not ok:
+                    break
+        return acted
+
+    @locked
+    def plan_add(self, market_id: str, selection_id: str | None, script_id: str | None, stake: float | None = None, added_by: str = "you") -> dict:
+        info = self.info([market_id]).get(market_id)
+        if not info:
+            raise ValueError("unknown market")
+        if script_id:
+            self.scripts.get(script_id)
+            if not selection_id:
+                raise ValueError("pick the runner this script acts on")
+        runner = info.get("runners", {}).get(selection_id or "", "")
+        if script_id and not runner:
+            raise ValueError("that runner is not in this market")
+        if stake is not None and stake < 1:
+            raise ValueError("minimum stake is £1")
+        import datetime as dt
+        from ..ledger import UK
+        return self._row_view(self.plan.add(market_id, selection_id or "", script_id, info.get("event", ""), info.get("name", ""), runner, added_by, stake,
+                                            dt.datetime.now(UK).strftime("%Y-%m-%d")))
+
+    def _row_view(self, r: dict) -> dict:
+        sc = self.scripts.scripts.get(r["script_id"]) if r["script_id"] else None
+        cur = sc["versions"][-1] if sc else None
+        stake, liab, trig = r["stake"], None, ""
+        if cur:
+            entry = next((x for x in cur["rules"] if x["kind"] == "entry"), None)
+            act = entry["then"][0] if entry else None
+            if act:
+                stake = r["stake"] or act["stake"]
+                if act["type"] == "back":
+                    liab = stake
+                elif act["price"] != "best":
+                    liab = round(stake * (act["price"] - 1), 2) if act["basis"] == "stake" else stake
+            trig = "; ".join(next(d for d in describe(cur) if d["id"] == entry["id"])["if"]) if entry else ""
+        info = self._info.get(r["market_id"], {})
+        return {**r, "strategy": cur["name"] if cur else "None (watching)", "script_enabled": bool(sc and sc["enabled"]), "stake": stake, "max_liability": liab,
+                "trigger": trig, "origin": sc["origin"] if sc else "", "start": info.get("start"), "sport": cur["sport"] if cur else ""}
+
+    @locked
+    def plan_view(self) -> dict:
+        rows = [self._row_view(r) for r in self.plan.rows.values()]
+        live = [r for r in rows if r["state"] in ("armed", "running")]
+        return {"rows": sorted(rows, key=lambda r: (r["start"] or "", r["id"])),
+                "summary": {"markets": len({r["market_id"] for r in rows}), "you": sum(1 for r in rows if r["added_by"] == "you"), "ai": sum(1 for r in rows if r["added_by"] == "ai"),
+                            "stake": round(sum(r["stake"] or 0 for r in live), 2), "max_liability": round(sum(r["max_liability"] or 0 for r in live), 2),
+                            "clashes": len(self.plan.clashes())},
+                "clashes": [{"market_id": m, "rows": ids} for m, ids in self.plan.clashes()]}
+
+    @locked
+    def plan_edit(self, rid: str, stake: float | None, script_id: str | None = None) -> dict:
+        row = self.plan.get(rid)
+        if stake is not None:
+            if stake < 1:
+                raise ValueError("minimum stake is £1")
+            row["stake"] = stake
+        if script_id:
+            self.scripts.get(script_id)
+            row.update(script_id=script_id, state="armed", fired=[], note="")
+        return self._row_view(row)
+
+    @locked
+    def plan_remove(self, rid: str) -> dict:
+        row = self.plan.get(rid)
+        if row["script_id"]:
+            sc = self.scripts.scripts.get(row["script_id"])
+            if sc:
+                self._cancel_source(row["market_id"], f"script:{sc['versions'][-1]['name']}")
+        self.plan.remove(rid)
+        return {"removed": rid}
+
+    @locked
+    def plan_bets(self, statuses: list[str] | None = None) -> list[dict]:
+        out = []
+        for o in self.ex.all_orders():
+            r = o.request
+            info = self._info.get(r.market_id, {})
+            row = self._order(o)
+            row.update(event=info.get("event", ""), market=info.get("name", ""), runner=self._name(r.market_id, r.selection_id),
+                       strategy=r.source.split(":", 1)[1].removesuffix(":exit") if r.source.startswith("script:") else ("AI" if r.source == "ai" else "Manual"),
+                       placed_by="Script" if r.source.startswith("script:") else ("AI" if r.source == "ai" else "You"))
+            if not statuses or o.status.value in statuses:
+                out.append(row)
+        return sorted(out, key=lambda x: -x["placed_at"])[:300]
 
     # ---- actions --------------------------------------------------------
     @locked
@@ -614,7 +806,7 @@ class Engine:
 
     # ---- market-level green up / hard close ------------------------------
     @locked
-    def green_market(self, market_id: str, hard: bool = False, pct: float = 1.0) -> dict:
+    def green_market(self, market_id: str, hard: bool = False, pct: float = 1.0, source: str = "manual") -> dict:
         """Equalise every outcome of the market at the prices available now. hard=True first cancels unmatched orders."""
         self.ex.refresh(self.feed.get_books([market_id], depth=False))
         if self.ex.get_book(market_id).status != "OPEN":
@@ -639,7 +831,7 @@ class Engine:
                 after = pnl._apply(after, b["selection_id"], Side(b["side"]), b["price"], b["stake"])
             plan = {**plan, "locked": round(min(after.values()), 2), "level": False}
         for b in bets:
-            r = self.place(market_id, b["selection_id"], b["side"], b["price"], b["stake"])
+            r = self.place(market_id, b["selection_id"], b["side"], b["price"], b["stake"], source=source)
             placed.append({**b, "status": r["order"]["status"]})
         self._log(f"{'Hard close' if hard else 'Green up'} on {self._info.get(market_id, {}).get('event', market_id)}: locked £{plan['locked']:.2f}", "order")
         return {"greened": True, "cancelled": cancelled, "locked": plan["locked"], "level": plan["level"], "placed": placed}
@@ -804,6 +996,7 @@ class Engine:
                 n += 1
                 try:
                     self.check_triggers_now()
+                    self.run_scripts()
                     if n % max(1, int(15 / every)) == 0:
                         self.settle_check()
                 except Exception:

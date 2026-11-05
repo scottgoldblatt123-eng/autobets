@@ -63,7 +63,33 @@ export interface Pnl {
   exposure: number; automation: boolean; mode: string; limits: { daily: number; weekly: number; liability: number }
 }
 
+export interface ScriptRuleText { id: string; kind: 'entry' | 'exit' | 'safety'; if: string[]; then: string[] }
+export interface Script {
+  id: string; name: string; sport: string; description: string; rules: unknown[]; text: ScriptRuleText[]; version: number; origin: 'you' | 'ai'; enabled: boolean; updated: number
+  history: { version: number; t: number; note: string }[]
+}
+export interface ScriptDraft { explanation: string; script: Record<string, unknown> | null; text?: ScriptRuleText[]; error: string | null; cost_gbp: number }
+export interface PlanRow {
+  id: string; market_id: string; selection_id: string; script_id: string | null; event: string; market_name: string; runner: string; added_by: 'you' | 'ai'
+  stake: number | null; state: 'armed' | 'running' | 'done' | 'stopped' | 'watching'; note: string; fired: string[]; orders: string[]
+  strategy: string; script_enabled: boolean; max_liability: number | null; trigger: string; origin: string; start: string | null; sport: string
+}
+export interface PlanView { rows: PlanRow[]; summary: { markets: number; you: number; ai: number; stake: number; max_liability: number; clashes: number }; clashes: { market_id: string; rows: string[] }[] }
+export interface PlanBet extends Order { event: string; market: string; runner: string; strategy: string; placed_by: string; source: string }
+
 export const api = {
+  scripts: () => call<Script[]>('/api/scripts'),
+  createScript: (body: Record<string, unknown>) => call<Script>('/api/scripts', { method: 'POST', body: JSON.stringify(body) }),
+  updateScript: (id: string, body: Record<string, unknown>) => call<Script>(`/api/scripts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  enableScript: (id: string, on: boolean) => call<Script>(`/api/scripts/${id}/enable`, { method: 'POST', body: JSON.stringify({ on }) }),
+  cloneScript: (id: string, name: string) => call<Script>(`/api/scripts/${id}/clone`, { method: 'POST', body: JSON.stringify({ name }) }),
+  deleteScript: (id: string) => call<{ deleted: string }>(`/api/scripts/${id}`, { method: 'DELETE' }),
+  buildScript: (prompt: string) => call<ScriptDraft>('/api/scripts/build', { method: 'POST', body: JSON.stringify({ prompt }) }),
+  plan: () => call<PlanView>('/api/plan'),
+  planAdd: (b: { market_id: string; selection_id: string | null; script_id: string | null; stake?: number | null }) => call<PlanRow>('/api/plan', { method: 'POST', body: JSON.stringify(b) }),
+  planEdit: (id: string, b: { stake?: number; script_id?: string }) => call<PlanRow>(`/api/plan/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  planRemove: (id: string) => call<{ removed: string }>(`/api/plan/${id}`, { method: 'DELETE' }),
+  planBets: () => call<PlanBet[]>('/api/plan/bets'),
   settings: () => call<SafetySettings>('/api/settings'),
   saveSettings: (patch: Partial<SafetySettings>) => call<SafetySettings>('/api/settings', { method: 'PUT', body: JSON.stringify(patch) }),
   stopAutomation: () => call<{ cancelled: number; automation: boolean }>('/api/automation/stop', { method: 'POST' }),

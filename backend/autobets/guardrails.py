@@ -29,6 +29,8 @@ class Guardrails:
             return False, "kill switch is on"
         lim = self.limits
         loss_hit = (lim.daily_loss_limit > 0 and -self.realised_today >= lim.daily_loss_limit) or (lim.weekly_loss_limit > 0 and -self.realised_week >= lim.weekly_loss_limit)
+        if automated and source.endswith(":exit"):
+            return True, ""                  # closing or greening only ever reduces risk, so limits never stop it (the kill switch above still does)
         if automated:
             if loss_hit:
                 return False, "loss limit reached (manual and automated results combined)"

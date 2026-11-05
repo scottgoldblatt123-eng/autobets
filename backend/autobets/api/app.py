@@ -134,6 +134,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     from ..context import MatchContext
     match_context = MatchContext(tennis.store if tennis else None, football.store if football else None)
+    engine.context_fn = match_context.for_market
 
     pricelog = None
     try:
@@ -161,6 +162,85 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         copilot.proposals.max_stake = engine.settings.ai_max_stake
         ai_usage.cap = engine.settings.ai_monthly_cap
     _sync_ai()
+
+    from ..ai.scriptbuilder import draft as ai_draft
+    from ..scripts import ScriptError
+
+    def _script_call(fn):
+        try:
+            return fn()
+        except ScriptError as e:
+            raise HTTPException(422, str(e))
+        except KeyError:
+            raise HTTPException(404, "unknown script")
+
+    @app.get("/api/scripts")
+    def scripts_list(_=Depends(auth)):
+        return engine.scripts.list()
+
+    @app.post("/api/scripts")
+    def scripts_create(body: dict, _=Depends(auth)):
+        origin = "ai" if body.pop("_origin", "") == "ai" else "you"
+        return _script_call(lambda: engine.update_locked(lambda: engine.scripts.create(body, origin, "drafted by Claude" if origin == "ai" else "created")))
+
+    @app.put("/api/scripts/{sid}")
+    def scripts_update(sid: str, body: dict, _=Depends(auth)):
+        return _script_call(lambda: engine.update_locked(lambda: engine.scripts.update(sid, body)))
+
+    @app.post("/api/scripts/{sid}/enable")
+    def scripts_enable(sid: str, body: dict, _=Depends(auth)):
+        return _script_call(lambda: engine.update_locked(lambda: engine.scripts.set_enabled(sid, bool(body.get("on")))))
+
+    @app.post("/api/scripts/{sid}/clone")
+    def scripts_clone(sid: str, body: dict, _=Depends(auth)):
+        return _script_call(lambda: engine.update_locked(lambda: engine.scripts.clone(sid, str(body.get("name", "")))))
+
+    @app.delete("/api/scripts/{sid}")
+    def scripts_delete(sid: str, _=Depends(auth)):
+        def go():
+            if any(r["script_id"] == sid and r["state"] in ("armed", "running") for r in engine.plan.rows.values()):
+                raise ScriptError("this script is in use on the Plan; remove it there first")
+            engine.scripts.delete(sid)
+            return {"deleted": sid}
+        return _script_call(lambda: engine.update_locked(go))
+
+    @app.post("/api/scripts/build")
+    def scripts_build(body: dict, _=Depends(auth)):
+        try:
+            return ai_draft(copilot.claude, ai_usage, str(body.get("prompt", "")))
+        except AiError as e:
+            raise HTTPException(502, str(e))
+
+    @app.get("/api/plan")
+    def plan_get(_=Depends(auth)):
+        return engine.plan_view()
+
+    @app.post("/api/plan")
+    def plan_add(body: dict, _=Depends(auth)):
+        try:
+            return engine.plan_add(str(body.get("market_id", "")), body.get("selection_id"), body.get("script_id"), body.get("stake"), "ai" if body.get("added_by") == "ai" else "you")
+        except (ValueError, KeyError) as e:
+            raise HTTPException(422, str(e))
+
+    @app.patch("/api/plan/{rid}")
+    def plan_edit(rid: str, body: dict, _=Depends(auth)):
+        try:
+            return engine.plan_edit(rid, body.get("stake"), body.get("script_id"))
+        except KeyError:
+            raise HTTPException(404, "unknown plan row")
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    @app.delete("/api/plan/{rid}")
+    def plan_remove(rid: str, _=Depends(auth)):
+        try:
+            return engine.plan_remove(rid)
+        except KeyError:
+            raise HTTPException(404, "unknown plan row")
+
+    @app.get("/api/plan/bets")
+    def plan_bets(status: str = "", _=Depends(auth)):
+        return engine.plan_bets([x for x in status.split(",") if x])
 
     @app.get("/api/settings")
     def get_settings(_=Depends(auth)):
