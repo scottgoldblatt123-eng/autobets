@@ -26,3 +26,22 @@ def test_strong_home_team_priced_shorter():
     r = m.predict(st.db, st.lock, 39, "2026-06-01T15:00:00+00:00", 1, 2)
     assert r and r["home"] > 0.55 and r["version"] == m.VERSION
     assert m.predict(st.db, st.lock, 39, "2026-06-01T15:00:00+00:00", 1, 99) is None
+
+
+def test_context_live_model_for_football():
+    from autobets.context import MatchContext
+    st = FootballStore(); base = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc); fid = 0
+    for r in range(40):
+        for h in range(1, 11):
+            a = (h + r) % 10 + 1
+            if a == h: continue
+            fid += 1
+            st.db.execute("INSERT INTO fixtures(id,league_id,season,kickoff,status,home_id,home,away_id,away,goals_h,goals_a) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                          (fid, 39, 2025, (base + dt.timedelta(days=r)).isoformat(), "FT", h, f"Team{h}", a, f"Team{a}", 2 if h == 1 else 1, 1))
+    ko = "2026-06-01T15:00:00+00:00"
+    st.db.execute("INSERT INTO fixtures(id,league_id,season,kickoff,status,elapsed,home_id,home,away_id,away,goals_h,goals_a) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (9999, 39, 2025, ko, "2H", 70, 1, "Team1", 2, "Team2", 1, 1))
+    st.db.commit()
+    import datetime
+    out = MatchContext(football=st)._football({"event": "Team1 v Team2", "start": ko})
+    assert out and out["model"] and out["model"]["draw"] > 0.4 and out["model"]["btts"] == 1.0

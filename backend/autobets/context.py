@@ -136,8 +136,22 @@ class MatchContext:
         found = self._find_football(info)
         if not found:
             return None
-        (home, away, status, elapsed, gh, ga, hh, ha, ko, *_), h, a = found
-        return {"kind": "football", "source": "API-Football", "status": FOOTBALL_STATUS.get(status, status), "code": status,
+        (home, away, status, elapsed, gh, ga, hh, ha, ko, hid, aid, league, season), h, a = found
+        live_model = None
+        try:
+            if status in ("1H", "HT", "2H") and gh is not None:
+                from .football import livemodel, model as fbmodel
+                key = (league, ko, hid, aid)
+                if key not in self._pre:
+                    pre = fbmodel.predict(self.football.db, self.football.lock, league, ko, hid, aid)
+                    self._pre[key] = pre["mu"] if pre else None
+                mu = self._pre[key]
+                if mu:
+                    lp = livemodel.price(mu[0], mu[1], (gh, ga), elapsed, status)
+                    live_model = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in lp.items()}
+        except Exception:
+            live_model = None
+        return {"kind": "football", "source": "API-Football", "status": FOOTBALL_STATUS.get(status, status), "code": status, "model": live_model,
                 "live": status in ("1H", "HT", "2H", "ET", "BT", "P", "LIVE"), "elapsed": elapsed, "teams": [h, a],
                 "goals": [gh, ga] if gh is not None else None, "ht": [hh, ha] if hh is not None else None, "kickoff": ko}
 

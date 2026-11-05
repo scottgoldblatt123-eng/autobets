@@ -125,7 +125,7 @@ function MatchLine({ ctx }: { ctx: MatchCtx }) {
             <span className="mname">{ctx.serving === i && <i title="Serving">●</i>}{last(i ? b : a)}</span>
             {(ctx.sets ?? []).map((s, k) => <span key={k} className="mset">{s[i]}</span>)}
             {ctx.game && ctx.live && <span className="mgame">{ctx.game[i]}</span>}
-            {ctx.model && ctx.live && <span className="muted small" title={`Live model: ${ctx.model.p[i]}% to win the match (recommendation only; compare with the Betfair price)`}>model <b>{ctx.model.odds[i].toFixed(2)}</b></span>}
+            {ctx.model?.odds && ctx.live && <span className="muted small" title={`Live model: ${ctx.model.p?.[i]}% to win the match (recommendation only; compare with the Betfair price)`}>model <b>{ctx.model.odds[i].toFixed(2)}</b></span>}
           </span>
         ))}
       </div>
@@ -137,6 +137,8 @@ function MatchLine({ ctx }: { ctx: MatchCtx }) {
       {ctx.live && <b className="livedot" />}
       <span className="mstat">{ctx.live && ctx.elapsed != null ? `${ctx.elapsed}′` : ctx.status}</span>
       <span className="mscore">{h} <b>{ctx.goals ? `${ctx.goals[0]} – ${ctx.goals[1]}` : 'v'}</b> {a}</span>
+      {ctx.model?.home != null && ctx.live && (() => { const m = ctx.model!, o = (p?: number) => p ? (1 / p).toFixed(2) : '–'
+        return <span className="muted small" title={`Live model (recommendation only): home ${(100 * (m.home ?? 0)).toFixed(0)}%, draw ${(100 * (m.draw ?? 0)).toFixed(0)}%, away ${(100 * (m.away ?? 0)).toFixed(0)}%, over 2.5 ${(100 * (m['over_2.5'] ?? 0)).toFixed(0)}%`}>model <b>{o(m.home)}</b> · <b>{o(m.draw)}</b> · <b>{o(m.away)}</b> · O2.5 <b>{o(m['over_2.5'])}</b></span> })()}
       {ctx.ht && !ctx.live && ctx.code !== 'NS' && <span className="muted small">HT {ctx.ht[0]}–{ctx.ht[1]}</span>}
     </div>
   )
