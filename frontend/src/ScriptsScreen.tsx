@@ -15,8 +15,8 @@ const TEMPLATE = { name: 'New script', sport: 'any', description: '', rules: [
   { id: 'r3', kind: 'safety', when: [{ type: 'rule_matched', rule: 'r1' }, { type: 'position_loss', op: '>=', value: 15 }], then: [{ type: 'close' }, { type: 'stop' }] }] }
 
 /** The rules of a script, one compact card each. `fold` shows just the headline with a toggle, for lists and chat. */
-export function RuleCards({ text, fold, headline }: { text: ScriptRuleText[]; fold?: boolean; headline?: string }) {
-  const [open, setOpen] = useState(!fold)
+export function RuleCards({ text, fold, headline, startOpen }: { text: ScriptRuleText[]; fold?: boolean; headline?: string; startOpen?: boolean }) {
+  const [open, setOpen] = useState(!fold || !!startOpen)
   if (fold && !open) return <button className="foldbtn" onClick={() => setOpen(true)} aria-expanded={false}>▸ {headline || `${text.length} rules`}</button>
   return <>{fold && <button className="foldbtn" onClick={() => setOpen(false)} aria-expanded>▾ {headline || `${text.length} rules`}</button>}{text.map(r => (
     <div key={r.id} className="rulecard"><div className="row" style={{ gap: 8, marginBottom: 4 }}><b>{r.kind === 'entry' ? 'Entry' : r.kind === 'exit' ? 'Exit' : 'Safety'}</b><span className="tag">Rule {r.id.replace(/^r/, '')}</span></div>
@@ -59,7 +59,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
               <button className="danger" onClick={() => { if (window.confirm(`Delete "${cur.name}"? This cannot be undone.`)) void guard(() => api.deleteScript(cur.id), 'Deleted.') }}>Delete</button></div>
               <div className="muted small" style={{ marginTop: 6 }}>The script name is what appears in the Strategy column on the Plan and everywhere else. Rename it and every plan row follows.</div>
               {cur.description && <div className="small" style={{ marginTop: 6 }}>{cur.description}</div>}</div>
-            <RuleCards text={cur.text} />
+            <RuleCards key={cur.id} fold startOpen text={cur.text} headline={cur.headline} />
             <div className="card"><div className="row"><h3>Put it to work</h3><span className="spacer" />
               <button disabled title="Backtests need logged price history. The Betfair price log is still collecting; this unlocks in the Analyse step." >Backtest (collecting data)</button>
               <button className="primary" onClick={() => setPick(true)}>Add to Plan…</button></div>
