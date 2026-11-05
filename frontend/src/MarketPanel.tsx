@@ -1,3 +1,4 @@
+import { gaps } from './modelGap'
 import { useEffect, useState } from 'react'
 import type { MarketState, MarketTrigger, MatchCtx } from './api'
 import { money } from './maths'
@@ -91,6 +92,9 @@ export default function MarketHeader({ market, ctx, openOrders, triggers, onGree
       <div className="minfo">
         <div className="mtitle"><b>{market.event}</b><span className="muted"> · {market.name}</span></div>
         {ctx && <MatchLine ctx={ctx} />}
+        {ctx?.model && ctx.live && (() => { const g = gaps(market, ctx); return g.length ? <div className="small modelgap" title="Live model fair price against the best Betfair back and lay, in ticks. Recommendation only. On a delayed key the Betfair price may be a minute or more behind the score.">
+          {g.map(x => <span key={x.name} className={x.verdict === 'back' ? 'gain' : x.verdict === 'lay' ? 'loss' : 'muted'} style={{ marginRight: 10 }}>{x.name.split(' ').pop()}: fair <b>{x.model.toFixed(2)}</b>{' '}
+            {x.verdict === 'back' ? `back value +${x.backTicks}t` : x.verdict === 'lay' ? `lay value +${x.layTicks}t` : 'in line'}</span>)}</div> : null })()}
         <div className="muted small" title={noVolume ? 'Betfair is not sending matched volumes for this market (a delayed key may withhold them)' : ''}>Matched <b>{noVolume ? 'n/a' : '£' + matched.toLocaleString('en-GB')}</b></div>
         {triggers.length > 0 && <div className="small">{triggers.map(t => (
           <span key={t.id} className={'chip trig ' + (t.label === 'stop loss' ? 'sl' : 'tp')} style={{ marginRight: 6 }} title="Hard-closes the market when the profit you could lock reaches this (click to remove)" onClick={() => onDelAuto(t.id)}>
