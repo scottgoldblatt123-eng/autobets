@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from .claude import AiError, Claude
+from .proposals import ProposalBook, split_reply
 from .snapshot import build
 from .usage import Usage
 
@@ -29,11 +30,26 @@ Safety
 """
 
 
-class Copilot:
-    def __init__(self, claude: Claude, usage: Usage) -> None:
-        self.claude, self.usage = claude, usage
+SUPERVISED = """
 
-    def chat(self, history: list[dict], markets: dict, ctxs: dict) -> dict:
+SUPERVISED mode is on. You may now propose at most ONE concrete order when (and only when) you see a genuine edge in the snapshot: a clear
+gap between the model's fair price and the market, or a score event the market has not priced in. Scott approves or rejects each proposal with a
+click; nothing is placed without him, and the app re-checks the price and the guardrails before placing.
+Write the proposal as a fenced block, exactly like this, after your explanation:
+```proposal
+{"market_id": "1.234", "runner": "Paul", "side": "BACK", "price": 1.7, "stake": 5, "take_profit_ticks": 3, "stop_loss_ticks": 4, "reason": "one sentence"}
+```
+Rules: market_id and runner must come from the snapshot (runner exactly as named there); price must be one the market offers now (best back for BACK, best lay for LAY);
+stake is in pounds (small: the app caps AI proposals); take_profit_ticks and stop_loss_ticks are how many ticks away from the entry to exit (0 = none).
+If there is no good trade, propose nothing and say why. Never propose just because you were asked; "nothing here" is a good answer."""
+
+
+class Copilot:
+    def __init__(self, claude: Claude, usage: Usage, proposals: ProposalBook | None = None) -> None:
+        self.claude, self.usage = claude, usage
+        self.proposals = proposals or ProposalBook()
+
+    def chat(self, history: list[dict], markets: dict, ctxs: dict, mode: str = "advisor") -> dict:
         if not self.claude.enabled:
             raise AiError("The copilot is not set up: ANTHROPIC_API_KEY is missing on the server.")
         if not self.usage.allowed():
@@ -46,6 +62,12 @@ class Copilot:
         snap = json.dumps(build(markets, ctxs), separators=(",", ":"), default=str)[:14000]
         last = msgs[-1]
         msgs[-1] = {"role": "user", "content": f"<market_snapshot>\n{snap}\n</market_snapshot>\n\n{last['content']}"}
-        res = self.claude.message(SYSTEM, msgs, max_tokens=1200)
+        supervised = mode == "supervised"
+        res = self.claude.message(SYSTEM + (SUPERVISED if supervised else ""), msgs, max_tokens=1200)
         gbp = self.usage.record("copilot", res["model"], res["input_tokens"], res["output_tokens"])
-        return {"reply": res["text"], "cost_gbp": round(gbp, 4), "month_gbp": round(self.usage.month_gbp(), 2)}
+        text, raw = split_reply(res["text"])
+        proposals, rejected = (self.proposals.add(raw, markets) if supervised else ([], []))
+        if raw and not supervised:
+            rejected = ["The copilot suggested an order, but proposals only work in Supervised mode."]
+        return {"reply": text, "proposals": proposals, "proposal_notes": rejected, "mode": "supervised" if supervised else "advisor",
+                "cost_gbp": round(gbp, 4), "month_gbp": round(self.usage.month_gbp(), 2)}

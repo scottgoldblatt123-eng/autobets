@@ -288,7 +288,7 @@ class Engine:
 
     # ---- actions --------------------------------------------------------
     @locked
-    def place(self, market_id: str, selection_id: str, side: str, price: float, size: float, persistence: str = "KEEP", fok_s: float = 0, offset: int = 0, stop: int = 0) -> dict:
+    def place(self, market_id: str, selection_id: str, side: str, price: float, size: float, persistence: str = "KEEP", fok_s: float = 0, offset: int = 0, stop: int = 0, source: str = "manual") -> dict:
         if not ticks.is_valid(price):
             raise ValueError(f"{price} is not a valid Betfair price")
         if size < 1.0:
@@ -296,7 +296,7 @@ class Engine:
         self.service.warnings.clear()
         self.ex.refresh(self.feed.get_books([market_id], depth=True))       # match against the freshest prices
         self._require_open(market_id, selection_id)
-        req = OrderRequest(market_id, selection_id, Side(side), price, size, persistence=Persistence(persistence), source="manual")
+        req = OrderRequest(market_id, selection_id, Side(side), price, size, persistence=Persistence(persistence), source=source)
         try:
             order = self.service.place(req)
         except Blocked as e:

@@ -252,3 +252,6 @@ main { overflow-y: auto; }
 .cpmsg { white-space: pre-wrap; padding: 8px 10px; border-radius: 8px; max-width: 92%; line-height: 1.4; }
 .cpmsg.user { align-self: flex-end; background: var(--surface-raised); border: 1px solid var(--brand); }
 .cpmsg.assistant { align-self: flex-start; background: var(--bg); border: 1px solid var(--border); }
+.cpprop { margin-top: 8px; padding: 8px; border-radius: 8px; border: 1px solid var(--border-strong); display: flex; flex-direction: column; gap: 4px; }
+.cpprop.back { border-left: 4px solid var(--back); }
+.cpprop.lay { border-left: 4px solid var(--lay); }

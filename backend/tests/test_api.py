@@ -43,7 +43,10 @@ def test_resting_order_cancel_and_validation(client):
     assert r.status_code == 422                               # below minimum stake
 
 
-def test_close_position_levels_the_book(client):
+def test_close_position_levels_the_book(client, monkeypatch):
+    import time as _t
+    from types import SimpleNamespace
+    monkeypatch.setattr("autobets.api.demo.time", SimpleNamespace(time=lambda: 1_000_000.0, sleep=_t.sleep, monotonic=_t.monotonic))   # frozen demo prices: no drift between the two calls
     st = client.get(f"/api/state?ids={MID}").json()
     price = st["markets"][MID]["selections"]["101"]["backs"][0][0]
     client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": price, "size": 20})

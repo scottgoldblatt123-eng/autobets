@@ -154,11 +154,34 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     from ..ai.copilot import Copilot
     from ..ai.usage import Usage
     ai_usage = Usage((os.environ.get("AUTOBETS_DATA", "/opt/autobets/data") + "/ai.db") if engine.mode != "demo" else ":memory:")
-    copilot = Copilot(Claude(), ai_usage)
+    from ..ai.proposals import ProposalBook
+    copilot = Copilot(Claude(), ai_usage, ProposalBook(float(os.environ.get("AUTOBETS_AI_MAX_STAKE", "10"))))
 
     @app.get("/api/ai/status")
     def ai_status(_=Depends(auth)):
         return {"enabled": copilot.claude.enabled, "model": copilot.claude.model, **ai_usage.status()}
+
+    @app.post("/api/ai/proposals/{pid}/approve")
+    def ai_approve(pid: str, _=Depends(auth)):
+        """Place an approved copilot proposal as an 'ai' order (guardrails apply). Re-checks the live price first."""
+        try:
+            p = copilot.proposals.get(pid)
+            st = engine.state([p["market_id"]])
+            m = st["markets"].get(p["market_id"])
+            if not m:
+                raise ValueError("market is no longer available")
+            return copilot.proposals.approve(pid, m, lambda mid, sid, side, price, size, tp, sl: engine.place(mid, sid, side, price, size, "KEEP", 0, tp, sl, source="ai"))
+        except KeyError:
+            raise HTTPException(404, "unknown proposal")
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    @app.post("/api/ai/proposals/{pid}/reject")
+    def ai_reject(pid: str, _=Depends(auth)):
+        try:
+            return copilot.proposals.reject(pid)
+        except KeyError:
+            raise HTTPException(404, "unknown proposal")
 
     @app.post("/api/ai/chat")
     def ai_chat(body: dict, _=Depends(auth)):
@@ -167,7 +190,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         try:
             st = engine.state(ids) if ids else {"markets": {}}
             ctxs = {i: c for i in ids if i in st["markets"] and (c := match_context.for_market({**st["markets"][i], "market_id": i}))}
-            return copilot.chat(body.get("messages") or [], st["markets"], ctxs)
+            return copilot.chat(body.get("messages") or [], st["markets"], ctxs, "supervised" if body.get("mode") == "supervised" else "advisor")
         except AiError as e:
             raise HTTPException(502, str(e))
 
