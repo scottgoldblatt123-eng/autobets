@@ -19,7 +19,8 @@ class OrderService:
         self.warnings: list[str] = []
 
     def place(self, req: OrderRequest) -> Order | None:
-        ok, why = self.g.check(req.source, req.size)
+        liab = req.size if req.side.value == "BACK" else req.size * (req.price - 1)
+        ok, why = self.g.check(req.source, req.size, liab)
         if not ok:
             raise Blocked(why)
         if why:

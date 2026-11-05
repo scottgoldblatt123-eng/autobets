@@ -54,7 +54,20 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export interface AiProposal { id: string; market_id: string; event: string; runner: string; side: 'BACK' | 'LAY'; price: number; stake: number; take_profit_ticks: number; stop_loss_ticks: number; reason: string; status: string }
 
+export interface SafetySettings {
+  automation_enabled: boolean; ai_mode: 'advisor' | 'supervised' | 'full'; daily_loss_limit: number; weekly_loss_limit: number; max_open_liability: number
+  include_manual_in_liability: boolean; confirm_manual_above: number; lay_basis: 'stake' | 'liability'; ai_max_stake: number; ai_monthly_cap: number
+}
+export interface Pnl {
+  today: number; week: number; month: number; settled_today: number; open_pnl: number; month_markets: number; month_win_rate: number | null
+  exposure: number; automation: boolean; mode: string; limits: { daily: number; weekly: number; liability: number }
+}
+
 export const api = {
+  settings: () => call<SafetySettings>('/api/settings'),
+  saveSettings: (patch: Partial<SafetySettings>) => call<SafetySettings>('/api/settings', { method: 'PUT', body: JSON.stringify(patch) }),
+  stopAutomation: () => call<{ cancelled: number; automation: boolean }>('/api/automation/stop', { method: 'POST' }),
+  pnl: () => call<Pnl>('/api/pnl'),
   mode: () => call<{ mode: string }>('/api/mode'),
   ping: () => call<{ needs_token: boolean; mode: string }>('/api/ping'),
   context: (ids: string[]) => call<Record<string, MatchCtx>>(`/api/context?ids=${ids.join(',')}`),

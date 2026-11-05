@@ -157,6 +157,32 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     from ..ai.proposals import ProposalBook
     copilot = Copilot(Claude(), ai_usage, ProposalBook(float(os.environ.get("AUTOBETS_AI_MAX_STAKE", "10"))))
 
+    def _sync_ai() -> None:
+        copilot.proposals.max_stake = engine.settings.ai_max_stake
+        ai_usage.cap = engine.settings.ai_monthly_cap
+    _sync_ai()
+
+    @app.get("/api/settings")
+    def get_settings(_=Depends(auth)):
+        return engine.settings.to_dict()
+
+    @app.put("/api/settings")
+    def put_settings(body: dict, _=Depends(auth)):
+        try:
+            out = engine.update_settings(body)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+        _sync_ai()
+        return out
+
+    @app.post("/api/automation/stop")
+    def stop_automation(_=Depends(auth)):
+        return engine.stop_automation()
+
+    @app.get("/api/pnl")
+    def pnl_summary(_=Depends(auth)):
+        return engine.pnl_summary()
+
     @app.get("/api/ai/status")
     def ai_status(_=Depends(auth)):
         return {"enabled": copilot.claude.enabled, "model": copilot.claude.model, **ai_usage.status()}

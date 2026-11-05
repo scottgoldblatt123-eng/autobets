@@ -10,8 +10,9 @@ const SUGGEST = ['What stands out in these markets right now?', 'Is the market o
 export default function Copilot({ marketIds, onClose }: { marketIds: string[]; onClose: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>(load), [text, setText] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
   const [status, setStatus] = useState<{ enabled: boolean; estimated_gbp: number; cap_gbp: number } | null>(null)
-  const [mode, setMode] = useState<'advisor' | 'supervised'>(() => { try { return localStorage.getItem(MODE_KEY) === 'supervised' ? 'supervised' : 'advisor' } catch { return 'advisor' } })
-  useEffect(() => { try { localStorage.setItem(MODE_KEY, mode) } catch { /* storage unavailable */ } }, [mode])
+  const [mode, setModeState] = useState<'advisor' | 'supervised'>(() => { try { return localStorage.getItem(MODE_KEY) === 'supervised' ? 'supervised' : 'advisor' } catch { return 'advisor' } })
+  useEffect(() => { api.settings().then(s => setModeState(s.ai_mode === 'supervised' ? 'supervised' : 'advisor')).catch(() => undefined) }, [])     // the saved setting (Safety and limits) is the source of truth
+  const setMode = (m: 'advisor' | 'supervised') => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* storage unavailable */ }; api.saveSettings({ ai_mode: m }).catch(() => undefined) }
   const [acting, setActing] = useState<string | null>(null)
   const act = async (mi: number, p: AiProposal, approve: boolean) => {
     setActing(p.id); setErr('')

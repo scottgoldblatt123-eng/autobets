@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { groupMarkets } from './markets'
 import { api, setToken, type MarketInfo, type MatchCtx, type State } from './api'
 import Copilot from './Copilot'
+import { SafetyPanel, StatusStrip } from './Safety'
 import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
 import MatchedPanel from './MatchedPanel'
@@ -91,7 +92,8 @@ export default function App() {
   const [state, setState] = useState<State | null>(null)
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
-  const [showData, setShowData] = useState(false), [showAi, setShowAi] = useState(false)
+  const [synced, setSynced] = useState(false)
+  const [showData, setShowData] = useState(false), [showAi, setShowAi] = useState(false), [showSafety, setShowSafety] = useState(false)
   const [layouts, setLayouts] = useState<Record<string, Settings>>(() => { try { return JSON.parse(localStorage.getItem('autobets.layouts') ?? '{}') } catch { return {} } })
   const [layoutName, setLayoutName] = useState('')
   useEffect(() => { try { localStorage.setItem('autobets.layouts', JSON.stringify(layouts)) } catch { /* ignore */ } }, [layouts])
@@ -102,6 +104,11 @@ export default function App() {
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'warn' | 'err' } | null>(null)
   const inFlight = useRef(false)
 
+  // Lay basis and the confirm-above stake live on the server (Safety and limits). The server value wins when the app opens or the panel closes;
+  // changing them on the ladder toolbar writes them back.
+  const pullSafety = useCallback(() => api.settings().then(r => { setSettings(s => ({ ...s, layBasis: r.lay_basis, confirmAbove: r.confirm_manual_above })); setSynced(true) }).catch(() => setSynced(true)), [])
+  useEffect(() => { if (ready === 'ok') void pullSafety() }, [ready, pullSafety])
+  useEffect(() => { if (synced) api.saveSettings({ lay_basis: settings.layBasis, confirm_manual_above: Number(settings.confirmAbove) || 0 }).catch(() => undefined) }, [synced, settings.layBasis, settings.confirmAbove])
   const say = useCallback((text: string, kind: 'ok' | 'warn' | 'err' = 'ok') => {
     setToast({ text, kind })
     window.setTimeout(() => setToast(t => (t && t.text === text ? null : t)), 4000)
@@ -359,6 +366,8 @@ export default function App() {
           return <span className={'stat totalpl ' + (Math.round(total * 100) >= 0 ? 'gain' : 'loss')} title="All open markets together: what you would lock by hard-closing each one now (or your guaranteed result where there is nothing left to hedge)">P&L <b>{money(total)}</b></span>
         })()}
         <span className="stat">Exposure <b>£{(tot?.exposure ?? 0).toFixed(2)}</b></span>
+        <StatusStrip onOpenSafety={() => setShowSafety(true)} onNotice={(t, k) => say(t, k)} />
+        <button className="sm" onClick={() => setShowSafety(true)} title="Loss limits, automation switch, AI limits">Safety</button>
         <button className="sm" onClick={() => setShowAi(v => !v)} title="Ask the copilot about your open markets (ideas only, it cannot place bets)">Copilot</button>
         <button className="sm" onClick={() => setShowData(true)} title="What the football and tennis data collectors have stored">Data</button>
         <button className="sm" onClick={() => setShowSettings(true)}>Ladder settings</button>
@@ -532,6 +541,7 @@ export default function App() {
       )}
 
       {showData && <DataStatus onClose={() => setShowData(false)} />}
+      {showSafety && <SafetyPanel onClose={() => { setShowSafety(false); void pullSafety() }} onNotice={(t, k) => say(t, k)} />}
       {showAi && <Copilot marketIds={ids} onClose={() => setShowAi(false)} />}
       {picker && (
         <div className="overlay" onClick={() => setPicker(null)}>

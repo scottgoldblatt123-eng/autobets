@@ -12,9 +12,11 @@ from dataclasses import asdict, dataclass, field
 
 from .. import pnl, ticks
 from ..domain import Order, OrderRequest, Persistence, Position, Side, Status
-from ..guardrails import Guardrails
+from ..guardrails import Guardrails, Limits
 from ..journal import Journal
+from ..ledger import Ledger
 from ..order_service import Blocked, OrderService
+from ..settings import Settings
 from .demo import DemoFeed
 from .history import Tracker, load_logged
 from .practice import PracticeExchange
@@ -95,13 +97,17 @@ class Engine:
         self.tracker = Tracker()
         self.prices_db, self._seeded = prices_db, set()      # logged history for the chart (price logger database)
         self.state_path, self._last_saved = state_path, ""
+        self.settings = Settings()
+        self.ledger = Ledger()
+        self._mtm = 0.0                                # open positions marked to market (what closing them now would lock in)
         self._load()
+        self._apply_settings()
 
     # ---- keeping state across restarts ----------------------------------
     def _snapshot(self) -> dict:
         return {"v": 1, "triggers": [asdict(t) for t in self.triggers.values()], "mtriggers": [asdict(t) for t in self.mtriggers.values()],
                 "entries": [asdict(t) for t in self.entries.values()], "fok": self.fok, "log": self.log[-200:],
-                "exchange": self.ex.export_state()}
+                "exchange": self.ex.export_state(), "settings": self.settings.to_dict(), "ledger": self.ledger.entries}
 
     def _save(self) -> None:
         """Write stops, entries, auto-greens, fill-or-kill timers and (in practice) the practice orders and positions to disk, so a restart or
@@ -134,6 +140,8 @@ class Engine:
             self.entries = {t["order_id"]: Entry(**t) for t in st.get("entries", [])}
             self.fok = {k: float(v) for k, v in st.get("fok", {}).items()}
             self.log = list(st.get("log", []))
+            self.settings = Settings.from_dict(st.get("settings", {}))
+            self.ledger = Ledger(st.get("ledger", []))
             top = max([int(i[1:]) for i in list(self.triggers) + list(self.mtriggers) if i[1:].isdigit()] or [0])
             self._trigger_ids = itertools.count(top + 1)
             self._last_saved = json.dumps(self._snapshot(), sort_keys=True)
@@ -192,10 +200,14 @@ class Engine:
         return {i: self._info[i] for i in ids if i in self._info}
 
     # ---- state ----------------------------------------------------------
-    def positions(self) -> dict[str, dict[str, Position]]:
+    def positions(self, sources: str = "all") -> dict[str, dict[str, Position]]:
+        """Open positions (settled markets are in the ledger instead). sources='automated' leaves out manual orders."""
         pos: dict[str, dict[str, Position]] = defaultdict(lambda: defaultdict(Position))
+        done = {e["market_id"] for e in self.ledger.entries}
         for f in self.ex.fills():
             r = self.ex.get_order(f.order_id).request
+            if r.market_id in done or (sources == "automated" and r.source == "manual"):
+                continue
             pos[r.market_id][r.selection_id] = pnl.apply_fill(pos[r.market_id][r.selection_id], r.side, f.price, f.size)
         return pos
 
@@ -286,6 +298,101 @@ class Engine:
                 "remaining": o.remaining, "status": o.status.value, "source": r.source,
                 "persistence": r.persistence.value, "placed_at": o.placed_at}
 
+    # ---- settings, results and limits ------------------------------------
+    def _apply_settings(self) -> None:
+        st = self.settings
+        self.guard.limits = Limits(max_stake=0.0, max_open_exposure=st.max_open_liability,
+                                   daily_loss_limit=st.daily_loss_limit, weekly_loss_limit=st.weekly_loss_limit)
+        self.guard.kill_switch = not st.automation_enabled
+
+    def _worst_case(self, pos: dict[str, dict[str, Position]]) -> float:
+        """Most that could be lost across the given positions: per market, the worst outcome (including 'a runner I have no bet on wins')."""
+        total = 0.0
+        for mid, m in pos.items():
+            held = dict(m)
+            out = list(pnl.market_outcomes(held).values())
+            if len(held) < len(self._info.get(mid, {}).get("runners", {}) or [0] * (len(held) + 1)):
+                out.append(round(sum(p.lose for p in held.values()), 2))
+            if out:
+                total += max(0.0, -min(out))
+        return round(total, 2)
+
+    def _open_liability(self, include_manual: bool) -> float:
+        total = self._worst_case(self.positions("all" if include_manual else "automated"))
+        for o in self.ex.open_orders():
+            if o.status in OPEN and (include_manual or o.request.source != "manual"):
+                r = o.request
+                total += o.remaining if r.side is Side.BACK else o.remaining * (r.price - 1)
+        return round(total, 2)
+
+    def _refresh_guard(self) -> None:
+        """Feed the safety rules the figures they judge by. Cheap and needs no network, so it runs before every order."""
+        now = time.time()
+        per = self.ledger.periods(now)
+        self.guard.realised_today = round(per["today"] + self._mtm, 2)
+        self.guard.realised_week = round(per["week"] + self._mtm, 2)
+        self.guard.open_exposure = self._open_liability(self.settings.include_manual_in_liability)
+
+    @locked
+    def settle_check(self) -> int:
+        """Book the result of every market Betfair has settled, and re-mark the open positions. Returns how many markets were booked."""
+        pos = self.positions()
+        books = []
+        mids = list(pos)
+        for i in range(0, len(mids), 40):
+            books += self.feed.get_books(mids[i:i + 40], depth=False)
+        now, booked, mtm = time.time(), 0, 0.0
+        for b in books:
+            held = pos.get(b.market_id, {})
+            full = {sid: held.get(sid, Position()) for sid in set(b.selections) | set(held)}
+            out = pnl.market_outcomes(full)
+            winners = [sid for sid, s in b.selections.items() if s.status == "WINNER"]
+            if b.status == "CLOSED" and winners:
+                ev = self._info.get(b.market_id, {}).get("event", "") or b.market_id
+                if self.ledger.add(b.market_id, ev, now, out.get(winners[0], 0.0), winners[0]):
+                    booked += 1
+                    self._log(f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "info")
+            elif b.status != "CLOSED":
+                plan = pnl.green_plan(out, {k: (v.backs[0].price if v.backs else None) for k, v in b.selections.items()},
+                                      {k: (v.lays[0].price if v.lays else None) for k, v in b.selections.items()}) if out else None
+                mtm += plan["locked"] if plan else (min(out.values()) if out else 0.0)
+        self._mtm = round(mtm, 2)
+        self._refresh_guard()
+        return booked
+
+    @locked
+    def pnl_summary(self) -> dict:
+        self._refresh_guard()
+        per = self.ledger.periods(time.time())
+        return {"today": round(per["today"] + self._mtm, 2), "week": round(per["week"] + self._mtm, 2), "month": round(per["month"] + self._mtm, 2),
+                "settled_today": per["today"], "open_pnl": self._mtm, "month_markets": per["month_markets"], "month_win_rate": per["month_win_rate"],
+                "exposure": self._open_liability(True), "automation": self.settings.automation_enabled, "mode": self.mode,
+                "limits": {"daily": self.settings.daily_loss_limit, "weekly": self.settings.weekly_loss_limit,
+                           "liability": self.settings.max_open_liability}}
+
+    @locked
+    def update_settings(self, patch: dict) -> dict:
+        was = self.settings.automation_enabled
+        self.settings.update(patch)
+        self._apply_settings()
+        if was != self.settings.automation_enabled:
+            self._log("Automation switched " + ("on" if self.settings.automation_enabled else "off"), "info")
+        return self.settings.to_dict()
+
+    @locked
+    def stop_automation(self) -> dict:
+        """Stop all automation: cancel every unmatched order placed by scripts or the AI, switch automation off. Open positions stay open and
+        manual trading is untouched."""
+        self.settings.automation_enabled = False
+        self._apply_settings()
+        n = 0
+        for o in self.ex.open_orders():
+            if o.status in OPEN and o.request.source != "manual":
+                self.ex.cancel_order(o.order_id); self.fok.pop(o.order_id, None)
+                self.entries.pop(o.order_id, None); n += 1
+        self._log(f"STOP ALL AUTOMATION: cancelled {n} unmatched automated order{'s' if n != 1 else ''}; scripts and the AI can no longer place orders", "warn")
+        return {"cancelled": n, "automation": False}
+
     # ---- actions --------------------------------------------------------
     @locked
     def place(self, market_id: str, selection_id: str, side: str, price: float, size: float, persistence: str = "KEEP", fok_s: float = 0, offset: int = 0, stop: int = 0, source: str = "manual") -> dict:
@@ -294,6 +401,7 @@ class Engine:
         if size < 1.0:
             raise ValueError("minimum stake is £1")
         self.service.warnings.clear()
+        self._refresh_guard()
         self.ex.refresh(self.feed.get_books([market_id], depth=True))       # match against the freshest prices
         self._require_open(market_id, selection_id)
         req = OrderRequest(market_id, selection_id, Side(side), price, size, persistence=Persistence(persistence), source=source)
@@ -690,10 +798,14 @@ class Engine:
         if self._bg:
             return
         def loop():
+            n = 0
             while True:
                 time.sleep(every)
+                n += 1
                 try:
                     self.check_triggers_now()
+                    if n % max(1, int(15 / every)) == 0:
+                        self.settle_check()
                 except Exception:
                     pass
         self._bg = threading.Thread(target=loop, daemon=True, name="triggers")
