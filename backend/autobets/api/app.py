@@ -5,6 +5,7 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import time
 import threading
 from pathlib import Path
 
@@ -241,6 +242,80 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     @app.get("/api/plan/bets")
     def plan_bets(status: str = "", _=Depends(auth)):
         return engine.plan_bets([x for x in status.split(",") if x])
+
+    from .. import health as health_mod
+
+    def _statuses():
+        return (football.status() if football else None, tennis.status() if tennis else None, pricelog.status() if pricelog else None)
+
+    def _health() -> dict:
+        fb, tn, pl = _statuses()
+        return health_mod.build(engine, fb, tn, pl, copilot.claude.enabled, {"estimated_gbp": ai_usage.status().get("estimated_gbp"), "cap_gbp": ai_usage.cap})
+
+    @app.get("/api/health")
+    def health(_=Depends(auth)):
+        return _health()
+
+    def _monitor() -> None:
+        """Background upkeep: raise or clear health alerts, and look for recommendation ideas."""
+        n = 0
+        while True:
+            time.sleep(60)
+            n += 1
+            try:
+                for i in _health()["items"]:
+                    if i["level"] == "bad":
+                        engine.alerts.add("system" if i["key"] != "betfair" else "warning", f"{i['name']}: {i['detail']}", "Features that depend on it may act on old data", True, key="health:" + i["key"])
+                    else:
+                        engine.alerts.resolve("health:" + i["key"], "Recovered")
+                if n % 2 == 0:
+                    engine.rec_scan()
+            except Exception:       # noqa: BLE001
+                _applog.exception("monitor pass failed")
+    if engine.mode != "demo":
+        threading.Thread(target=_monitor, name="monitor", daemon=True).start()
+
+    @app.get("/api/recs")
+    def recs_list(kind: str = "all", status: str = "pending", _=Depends(auth)):
+        return {"items": engine.recs.list(kind, status), "stats": engine.recs.stats(time.time() - 30 * 86400)}
+
+    @app.post("/api/recs/{rid}/apply")
+    def recs_apply(rid: str, body: dict | None = None, _=Depends(auth)):
+        b = body or {}
+        try:
+            return engine.rec_apply(rid, b.get("price"), b.get("stake"))
+        except KeyError:
+            raise HTTPException(404, "unknown recommendation")
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    @app.post("/api/recs/{rid}/dismiss")
+    def recs_dismiss(rid: str, body: dict | None = None, _=Depends(auth)):
+        try:
+            return engine.rec_dismiss(rid, str((body or {}).get("reason", "")))
+        except KeyError:
+            raise HTTPException(404, "unknown recommendation")
+
+    @app.post("/api/recs/scan")
+    def recs_scan(_=Depends(auth)):
+        return {"created": engine.rec_scan()}
+
+    @app.get("/api/alerts")
+    def alerts_list(chip: str = "all", days: int = 30, _=Depends(auth)):
+        return {"items": engine.alerts.list(chip, time.time() - max(1, min(days, 365)) * 86400), "counts": {**engine.alerts.counts(), "recs": engine.recs.stats()["pending"]}}
+
+    @app.post("/api/alerts/read")
+    def alerts_read(body: dict | None = None, _=Depends(auth)):
+        return {"marked": engine.alerts.mark_read((body or {}).get("id"))}
+
+    @app.post("/api/alerts/{aid}/resume")
+    def alerts_resume(aid: str, _=Depends(auth)):
+        a = next((x for x in engine.alerts.items if x["id"] == aid), None)
+        if a is None:
+            raise HTTPException(404, "unknown alert")
+        engine.alerts.resolve(a["key"] or "", "Dismissed by you") if a["key"] else None
+        a["needs_action"], a["read"], a["active"] = False, True, False
+        return a
 
     @app.get("/api/settings")
     def get_settings(_=Depends(auth)):

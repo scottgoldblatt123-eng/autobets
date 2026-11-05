@@ -7,8 +7,8 @@ const load = (): Msg[] => { try { return JSON.parse(localStorage.getItem(KEY) ??
 const SUGGEST = ['What stands out in these markets right now?', 'Is the market over- or under-reacting to the score?', 'Where would I green up, and what does holding cost me?', 'What would make this idea wrong?']
 
 /** Advisor-mode copilot: asks Claude about the open markets. It sees prices, score, model fair prices, gaps and the position; it cannot place anything. */
-export default function Copilot({ marketIds, onClose }: { marketIds: string[]; onClose: () => void }) {
-  const [msgs, setMsgs] = useState<Msg[]>(load), [text, setText] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+export default function Copilot({ marketIds, onClose, seed }: { marketIds: string[]; onClose: () => void; seed?: string }) {
+  const [msgs, setMsgs] = useState<Msg[]>(load), [text, setText] = useState(seed ?? ''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
   const [status, setStatus] = useState<{ enabled: boolean; estimated_gbp: number; cap_gbp: number } | null>(null)
   const [mode, setModeState] = useState<'advisor' | 'supervised'>(() => { try { return localStorage.getItem(MODE_KEY) === 'supervised' ? 'supervised' : 'advisor' } catch { return 'advisor' } })
   useEffect(() => { api.settings().then(s => setModeState(s.ai_mode === 'supervised' ? 'supervised' : 'advisor')).catch(() => undefined) }, [])     // the saved setting (Safety and limits) is the source of truth

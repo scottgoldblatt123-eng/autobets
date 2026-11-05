@@ -77,7 +77,24 @@ export interface PlanRow {
 export interface PlanView { rows: PlanRow[]; summary: { markets: number; you: number; ai: number; stake: number; max_liability: number; clashes: number }; clashes: { market_id: string; rows: string[] }[] }
 export interface PlanBet extends Order { event: string; market: string; runner: string; strategy: string; placed_by: string; source: string }
 
+export interface Rec {
+  id: string; kind: 'trade' | 'script' | 'model'; market_id: string; event: string; market_name: string; start: string | null; selection_id: string; runner: string
+  side: 'BACK' | 'LAY'; price: number; model_p: number; market_p: number; edge: number; stake: number; max_loss: number; confidence: string; title: string
+  reason: string; status: string; created: number; clv: number | null; sport: string
+}
+export interface RecStats { pending: number; applied: number; acceptance: number | null; avg_edge_applied: number | null; evidence: number; evidence_needed: number; avg_clv_pts: number | null; auto_apply_unlocked: boolean; counts: { all: number; trades: number; scripts: number; models: number } }
+export interface AlertRow { id: string; t: number; type: string; text: string; action: string; needs_action: boolean; ref: { kind?: string; id?: string }; read: boolean; active: boolean }
+export interface HealthItem { key: string; name: string; level: 'ok' | 'bad' | 'off'; detail: string }
+
 export const api = {
+  recs: (kind = 'all') => call<{ items: Rec[]; stats: RecStats }>(`/api/recs?kind=${kind}`),
+  recApply: (id: string, b: { price?: number; stake?: number } = {}) => call<{ rec: Rec; order: Order; warnings: string[] }>(`/api/recs/${id}/apply`, { method: 'POST', body: JSON.stringify(b) }),
+  recDismiss: (id: string, reason: string) => call<Rec>(`/api/recs/${id}/dismiss`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  recScan: () => call<{ created: number }>('/api/recs/scan', { method: 'POST' }),
+  alerts: (chip = 'all', days = 30) => call<{ items: AlertRow[]; counts: { needs_action: number; unread: number; recs: number } }>(`/api/alerts?chip=${chip}&days=${days}`),
+  alertsRead: (id?: string) => call<{ marked: number }>('/api/alerts/read', { method: 'POST', body: JSON.stringify(id ? { id } : {}) }),
+  alertDismiss: (id: string) => call<AlertRow>(`/api/alerts/${id}/resume`, { method: 'POST' }),
+  health: () => call<{ items: HealthItem[]; issues: number }>('/api/health'),
   scripts: () => call<Script[]>('/api/scripts'),
   createScript: (body: Record<string, unknown>) => call<Script>('/api/scripts', { method: 'POST', body: JSON.stringify(body) }),
   updateScript: (id: string, body: Record<string, unknown>) => call<Script>(`/api/scripts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

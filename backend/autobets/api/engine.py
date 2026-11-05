@@ -12,10 +12,12 @@ from dataclasses import asdict, dataclass, field
 
 from .. import pnl, ticks
 from ..domain import Order, OrderRequest, Persistence, Position, Side, Status
+from ..alerts import Alerts
 from ..guardrails import Guardrails, Limits
 from ..journal import Journal
 from ..ledger import Ledger
 from ..plan import Plan
+from ..recs import Recs
 from ..order_service import Blocked, OrderService
 from ..scripts import ScriptStore, describe, evaluate
 from ..settings import Settings
@@ -78,9 +80,33 @@ def locked(fn):
     return wrapper
 
 
+class _TrackedFeed:
+    """Wraps the price feed to remember when it last answered and the last error, for the health panel. Everything else passes straight through."""
+
+    def __init__(self, feed, engine) -> None:
+        object.__setattr__(self, "_feed", feed)
+        object.__setattr__(self, "_engine", engine)
+
+    def __getattr__(self, name):
+        attr = getattr(self._feed, name)
+        if name not in ("get_books", "list_markets", "market_info") or not callable(attr):
+            return attr
+
+        def call(*a, **k):
+            try:
+                out = attr(*a, **k)
+            except Exception as ex:      # noqa: BLE001
+                self._engine.feed_error, self._engine.feed_error_at = f"{type(ex).__name__}: {ex}", time.time()
+                raise
+            self._engine.feed_ok_at = time.time()
+            return out
+        return call
+
+
 class Engine:
     def __init__(self, feed, mode: str, journal_path: str = ":memory:", prices_db: str = "", state_path: str = "") -> None:
-        self.feed, self.mode = feed, mode
+        self.feed, self.mode = _TrackedFeed(feed, self), mode
+        self.feed_ok_at, self.feed_error, self.feed_error_at = 0.0, "", 0.0
         self.lock = threading.RLock()          # the API serves requests on several threads
         self.ex = PracticeExchange()
         self.guard = Guardrails()
@@ -103,7 +129,10 @@ class Engine:
         self.ledger = Ledger()
         self.scripts = ScriptStore()
         self.plan = Plan()
+        self.alerts = Alerts()
+        self.recs = Recs()
         self.context_fn = None                         # set by the app: market info -> live score / set / minute, when known
+        self._susp: dict[str, float] = {}
         self._mtm = 0.0                                # open positions marked to market (what closing them now would lock in)
         self._load()
         self._apply_settings()
@@ -113,7 +142,7 @@ class Engine:
         return {"v": 1, "triggers": [asdict(t) for t in self.triggers.values()], "mtriggers": [asdict(t) for t in self.mtriggers.values()],
                 "entries": [asdict(t) for t in self.entries.values()], "fok": self.fok, "log": self.log[-200:],
                 "exchange": self.ex.export_state(), "settings": self.settings.to_dict(), "ledger": self.ledger.entries,
-                "scripts": self.scripts.export(), "plan": self.plan.export()}
+                "scripts": self.scripts.export(), "plan": self.plan.export(), "alerts": self.alerts.export(), "recs": self.recs.export()}
 
     def _save(self) -> None:
         """Write stops, entries, auto-greens, fill-or-kill timers and (in practice) the practice orders and positions to disk, so a restart or
@@ -150,6 +179,8 @@ class Engine:
             self.ledger = Ledger(st.get("ledger", []))
             self.scripts = ScriptStore(st.get("scripts"))
             self.plan = Plan.load(st.get("plan"))
+            self.alerts = Alerts.load(st.get("alerts"))
+            self.recs = Recs.load(st.get("recs"))
             top = max([int(i[1:]) for i in list(self.triggers) + list(self.mtriggers) if i[1:].isdigit()] or [0])
             self._trigger_ids = itertools.count(top + 1)
             self._last_saved = json.dumps(self._snapshot(), sort_keys=True)
@@ -340,6 +371,33 @@ class Engine:
         self.guard.realised_today = round(per["today"] + self._mtm, 2)
         self.guard.realised_week = round(per["week"] + self._mtm, 2)
         self.guard.open_exposure = self._open_liability(self.settings.include_manual_in_liability)
+        lim = self.guard.limits
+        hit = (lim.daily_loss_limit > 0 and -self.guard.realised_today >= lim.daily_loss_limit) or (lim.weekly_loss_limit > 0 and -self.guard.realised_week >= lim.weekly_loss_limit)
+        if hit:
+            self.alerts.add("warning", "Loss limit reached. Scripts and the AI cannot place orders until it clears; manual trading is not blocked.", "Automation blocked", True, key="losslimit")
+        else:
+            self.alerts.resolve("losslimit", "Back under the limit")
+
+    def _watch_status(self, b, now: float) -> None:
+        """Note when a market you hold or plan stays suspended for a while, and say how long once it reopens."""
+        started = self._susp.get(b.market_id)
+        if b.status == "SUSPENDED" and started is None:
+            self._susp[b.market_id] = now
+        elif b.status == "OPEN" and started is not None:
+            del self._susp[b.market_id]
+            if now - started >= 20:
+                ev = self._info.get(b.market_id, {}).get("event", b.market_id)
+                self.alerts.add("suspension", f"{ev} was suspended for about {int(now - started)}s", "Orders held, resumed on reopen", False, {"kind": "market", "id": b.market_id})
+
+    def feed_health(self) -> dict:
+        now = time.time()
+        if self.mode == "demo":
+            return {"ok": True, "detail": "Demo prices (not real)"}
+        if self.feed_error and self.feed_error_at > self.feed_ok_at:
+            return {"ok": False, "detail": f"Last request failed: {self.feed_error[:140]}"}
+        if self.feed_ok_at and now - self.feed_ok_at > 600:
+            return {"ok": False, "detail": f"No successful price request for {int((now - self.feed_ok_at) / 60)} min"}
+        return {"ok": True, "detail": "Prices flowing (delayed key: about a minute behind)" if self.feed_ok_at else "Waiting for the first request"}
 
     @locked
     def settle_check(self) -> int:
@@ -351,6 +409,7 @@ class Engine:
             books += self.feed.get_books(mids[i:i + 40], depth=False)
         now, booked, mtm = time.time(), 0, 0.0
         for b in books:
+            self._watch_status(b, now)
             held = pos.get(b.market_id, {})
             full = {sid: held.get(sid, Position()) for sid in set(b.selections) | set(held)}
             out = pnl.market_outcomes(full)
@@ -360,6 +419,7 @@ class Engine:
                 if self.ledger.add(b.market_id, ev, now, out.get(winners[0], 0.0), winners[0]):
                     booked += 1
                     self._log(f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "info")
+                    self.alerts.add("trade", f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "Result booked to today's P&L", False, {"kind": "market", "id": b.market_id})
             elif b.status != "CLOSED":
                 plan = pnl.green_plan(out, {k: (v.backs[0].price if v.backs else None) for k, v in b.selections.items()},
                                       {k: (v.lays[0].price if v.lays else None) for k, v in b.selections.items()}) if out else None
@@ -403,6 +463,7 @@ class Engine:
             if o.status in OPEN and o.request.source != "manual":
                 self.ex.cancel_order(o.order_id); self.fok.pop(o.order_id, None)
                 self.entries.pop(o.order_id, None); n += 1
+        self.alerts.add("warning", f"Automation stopped. {n} unmatched automated order{'s' if n != 1 else ''} cancelled.", "Scripts paused; open positions untouched", False)
         self._log(f"STOP ALL AUTOMATION: cancelled {n} unmatched automated order{'s' if n != 1 else ''}; scripts and the AI can no longer place orders", "warn")
         return {"cancelled": n, "automation": False}
 
@@ -490,10 +551,12 @@ class Engine:
                 try:
                     self._fire(row, rule, act, script, book)
                     acted += 1
+                    self.alerts.add("trade", f"{script['name']}: {rule['kind']} rule {rule['id']} acted ({act['type']}) on {row['runner']} · {row['event']}", "Script action", False, {"kind": "plan", "id": row["id"]})
                 except Exception as ex:        # noqa: BLE001
                     ok = False
                     row["note"] = f"{rule['id']}: {ex}"
                     self._log(f"Script '{script['name']}' on {row['event']}: {rule['id']} could not act: {ex}", "warn")
+                    self.alerts.add("warning", f"Script '{script['name']}' could not act on {row['event']}: {ex}", "Script " + ("stopped" if rule["kind"] == "entry" else "will retry"), False, {"kind": "plan", "id": row["id"]})
                     if rule["kind"] == "entry":
                         row["state"] = "stopped"
                 if (ok or rule["kind"] == "entry") and rule["id"] not in row["fired"]:
@@ -584,6 +647,57 @@ class Engine:
             if not statuses or o.status.value in statuses:
                 out.append(row)
         return sorted(out, key=lambda x: -x["placed_at"])[:300]
+
+    @locked
+    def rec_apply(self, rid: str, price: float | None = None, stake: float | None = None) -> dict:
+        """Place an accepted recommendation as an 'ai' order (guardrails apply), after checking the price has not run away from the idea."""
+        r = self.recs.items.get(rid)
+        if r is None:
+            raise KeyError(rid)
+        if r["status"] != "pending" or r["kind"] != "trade":
+            raise ValueError(f"this recommendation is {r['status']}")
+        book = self.feed.get_books([r["market_id"]], depth=False)[0]
+        if book.status != "OPEN":
+            raise ValueError(f"the market is {book.status.lower()}")
+        sel = book.selections.get(r["selection_id"])
+        lv = (sel.backs if r["side"] == "BACK" else sel.lays) if sel else []
+        if not lv:
+            raise ValueError("no price available right now")
+        cur = lv[0].price
+        use = ticks.nearest(price) if price else cur
+        drift = ticks.ticks_between(r["price"], cur) if r["side"] == "BACK" else ticks.ticks_between(cur, r["price"])
+        if not price and drift < -3:
+            raise ValueError(f"the price has moved from {r['price']} to {cur}; refresh and look again")
+        size = float(stake or r["stake"])
+        res = self.place(r["market_id"], r["selection_id"], r["side"], use, size, "KEEP", 0, 0, 0, source="ai")
+        r.update(status="applied", applied_at=time.time(), order_id=res["order"]["order_id"], stake=size, price=use)
+        self.alerts.resolve_ref("rec", rid, "Applied")
+        try:
+            self.plan.add(r["market_id"], r["selection_id"], None, r["event"], r["market_name"], r["runner"], "ai", size)
+        except ValueError:
+            pass
+        return {"rec": r, "order": res["order"], "warnings": res["warnings"]}
+
+    @locked
+    def rec_dismiss(self, rid: str, reason: str = "") -> dict:
+        r = self.recs.items.get(rid)
+        if r is None:
+            raise KeyError(rid)
+        if r["status"] == "pending":
+            r.update(status="dismissed", dismiss_reason=reason[:200])
+            self.alerts.resolve_ref("rec", rid, "Dismissed")
+        return r
+
+    def rec_scan(self) -> int:
+        """Look for ideas. The slow part (price requests) runs without holding the trading lock; only the bookkeeping takes it."""
+        stake = min(10.0, self.settings.ai_max_stake)
+        created = self.recs.scan(self, stake)
+        self.recs.measure_clv(self)
+        with self.lock:
+            for r in created:
+                self.alerts.add("recommendation", f"New idea: {r['title']} (edge {r['edge'] * 100:+.1f} pts)", "Waiting for your decision", True, {"kind": "rec", "id": r["id"]})
+            self._save()
+        return len(created)
 
     # ---- actions --------------------------------------------------------
     @locked

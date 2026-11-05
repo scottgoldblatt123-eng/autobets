@@ -5,6 +5,9 @@ import Copilot from './Copilot'
 import { SafetyPanel, StatusStrip } from './Safety'
 import ScriptsScreen from './ScriptsScreen'
 import PlanScreen from './PlanScreen'
+import RecsScreen from './RecsScreen'
+import AlertsScreen from './AlertsScreen'
+import HealthBadge from './Health'
 import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
 import MatchedPanel from './MatchedPanel'
@@ -95,8 +98,10 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
   const [synced, setSynced] = useState(false)
-  type Screen = 'manual' | 'plan' | 'scripts'
-  const [screen, setScreenState] = useState<Screen>(() => { const h = window.location.hash.replace('#', ''); return (['manual', 'plan', 'scripts'] as string[]).includes(h) ? (h as Screen) : 'manual' })
+  const [badge, setBadge] = useState({ recs: 0, needs: 0 }), [discuss, setDiscuss] = useState<{ marketId: string; text: string } | null>(null)
+  const refreshBadges = useCallback(() => api.alerts('all', 30).then(r => setBadge({ recs: r.counts.recs, needs: r.counts.needs_action })).catch(() => undefined), [])
+  type Screen = 'manual' | 'plan' | 'scripts' | 'recs' | 'alerts'
+  const [screen, setScreenState] = useState<Screen>(() => { const h = window.location.hash.replace('#', ''); return (['manual', 'plan', 'scripts', 'recs', 'alerts'] as string[]).includes(h) ? (h as Screen) : 'manual' })
   const setScreen = (s: Screen) => { setScreenState(s); try { window.history.replaceState(null, '', '#' + s) } catch { /* ignore */ } }
   const [showData, setShowData] = useState(false), [showAi, setShowAi] = useState(false), [showSafety, setShowSafety] = useState(false)
   const [layouts, setLayouts] = useState<Record<string, Settings>>(() => { try { return JSON.parse(localStorage.getItem('autobets.layouts') ?? '{}') } catch { return {} } })
@@ -113,6 +118,7 @@ export default function App() {
   // changing them on the ladder toolbar writes them back.
   const pullSafety = useCallback(() => api.settings().then(r => { setSettings(s => ({ ...s, layBasis: r.lay_basis, confirmAbove: r.confirm_manual_above })); setSynced(true) }).catch(() => setSynced(true)), [])
   useEffect(() => { if (ready === 'ok') void pullSafety() }, [ready, pullSafety])
+  useEffect(() => { if (ready !== 'ok') return; void refreshBadges(); const t = window.setInterval(() => void refreshBadges(), 10000); return () => window.clearInterval(t) }, [ready, refreshBadges])
   useEffect(() => { if (synced) api.saveSettings({ lay_basis: settings.layBasis, confirm_manual_above: Number(settings.confirmAbove) || 0 }).catch(() => undefined) }, [synced, settings.layBasis, settings.confirmAbove])
   const say = useCallback((text: string, kind: 'ok' | 'warn' | 'err' = 'ok') => {
     setToast({ text, kind })
@@ -371,17 +377,20 @@ export default function App() {
           return <span className={'stat totalpl ' + (Math.round(total * 100) >= 0 ? 'gain' : 'loss')} title="All open markets together: what you would lock by hard-closing each one now (or your guaranteed result where there is nothing left to hedge)">P&L <b>{money(total)}</b></span>
         })()}
         <span className="stat">Exposure <b>£{(tot?.exposure ?? 0).toFixed(2)}</b></span>
+        <HealthBadge />
         <StatusStrip onOpenSafety={() => setShowSafety(true)} onNotice={(t, k) => say(t, k)} />
         <button className="sm" onClick={() => setShowSafety(true)} title="Loss limits, automation switch, AI limits">Safety</button>
-        <button className="sm" onClick={() => setShowAi(v => !v)} title="Ask the copilot about your open markets (ideas only, it cannot place bets)">Copilot</button>
+        <button className="sm" onClick={() => { setDiscuss(null); setShowAi(v => !v) }} title="Ask the copilot about your open markets (ideas only, it cannot place bets)">Copilot</button>
         <button className="sm" onClick={() => setShowData(true)} title="What the football and tennis data collectors have stored">Data</button>
         <button className="sm" onClick={() => setShowSettings(true)}>Ladder settings</button>
         <button className="sm" onClick={() => setSettings(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }))}>{theme === 'dark' ? 'Light' : 'Dark'}</button>
       </header>
 
       <nav className="navbar" aria-label="Screens">
-        {([['manual', 'Manual Trading'], ['plan', 'Plan'], ['scripts', 'Scripts']] as [Screen, string][]).map(([k, l]) => <button key={k} className={screen === k ? 'on' : ''} onClick={() => setScreen(k)}>{l}</button>)}
+        {([['recs', 'Recommendations'], ['plan', 'Plan'], ['scripts', 'Scripts'], ['manual', 'Manual Trading'], ['alerts', 'Alerts']] as [Screen, string][]).map(([k, l]) => <button key={k} className={screen === k ? 'on' : ''} onClick={() => setScreen(k)}>{l}{k === 'recs' && badge.recs > 0 && <span className="nbadge">{badge.recs}</span>}{k === 'alerts' && badge.needs > 0 && <span className="nbadge bad">{badge.needs}</span>}</button>)}
       </nav>
+      {screen === 'recs' && <RecsScreen say={say} onPlan={() => setScreen('plan')} onDiscuss={r => { setDiscuss({ marketId: r.market_id, text: `Why does the model like ${r.side === 'BACK' ? 'backing' : 'laying'} ${r.runner} in ${r.event}? What would make this wrong?` }); setShowAi(true) }} />}
+      {screen === 'alerts' && <AlertsScreen say={say} onGo={s => setScreen(s)} onChanged={refreshBadges} />}
       {screen === 'plan' && <PlanScreen say={say} />}
       {screen === 'scripts' && <ScriptsScreen say={say} onPlan={() => setScreen('plan')} />}
       <div className="body" style={screen === 'manual' ? undefined : { display: 'none' }}>
@@ -552,7 +561,7 @@ export default function App() {
 
       {showData && <DataStatus onClose={() => setShowData(false)} />}
       {showSafety && <SafetyPanel onClose={() => { setShowSafety(false); void pullSafety() }} onNotice={(t, k) => say(t, k)} />}
-      {showAi && <Copilot marketIds={ids} onClose={() => setShowAi(false)} />}
+      {showAi && <Copilot marketIds={discuss ? [discuss.marketId] : ids} seed={discuss?.text} onClose={() => { setShowAi(false); setDiscuss(null) }} />}
       {picker && (
         <div className="overlay" onClick={() => setPicker(null)}>
           <div className="card scroll" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
