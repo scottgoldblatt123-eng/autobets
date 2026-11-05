@@ -1963,3 +1963,453 @@ Steps:
 **Expected:** After it comes back your unmatched bets, stops and matched bets are still shown.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 30. Safety, limits and Stop all automation (added 5 Nov)
+
+_The strip under the header and Settings > Safety and limits. Everything here is practice money._
+
+### 30.1 Status strip shows Today and Automation  \[Either\]
+
+Steps:
+1. Look at the strip under the navbar.
+
+**Expected:** Today's profit/loss, the Automation on/off button and any limit warnings are visible on every screen.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 30.2 Stop all automation  \[Either\]
+
+Steps:
+1. Click Automation, then Stop all automation.
+2. Read the dialog and confirm.
+
+**Expected:** Dialog explains what stops (scripts, AI, plan entries) and what does not (your manual trading, existing stops). After confirming the strip shows Automation OFF and scripts fire nothing.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 30.3 Resume automation  \[Either\]
+
+Steps:
+1. Open Alerts or the strip and resume.
+
+**Expected:** Automation shows ON again and scripts can fire.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 30.4 Default loss limit is not set  \[Either\]
+
+Steps:
+1. Open Settings > Safety and limits on a fresh install.
+
+**Expected:** Daily and weekly loss limits show 0 / not set. Nothing is blocked.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 30.5 Daily loss limit stops automation, not manual trading  \[Demo\]
+
+Steps:
+1. Set a small daily loss limit (e.g. 5).
+2. Lose more than that with an enabled script or by trading manually.
+3. Try a manual bet, then wait for a script to try to enter.
+
+**Expected:** Manual losses count towards the limit but manual bets are never blocked. Script entries are refused with a clear reason and an alert is raised. Exit orders (:exit) from scripts still work.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 30.6 Open liability limit  \[Demo\]
+
+Steps:
+1. Set a low open liability limit.
+2. Let a script try to enter a large stake.
+
+**Expected:** The entry is refused and says why. Tick 'include manual' to count manual positions too.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 30.7 Lay stakes default to stake basis  \[Either\]
+
+Steps:
+1. Place a lay bet from the ladder.
+
+**Expected:** The amount typed is the stake, not the liability, unless you changed the setting.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 30.8 Settings survive a restart  \[Practice\]
+
+Steps:
+1. Change a limit.
+2. Wait for a deploy or restart.
+
+**Expected:** The setting is unchanged afterwards.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 30.9 Full AI mode is locked  \[Either\]
+
+Steps:
+1. Try to select Full AI in the AI mode setting.
+
+**Expected:** It is refused with 'not available yet'. Advisor stays available.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 31. Scripts (added 5 Nov)
+
+_Rules that enter and exit trades for you. Written as JSON; Claude can draft them._
+
+### 31.1 Create a script from a template  \[Either\]
+
+Steps:
+1. Open Scripts, click New, pick a template.
+
+**Expected:** A script appears in the library with its entry, exit and safety rules shown as readable cards.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 31.2 Validation catches mistakes  \[Either\]
+
+Steps:
+1. Edit the JSON so a rule uses an unknown condition or a stake of 0.
+2. Save.
+
+**Expected:** Save is refused with a specific message pointing at the problem.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 31.3 Import a script  \[Either\]
+
+Steps:
+1. Paste valid script JSON into Import.
+
+**Expected:** It appears in the library, disabled.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 31.4 Enable, disable and clone  \[Either\]
+
+Steps:
+1. Enable a script, disable it, then clone it.
+
+**Expected:** State changes immediately; the clone is a separate disabled script.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 31.5 Version history  \[Either\]
+
+Steps:
+1. Edit and save a script twice.
+2. Open History.
+
+**Expected:** Each save is a version with a timestamp. You can view earlier versions.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 31.6 Build with Claude  \[Practice\]
+
+Steps:
+1. Describe a strategy in plain English in Build with Claude.
+
+**Expected:** A draft script is returned, validated, and can be saved. Invalid drafts are not saved.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 31.7 Add to Plan  \[Either\]
+
+Steps:
+1. From a script, click Add to Plan and pick a market and runner.
+
+**Expected:** A Plan row is created binding the script to that market and runner.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 31.8 Script fires on a live demo market  \[Demo\]
+
+Steps:
+1. Enable a simple price-based entry script, add it to the Plan on a demo market, let the price cross the condition.
+
+**Expected:** An order is placed with source script:<name>, appears on the ladder and in the activity log, and the exit rule closes it as defined.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 31.9 Discuss with Claude  \[Practice\]
+
+Steps:
+1. Click Discuss with Claude on a script.
+
+**Expected:** The copilot opens with the script as context.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 32. Plan (added 5 Nov)
+
+_Which scripts are armed on which markets._
+
+### 32.1 Plan lists rows with status  \[Either\]
+
+Steps:
+1. Open Plan.
+
+**Expected:** Each row shows market, runner, script, status (waiting, in position, done, stopped) and bets taken.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 32.2 Edit and remove a row  \[Either\]
+
+Steps:
+1. Change a row's stake or remove it.
+
+**Expected:** Change is saved; removed rows stop acting immediately.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 32.3 Row bets view  \[Either\]
+
+Steps:
+1. Open a row's bets.
+
+**Expected:** Orders placed by that row with price, size and result.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 32.4 Attach from the market list  \[Either\]
+
+Steps:
+1. Click the plan button next to a market in the list.
+2. Choose a script.
+
+**Expected:** The attach dialog adds a Plan row.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 33. Recommendations (added 5 Nov)
+
+_Model vs market edges. Practice only; shown for your judgement._
+
+### 33.1 Recommendations appear for real pre-match markets  \[Practice\]
+
+Steps:
+1. Open Recommendations after a few minutes of Practice running.
+
+**Expected:** Cards list the pick, model price vs market price, edge, reasoning and the current price. Confidence is never High. There may be none if no edge is found.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 33.2 Apply a recommendation  \[Practice\]
+
+Steps:
+1. Click Apply on a card.
+
+**Expected:** A Plan row or order is created for the chosen script; the card moves to Applied.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 33.3 Dismiss a recommendation  \[Practice\]
+
+Steps:
+1. Click Dismiss.
+
+**Expected:** The card is removed from pending and does not return for that market.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 33.4 Scan now  \[Practice\]
+
+Steps:
+1. Click Scan.
+
+**Expected:** A fresh scan runs; the list updates.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 33.5 Auto-apply is locked  \[Practice\]
+
+Steps:
+1. Look for the auto-apply option.
+
+**Expected:** It is locked with the message that it needs 300 recommendations with positive CLV.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 34. Alerts and health (added 5 Nov)
+
+_What the system tells you, and the Health badge._
+
+### 34.1 Alerts list and mark read  \[Either\]
+
+Steps:
+1. Open Alerts.
+2. Mark one read.
+
+**Expected:** Unread count in the navbar drops. Duplicate alerts are not repeated.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 34.2 Health badge  \[Practice\]
+
+Steps:
+1. Click the Health badge.
+
+**Expected:** A panel lists Betfair, tennis feed, football feed, price log and Claude with a dot colour and plain-English detail.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 34.3 Feed outage raises an alert  \[Practice\]
+
+Steps:
+1. (If practical) temporarily break a feed key on the server.
+
+**Expected:** Within about 2 minutes the Health badge turns amber/red and an alert is raised.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 35. Home (added 5 Nov)
+
+_The first screen._
+
+### 35.1 Home shows the day at a glance  \[Either\]
+
+Steps:
+1. Open Home.
+
+**Expected:** Today and week P&L, automation state, open positions, pending recommendations, recent alerts and upcoming markets are visible.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 35.2 Home cards link through  \[Either\]
+
+Steps:
+1. Click each card.
+
+**Expected:** Each goes to the right screen (Recommendations, Plan, Alerts, Manual Trading).
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 36. Analyse and Backtesting (added 5 Nov)
+
+_Performance, strategies, models and replay tests._
+
+### 36.1 Performance tab  \[Either\]
+
+Steps:
+1. Open Analyse > Performance.
+
+**Expected:** Today, this week, month and last 7 days with profit, ROI and win rate, plus a chart. With no settled trades it shows empty states, not errors.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 36.2 Strategies tab attribution  \[Either\]
+
+Steps:
+1. Open Strategies after some script and manual trades have settled.
+
+**Expected:** Profit is split by script and by manual, with staked amount and ROI.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 36.3 Models tab  \[Either\]
+
+Steps:
+1. Open Models.
+
+**Expected:** A table of offline model results (tennis v1, v2, Elo, v3 and football 1X2) against the market, with the note that models are trading guidance, not winner-picking.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 36.4 AI learning tab  \[Practice\]
+
+Steps:
+1. Open AI learning.
+
+**Expected:** Shows recommendation count, CLV evidence so far and the gate to auto-apply.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 36.5 Run a backtest  \[Practice\]
+
+Steps:
+1. Open Backtesting, choose a strategy, target and date range, run.
+
+**Expected:** Result shows trades, profit, ROI, win rate with a train/out-of-sample split. If there are not enough recorded results it says so plainly.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 36.6 Backtest data grows  \[Practice\]
+
+Steps:
+1. Check the price log result counts over a few days.
+
+**Expected:** Markets with recorded winners increase, making more backtests possible.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 37. Settings (added 5 Nov)
+
+_One place for configuration._
+
+### 37.1 Settings sections  \[Either\]
+
+Steps:
+1. Open Settings and visit each section.
+
+**Expected:** Safety and limits, Connections and feeds, Credentials, Trading defaults, AI and costs, Alerts, Versions and models, Appearance all load.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 37.2 Credentials show presence only  \[Practice\]
+
+Steps:
+1. Open Settings > Credentials.
+
+**Expected:** Each key shows Set or Not set. No key value is ever displayed.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 37.3 Connections and data counts  \[Practice\]
+
+Steps:
+1. Open Connections and feeds.
+
+**Expected:** Health items plus counts of football and tennis matches and price log markets/ticks.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 37.4 Theme switch  \[Either\]
+
+Steps:
+1. Open Appearance and switch theme.
+
+**Expected:** The whole app changes between dark and light and remembers it.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 37.5 Alerts channels  \[Either\]
+
+Steps:
+1. Open Alerts section.
+
+**Expected:** Browser is on; email and push are shown as not set up yet.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 38. Real orders safety (added 5 Nov)
+
+_Real order placing exists in code but is switched off._
+
+### 38.1 Mode badge never reads LIVE  \[Practice\]
+
+Steps:
+1. Look at the header badge and Health.
+
+**Expected:** It reads PRACTICE MODE. Orders are simulated and nothing is sent to Betfair.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 38.2 Live mode does not start  \[Practice\]
+
+Steps:
+1. (Server) confirm AUTOBETS_MODE is practice.
+
+**Expected:** Setting live is refused at start-up with an explanation. Real orders are only enabled later with your live key.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

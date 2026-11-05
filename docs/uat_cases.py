@@ -302,6 +302,78 @@ sec("Access and deploys (added 4 Nov)", "Reaching the server and getting changes
     c("Restart keeps your state", "Practice", ["Leave an unmatched bet and a stop in place, then trigger a deploy that restarts the app."], "After it comes back your unmatched bets, stops and matched bets are still shown."),
 ])
 
+sec("Safety, limits and Stop all automation (added 5 Nov)", "The strip under the header and Settings > Safety and limits. Everything here is practice money.", [
+    c("Status strip shows Today and Automation", "Either", ["Look at the strip under the navbar."], "Today's profit/loss, the Automation on/off button and any limit warnings are visible on every screen."),
+    c("Stop all automation", "Either", ["Click Automation, then Stop all automation.", "Read the dialog and confirm."], "Dialog explains what stops (scripts, AI, plan entries) and what does not (your manual trading, existing stops). After confirming the strip shows Automation OFF and scripts fire nothing."),
+    c("Resume automation", "Either", ["Open Alerts or the strip and resume."], "Automation shows ON again and scripts can fire."),
+    c("Default loss limit is not set", "Either", ["Open Settings > Safety and limits on a fresh install."], "Daily and weekly loss limits show 0 / not set. Nothing is blocked."),
+    c("Daily loss limit stops automation, not manual trading", "Demo", ["Set a small daily loss limit (e.g. 5).", "Lose more than that with an enabled script or by trading manually.", "Try a manual bet, then wait for a script to try to enter."], "Manual losses count towards the limit but manual bets are never blocked. Script entries are refused with a clear reason and an alert is raised. Exit orders (:exit) from scripts still work."),
+    c("Open liability limit", "Demo", ["Set a low open liability limit.", "Let a script try to enter a large stake."], "The entry is refused and says why. Tick 'include manual' to count manual positions too."),
+    c("Lay stakes default to stake basis", "Either", ["Place a lay bet from the ladder."], "The amount typed is the stake, not the liability, unless you changed the setting."),
+    c("Settings survive a restart", "Practice", ["Change a limit.", "Wait for a deploy or restart."], "The setting is unchanged afterwards."),
+    c("Full AI mode is locked", "Either", ["Try to select Full AI in the AI mode setting."], "It is refused with 'not available yet'. Advisor stays available."),
+])
+
+sec("Scripts (added 5 Nov)", "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.", [
+    c("Create a script from a template", "Either", ["Open Scripts, click New, pick a template."], "A script appears in the library with its entry, exit and safety rules shown as readable cards."),
+    c("Validation catches mistakes", "Either", ["Edit the JSON so a rule uses an unknown condition or a stake of 0.", "Save."], "Save is refused with a specific message pointing at the problem."),
+    c("Import a script", "Either", ["Paste valid script JSON into Import."], "It appears in the library, disabled."),
+    c("Enable, disable and clone", "Either", ["Enable a script, disable it, then clone it."], "State changes immediately; the clone is a separate disabled script."),
+    c("Version history", "Either", ["Edit and save a script twice.", "Open History."], "Each save is a version with a timestamp. You can view earlier versions."),
+    c("Build with Claude", "Practice", ["Describe a strategy in plain English in Build with Claude."], "A draft script is returned, validated, and can be saved. Invalid drafts are not saved."),
+    c("Add to Plan", "Either", ["From a script, click Add to Plan and pick a market and runner."], "A Plan row is created binding the script to that market and runner."),
+    c("Script fires on a live demo market", "Demo", ["Enable a simple price-based entry script, add it to the Plan on a demo market, let the price cross the condition."], "An order is placed with source script:<name>, appears on the ladder and in the activity log, and the exit rule closes it as defined."),
+    c("Discuss with Claude", "Practice", ["Click Discuss with Claude on a script."], "The copilot opens with the script as context."),
+])
+
+sec("Plan (added 5 Nov)", "Which scripts are armed on which markets.", [
+    c("Plan lists rows with status", "Either", ["Open Plan."], "Each row shows market, runner, script, status (waiting, in position, done, stopped) and bets taken."),
+    c("Edit and remove a row", "Either", ["Change a row's stake or remove it."], "Change is saved; removed rows stop acting immediately."),
+    c("Row bets view", "Either", ["Open a row's bets."], "Orders placed by that row with price, size and result."),
+    c("Attach from the market list", "Either", ["Click the plan button next to a market in the list.", "Choose a script."], "The attach dialog adds a Plan row."),
+])
+
+sec("Recommendations (added 5 Nov)", "Model vs market edges. Practice only; shown for your judgement.", [
+    c("Recommendations appear for real pre-match markets", "Practice", ["Open Recommendations after a few minutes of Practice running."], "Cards list the pick, model price vs market price, edge, reasoning and the current price. Confidence is never High. There may be none if no edge is found."),
+    c("Apply a recommendation", "Practice", ["Click Apply on a card."], "A Plan row or order is created for the chosen script; the card moves to Applied."),
+    c("Dismiss a recommendation", "Practice", ["Click Dismiss."], "The card is removed from pending and does not return for that market."),
+    c("Scan now", "Practice", ["Click Scan."], "A fresh scan runs; the list updates."),
+    c("Auto-apply is locked", "Practice", ["Look for the auto-apply option."], "It is locked with the message that it needs 300 recommendations with positive CLV."),
+])
+
+sec("Alerts and health (added 5 Nov)", "What the system tells you, and the Health badge.", [
+    c("Alerts list and mark read", "Either", ["Open Alerts.", "Mark one read."], "Unread count in the navbar drops. Duplicate alerts are not repeated."),
+    c("Health badge", "Practice", ["Click the Health badge."], "A panel lists Betfair, tennis feed, football feed, price log and Claude with a dot colour and plain-English detail."),
+    c("Feed outage raises an alert", "Practice", ["(If practical) temporarily break a feed key on the server."], "Within about 2 minutes the Health badge turns amber/red and an alert is raised."),
+])
+
+sec("Home (added 5 Nov)", "The first screen.", [
+    c("Home shows the day at a glance", "Either", ["Open Home."], "Today and week P&L, automation state, open positions, pending recommendations, recent alerts and upcoming markets are visible."),
+    c("Home cards link through", "Either", ["Click each card."], "Each goes to the right screen (Recommendations, Plan, Alerts, Manual Trading)."),
+])
+
+sec("Analyse and Backtesting (added 5 Nov)", "Performance, strategies, models and replay tests.", [
+    c("Performance tab", "Either", ["Open Analyse > Performance."], "Today, this week, month and last 7 days with profit, ROI and win rate, plus a chart. With no settled trades it shows empty states, not errors."),
+    c("Strategies tab attribution", "Either", ["Open Strategies after some script and manual trades have settled."], "Profit is split by script and by manual, with staked amount and ROI."),
+    c("Models tab", "Either", ["Open Models."], "A table of offline model results (tennis v1, v2, Elo, v3 and football 1X2) against the market, with the note that models are trading guidance, not winner-picking."),
+    c("AI learning tab", "Practice", ["Open AI learning."], "Shows recommendation count, CLV evidence so far and the gate to auto-apply."),
+    c("Run a backtest", "Practice", ["Open Backtesting, choose a strategy, target and date range, run."], "Result shows trades, profit, ROI, win rate with a train/out-of-sample split. If there are not enough recorded results it says so plainly."),
+    c("Backtest data grows", "Practice", ["Check the price log result counts over a few days."], "Markets with recorded winners increase, making more backtests possible."),
+])
+
+sec("Settings (added 5 Nov)", "One place for configuration.", [
+    c("Settings sections", "Either", ["Open Settings and visit each section."], "Safety and limits, Connections and feeds, Credentials, Trading defaults, AI and costs, Alerts, Versions and models, Appearance all load."),
+    c("Credentials show presence only", "Practice", ["Open Settings > Credentials."], "Each key shows Set or Not set. No key value is ever displayed."),
+    c("Connections and data counts", "Practice", ["Open Connections and feeds."], "Health items plus counts of football and tennis matches and price log markets/ticks."),
+    c("Theme switch", "Either", ["Open Appearance and switch theme."], "The whole app changes between dark and light and remembers it."),
+    c("Alerts channels", "Either", ["Open Alerts section."], "Browser is on; email and push are shown as not set up yet."),
+])
+
+sec("Real orders safety (added 5 Nov)", "Real order placing exists in code but is switched off.", [
+    c("Mode badge never reads LIVE", "Practice", ["Look at the header badge and Health."], "It reads PRACTICE MODE. Orders are simulated and nothing is sent to Betfair."),
+    c("Live mode does not start", "Practice", ["(Server) confirm AUTOBETS_MODE is practice."], "Setting live is refused at start-up with an explanation. Real orders are only enabled later with your live key."),
+])
+
 cases = []
 for si, (name, intro, cs) in enumerate(S, 1):
     for ci, k in enumerate(cs, 1):

@@ -2248,5 +2248,509 @@
    "Leave an unmatched bet and a stop in place, then trigger a deploy that restarts the app."
   ],
   "expected": "After it comes back your unmatched bets, stops and matched bets are still shown."
+ },
+ {
+  "id": "30.1",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Status strip shows Today and Automation",
+  "mode": "Either",
+  "steps": [
+   "Look at the strip under the navbar."
+  ],
+  "expected": "Today's profit/loss, the Automation on/off button and any limit warnings are visible on every screen."
+ },
+ {
+  "id": "30.2",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Stop all automation",
+  "mode": "Either",
+  "steps": [
+   "Click Automation, then Stop all automation.",
+   "Read the dialog and confirm."
+  ],
+  "expected": "Dialog explains what stops (scripts, AI, plan entries) and what does not (your manual trading, existing stops). After confirming the strip shows Automation OFF and scripts fire nothing."
+ },
+ {
+  "id": "30.3",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Resume automation",
+  "mode": "Either",
+  "steps": [
+   "Open Alerts or the strip and resume."
+  ],
+  "expected": "Automation shows ON again and scripts can fire."
+ },
+ {
+  "id": "30.4",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Default loss limit is not set",
+  "mode": "Either",
+  "steps": [
+   "Open Settings > Safety and limits on a fresh install."
+  ],
+  "expected": "Daily and weekly loss limits show 0 / not set. Nothing is blocked."
+ },
+ {
+  "id": "30.5",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Daily loss limit stops automation, not manual trading",
+  "mode": "Demo",
+  "steps": [
+   "Set a small daily loss limit (e.g. 5).",
+   "Lose more than that with an enabled script or by trading manually.",
+   "Try a manual bet, then wait for a script to try to enter."
+  ],
+  "expected": "Manual losses count towards the limit but manual bets are never blocked. Script entries are refused with a clear reason and an alert is raised. Exit orders (:exit) from scripts still work."
+ },
+ {
+  "id": "30.6",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Open liability limit",
+  "mode": "Demo",
+  "steps": [
+   "Set a low open liability limit.",
+   "Let a script try to enter a large stake."
+  ],
+  "expected": "The entry is refused and says why. Tick 'include manual' to count manual positions too."
+ },
+ {
+  "id": "30.7",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Lay stakes default to stake basis",
+  "mode": "Either",
+  "steps": [
+   "Place a lay bet from the ladder."
+  ],
+  "expected": "The amount typed is the stake, not the liability, unless you changed the setting."
+ },
+ {
+  "id": "30.8",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Settings survive a restart",
+  "mode": "Practice",
+  "steps": [
+   "Change a limit.",
+   "Wait for a deploy or restart."
+  ],
+  "expected": "The setting is unchanged afterwards."
+ },
+ {
+  "id": "30.9",
+  "section": "Safety, limits and Stop all automation (added 5 Nov)",
+  "intro": "The strip under the header and Settings > Safety and limits. Everything here is practice money.",
+  "title": "Full AI mode is locked",
+  "mode": "Either",
+  "steps": [
+   "Try to select Full AI in the AI mode setting."
+  ],
+  "expected": "It is refused with 'not available yet'. Advisor stays available."
+ },
+ {
+  "id": "31.1",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Create a script from a template",
+  "mode": "Either",
+  "steps": [
+   "Open Scripts, click New, pick a template."
+  ],
+  "expected": "A script appears in the library with its entry, exit and safety rules shown as readable cards."
+ },
+ {
+  "id": "31.2",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Validation catches mistakes",
+  "mode": "Either",
+  "steps": [
+   "Edit the JSON so a rule uses an unknown condition or a stake of 0.",
+   "Save."
+  ],
+  "expected": "Save is refused with a specific message pointing at the problem."
+ },
+ {
+  "id": "31.3",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Import a script",
+  "mode": "Either",
+  "steps": [
+   "Paste valid script JSON into Import."
+  ],
+  "expected": "It appears in the library, disabled."
+ },
+ {
+  "id": "31.4",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Enable, disable and clone",
+  "mode": "Either",
+  "steps": [
+   "Enable a script, disable it, then clone it."
+  ],
+  "expected": "State changes immediately; the clone is a separate disabled script."
+ },
+ {
+  "id": "31.5",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Version history",
+  "mode": "Either",
+  "steps": [
+   "Edit and save a script twice.",
+   "Open History."
+  ],
+  "expected": "Each save is a version with a timestamp. You can view earlier versions."
+ },
+ {
+  "id": "31.6",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Build with Claude",
+  "mode": "Practice",
+  "steps": [
+   "Describe a strategy in plain English in Build with Claude."
+  ],
+  "expected": "A draft script is returned, validated, and can be saved. Invalid drafts are not saved."
+ },
+ {
+  "id": "31.7",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Add to Plan",
+  "mode": "Either",
+  "steps": [
+   "From a script, click Add to Plan and pick a market and runner."
+  ],
+  "expected": "A Plan row is created binding the script to that market and runner."
+ },
+ {
+  "id": "31.8",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Script fires on a live demo market",
+  "mode": "Demo",
+  "steps": [
+   "Enable a simple price-based entry script, add it to the Plan on a demo market, let the price cross the condition."
+  ],
+  "expected": "An order is placed with source script:<name>, appears on the ladder and in the activity log, and the exit rule closes it as defined."
+ },
+ {
+  "id": "31.9",
+  "section": "Scripts (added 5 Nov)",
+  "intro": "Rules that enter and exit trades for you. Written as JSON; Claude can draft them.",
+  "title": "Discuss with Claude",
+  "mode": "Practice",
+  "steps": [
+   "Click Discuss with Claude on a script."
+  ],
+  "expected": "The copilot opens with the script as context."
+ },
+ {
+  "id": "32.1",
+  "section": "Plan (added 5 Nov)",
+  "intro": "Which scripts are armed on which markets.",
+  "title": "Plan lists rows with status",
+  "mode": "Either",
+  "steps": [
+   "Open Plan."
+  ],
+  "expected": "Each row shows market, runner, script, status (waiting, in position, done, stopped) and bets taken."
+ },
+ {
+  "id": "32.2",
+  "section": "Plan (added 5 Nov)",
+  "intro": "Which scripts are armed on which markets.",
+  "title": "Edit and remove a row",
+  "mode": "Either",
+  "steps": [
+   "Change a row's stake or remove it."
+  ],
+  "expected": "Change is saved; removed rows stop acting immediately."
+ },
+ {
+  "id": "32.3",
+  "section": "Plan (added 5 Nov)",
+  "intro": "Which scripts are armed on which markets.",
+  "title": "Row bets view",
+  "mode": "Either",
+  "steps": [
+   "Open a row's bets."
+  ],
+  "expected": "Orders placed by that row with price, size and result."
+ },
+ {
+  "id": "32.4",
+  "section": "Plan (added 5 Nov)",
+  "intro": "Which scripts are armed on which markets.",
+  "title": "Attach from the market list",
+  "mode": "Either",
+  "steps": [
+   "Click the plan button next to a market in the list.",
+   "Choose a script."
+  ],
+  "expected": "The attach dialog adds a Plan row."
+ },
+ {
+  "id": "33.1",
+  "section": "Recommendations (added 5 Nov)",
+  "intro": "Model vs market edges. Practice only; shown for your judgement.",
+  "title": "Recommendations appear for real pre-match markets",
+  "mode": "Practice",
+  "steps": [
+   "Open Recommendations after a few minutes of Practice running."
+  ],
+  "expected": "Cards list the pick, model price vs market price, edge, reasoning and the current price. Confidence is never High. There may be none if no edge is found."
+ },
+ {
+  "id": "33.2",
+  "section": "Recommendations (added 5 Nov)",
+  "intro": "Model vs market edges. Practice only; shown for your judgement.",
+  "title": "Apply a recommendation",
+  "mode": "Practice",
+  "steps": [
+   "Click Apply on a card."
+  ],
+  "expected": "A Plan row or order is created for the chosen script; the card moves to Applied."
+ },
+ {
+  "id": "33.3",
+  "section": "Recommendations (added 5 Nov)",
+  "intro": "Model vs market edges. Practice only; shown for your judgement.",
+  "title": "Dismiss a recommendation",
+  "mode": "Practice",
+  "steps": [
+   "Click Dismiss."
+  ],
+  "expected": "The card is removed from pending and does not return for that market."
+ },
+ {
+  "id": "33.4",
+  "section": "Recommendations (added 5 Nov)",
+  "intro": "Model vs market edges. Practice only; shown for your judgement.",
+  "title": "Scan now",
+  "mode": "Practice",
+  "steps": [
+   "Click Scan."
+  ],
+  "expected": "A fresh scan runs; the list updates."
+ },
+ {
+  "id": "33.5",
+  "section": "Recommendations (added 5 Nov)",
+  "intro": "Model vs market edges. Practice only; shown for your judgement.",
+  "title": "Auto-apply is locked",
+  "mode": "Practice",
+  "steps": [
+   "Look for the auto-apply option."
+  ],
+  "expected": "It is locked with the message that it needs 300 recommendations with positive CLV."
+ },
+ {
+  "id": "34.1",
+  "section": "Alerts and health (added 5 Nov)",
+  "intro": "What the system tells you, and the Health badge.",
+  "title": "Alerts list and mark read",
+  "mode": "Either",
+  "steps": [
+   "Open Alerts.",
+   "Mark one read."
+  ],
+  "expected": "Unread count in the navbar drops. Duplicate alerts are not repeated."
+ },
+ {
+  "id": "34.2",
+  "section": "Alerts and health (added 5 Nov)",
+  "intro": "What the system tells you, and the Health badge.",
+  "title": "Health badge",
+  "mode": "Practice",
+  "steps": [
+   "Click the Health badge."
+  ],
+  "expected": "A panel lists Betfair, tennis feed, football feed, price log and Claude with a dot colour and plain-English detail."
+ },
+ {
+  "id": "34.3",
+  "section": "Alerts and health (added 5 Nov)",
+  "intro": "What the system tells you, and the Health badge.",
+  "title": "Feed outage raises an alert",
+  "mode": "Practice",
+  "steps": [
+   "(If practical) temporarily break a feed key on the server."
+  ],
+  "expected": "Within about 2 minutes the Health badge turns amber/red and an alert is raised."
+ },
+ {
+  "id": "35.1",
+  "section": "Home (added 5 Nov)",
+  "intro": "The first screen.",
+  "title": "Home shows the day at a glance",
+  "mode": "Either",
+  "steps": [
+   "Open Home."
+  ],
+  "expected": "Today and week P&L, automation state, open positions, pending recommendations, recent alerts and upcoming markets are visible."
+ },
+ {
+  "id": "35.2",
+  "section": "Home (added 5 Nov)",
+  "intro": "The first screen.",
+  "title": "Home cards link through",
+  "mode": "Either",
+  "steps": [
+   "Click each card."
+  ],
+  "expected": "Each goes to the right screen (Recommendations, Plan, Alerts, Manual Trading)."
+ },
+ {
+  "id": "36.1",
+  "section": "Analyse and Backtesting (added 5 Nov)",
+  "intro": "Performance, strategies, models and replay tests.",
+  "title": "Performance tab",
+  "mode": "Either",
+  "steps": [
+   "Open Analyse > Performance."
+  ],
+  "expected": "Today, this week, month and last 7 days with profit, ROI and win rate, plus a chart. With no settled trades it shows empty states, not errors."
+ },
+ {
+  "id": "36.2",
+  "section": "Analyse and Backtesting (added 5 Nov)",
+  "intro": "Performance, strategies, models and replay tests.",
+  "title": "Strategies tab attribution",
+  "mode": "Either",
+  "steps": [
+   "Open Strategies after some script and manual trades have settled."
+  ],
+  "expected": "Profit is split by script and by manual, with staked amount and ROI."
+ },
+ {
+  "id": "36.3",
+  "section": "Analyse and Backtesting (added 5 Nov)",
+  "intro": "Performance, strategies, models and replay tests.",
+  "title": "Models tab",
+  "mode": "Either",
+  "steps": [
+   "Open Models."
+  ],
+  "expected": "A table of offline model results (tennis v1, v2, Elo, v3 and football 1X2) against the market, with the note that models are trading guidance, not winner-picking."
+ },
+ {
+  "id": "36.4",
+  "section": "Analyse and Backtesting (added 5 Nov)",
+  "intro": "Performance, strategies, models and replay tests.",
+  "title": "AI learning tab",
+  "mode": "Practice",
+  "steps": [
+   "Open AI learning."
+  ],
+  "expected": "Shows recommendation count, CLV evidence so far and the gate to auto-apply."
+ },
+ {
+  "id": "36.5",
+  "section": "Analyse and Backtesting (added 5 Nov)",
+  "intro": "Performance, strategies, models and replay tests.",
+  "title": "Run a backtest",
+  "mode": "Practice",
+  "steps": [
+   "Open Backtesting, choose a strategy, target and date range, run."
+  ],
+  "expected": "Result shows trades, profit, ROI, win rate with a train/out-of-sample split. If there are not enough recorded results it says so plainly."
+ },
+ {
+  "id": "36.6",
+  "section": "Analyse and Backtesting (added 5 Nov)",
+  "intro": "Performance, strategies, models and replay tests.",
+  "title": "Backtest data grows",
+  "mode": "Practice",
+  "steps": [
+   "Check the price log result counts over a few days."
+  ],
+  "expected": "Markets with recorded winners increase, making more backtests possible."
+ },
+ {
+  "id": "37.1",
+  "section": "Settings (added 5 Nov)",
+  "intro": "One place for configuration.",
+  "title": "Settings sections",
+  "mode": "Either",
+  "steps": [
+   "Open Settings and visit each section."
+  ],
+  "expected": "Safety and limits, Connections and feeds, Credentials, Trading defaults, AI and costs, Alerts, Versions and models, Appearance all load."
+ },
+ {
+  "id": "37.2",
+  "section": "Settings (added 5 Nov)",
+  "intro": "One place for configuration.",
+  "title": "Credentials show presence only",
+  "mode": "Practice",
+  "steps": [
+   "Open Settings > Credentials."
+  ],
+  "expected": "Each key shows Set or Not set. No key value is ever displayed."
+ },
+ {
+  "id": "37.3",
+  "section": "Settings (added 5 Nov)",
+  "intro": "One place for configuration.",
+  "title": "Connections and data counts",
+  "mode": "Practice",
+  "steps": [
+   "Open Connections and feeds."
+  ],
+  "expected": "Health items plus counts of football and tennis matches and price log markets/ticks."
+ },
+ {
+  "id": "37.4",
+  "section": "Settings (added 5 Nov)",
+  "intro": "One place for configuration.",
+  "title": "Theme switch",
+  "mode": "Either",
+  "steps": [
+   "Open Appearance and switch theme."
+  ],
+  "expected": "The whole app changes between dark and light and remembers it."
+ },
+ {
+  "id": "37.5",
+  "section": "Settings (added 5 Nov)",
+  "intro": "One place for configuration.",
+  "title": "Alerts channels",
+  "mode": "Either",
+  "steps": [
+   "Open Alerts section."
+  ],
+  "expected": "Browser is on; email and push are shown as not set up yet."
+ },
+ {
+  "id": "38.1",
+  "section": "Real orders safety (added 5 Nov)",
+  "intro": "Real order placing exists in code but is switched off.",
+  "title": "Mode badge never reads LIVE",
+  "mode": "Practice",
+  "steps": [
+   "Look at the header badge and Health."
+  ],
+  "expected": "It reads PRACTICE MODE. Orders are simulated and nothing is sent to Betfair."
+ },
+ {
+  "id": "38.2",
+  "section": "Real orders safety (added 5 Nov)",
+  "intro": "Real order placing exists in code but is switched off.",
+  "title": "Live mode does not start",
+  "mode": "Practice",
+  "steps": [
+   "(Server) confirm AUTOBETS_MODE is practice."
+  ],
+  "expected": "Setting live is refused at start-up with an explanation. Real orders are only enabled later with your live key."
  }
 ]
