@@ -52,18 +52,14 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
         <section className="detail">
           {!cur ? <div className="empty muted">Select a script.</div> : <>
             <div className="card"><div className="row"><h2>{cur.name}</h2><span className={'src' + (cur.origin === 'ai' ? ' ai' : '')}>{cur.origin === 'ai' ? 'AI built' : 'Yours'}</span><span className="muted small">v{cur.version} · {cur.enabled ? 'on' : 'off, not applied'}</span><span className="spacer" />
+              <button className="primary" onClick={() => setPick(true)} title="Pick a market and the runner it acts on. Nothing is placed until its conditions are met and the script is on. Practice mode: no real money.">Add to Plan…</button>
               <label className="sw"><input type="checkbox" checked={cur.enabled} onChange={e => guard(() => api.enableScript(cur.id, e.target.checked), e.target.checked ? 'Script on. It acts only on markets in your Plan.' : 'Script off.')} /> On</label>
               <button onClick={() => setEditing(full(cur))}>Edit</button>
               <button onClick={() => guard(() => api.cloneScript(cur.id, `Copy of ${cur.name}`), 'Cloned (off).')}>Clone</button>
               <button onClick={() => setHist(true)}>Version history</button>
               <button className="danger" onClick={() => { if (window.confirm(`Delete "${cur.name}"? This cannot be undone.`)) void guard(() => api.deleteScript(cur.id), 'Deleted.') }}>Delete</button></div>
-              <div className="muted small" style={{ marginTop: 6 }}>The script name is what appears in the Strategy column on the Plan and everywhere else. Rename it and every plan row follows.</div>
               {cur.description && <div className="small" style={{ marginTop: 6 }}>{cur.description}</div>}</div>
             <RuleCards key={cur.id} fold startOpen text={cur.text} headline={cur.headline} />
-            <div className="card"><div className="row"><h3>Put it to work</h3><span className="spacer" />
-              <button disabled title="Backtests need logged price history. The Betfair price log is still collecting; this unlocks in the Analyse step." >Backtest (collecting data)</button>
-              <button className="primary" onClick={() => setPick(true)}>Add to Plan…</button></div>
-              <p className="muted small" style={{ margin: '8px 0 0' }}>Pick a market and the runner it acts on. Nothing is placed until the script's conditions are met and it is switched on. Practice mode is on, so no real money is used.</p></div>
           </>}
         </section>
       </div>
