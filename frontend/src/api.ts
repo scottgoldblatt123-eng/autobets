@@ -72,7 +72,7 @@ export interface ScriptDraft { explanation: string; script: Record<string, unkno
 export interface PlanRow {
   id: string; market_id: string; selection_id: string; script_id: string | null; event: string; market_name: string; runner: string; added_by: 'you' | 'ai'
   stake: number | null; state: 'armed' | 'running' | 'done' | 'stopped' | 'watching'; note: string; fired: string[]; orders: string[]
-  strategy: string; script_enabled: boolean; max_liability: number | null; trigger: string; origin: string; start: string | null; sport: string
+  cycle?: number; repeat?: number; strategy: string; script_enabled: boolean; max_liability: number | null; trigger: string; origin: string; start: string | null; sport: string
 }
 export interface PlanView { rows: PlanRow[]; summary: { markets: number; you: number; ai: number; stake: number; max_liability: number; clashes: number }; clashes: { market_id: string; rows: string[] }[] }
 export interface PlanBet extends Order { event: string; market: string; runner: string; strategy: string; placed_by: string; source: string }

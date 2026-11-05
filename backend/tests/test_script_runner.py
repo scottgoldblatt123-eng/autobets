@@ -86,3 +86,52 @@ def test_plan_survives_restart_and_clashes_are_reported(tmp_path):
     assert len(e2.plan.rows) == 2 and e2.scripts.list()[0]["name"] == "Back test"
     with pytest.raises(ValueError, match="already"):
         e2.plan.add(MID, "101", s["id"], "A v B", "Match Odds", "A")
+
+
+SCALP = {"name": "Scalp", "sport": "football", "rules": [
+    {"id": "r1", "kind": "entry", "repeat": 3, "when": [{"type": "price", "op": ">=", "value": 1.01, "ref": "back"}], "then": [{"type": "back", "price": "best", "stake": 10}]},
+    {"id": "r2", "kind": "exit", "when": [{"type": "rule_matched", "rule": "r1"}, {"type": "ticks_from_entry", "op": ">=", "value": 2}], "then": [{"type": "green"}]},
+    {"id": "r3", "kind": "safety", "when": [{"type": "ticks_from_entry", "op": "<=", "value": -6}], "then": [{"type": "close"}, {"type": "stop"}]}]}
+
+
+def test_scalp_validates_and_describes_repeat():
+    from autobets.scripts import describe, validate
+    s = validate(SCALP)
+    assert s["rules"][0]["repeat"] == 3 and any("Repeat up to 3" in t for t in describe(s)[0]["then"])
+    bad = {**SCALP, "rules": [{**SCALP["rules"][0], "repeat": 0}] + SCALP["rules"][1:]}
+    with pytest.raises(Exception):
+        validate(bad)
+
+
+def test_ticks_from_entry_condition():
+    from autobets.scripts import check
+    c = {"type": "ticks_from_entry", "op": ">=", "value": 2}
+    view = lambda lay: {"entry": {"side": "BACK", "price": 2.0}, "prices": {"lay": lay, "back": lay - 0.02}}      # noqa: E731
+    assert not check(c, {"prices": {"lay": 1.9}}, set())               # not matched yet
+    assert not check(c, view(1.99), set()) and check(c, view(1.98), set()) and check(c, view(1.9), set())
+    assert check({"type": "ticks_from_entry", "op": "<=", "value": -2}, view(2.04), set())     # against you
+    lay_entry = {"entry": {"side": "LAY", "price": 2.0}, "prices": {"back": 2.04, "lay": 2.06}}
+    assert check(c, lay_entry, set())
+
+
+def test_scalp_runs_one_at_a_time_and_stops_after_repeat(eng):
+    s = eng.scripts.create(SCALP)
+    eng.scripts.set_enabled(s["id"], True)
+    row = eng.plan.add(MID, "101", s["id"], "A v B", "Match Odds", "A. Player")
+    eng.run_scripts()
+    assert len(row["orders"]) == 1 and row["entry_order"] == row["orders"][0]
+    # force the exit condition: pretend the price has moved 2 ticks in our favour
+    import autobets.scripts as sc
+    real = sc.check
+    sc.check = lambda c, v, f: True if c["type"] == "ticks_from_entry" and c["op"] == ">=" else (False if c["type"] == "ticks_from_entry" else real(c, v, f))
+    try:
+        entries = set()
+        for _ in range(30):
+            eng.run_scripts()
+            entries.add(row.get("entry_order"))
+            assert len(row["orders"]) <= 3 * 2 + 1
+    finally:
+        sc.check = real
+    entries.discard(None)
+    assert len(entries) == 3 and row["cycle"] == 3          # exactly three runs, one at a time
+    assert row["state"] == "done" and not row.get("await_flat")

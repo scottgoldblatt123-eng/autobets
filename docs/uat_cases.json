@@ -2966,5 +2966,71 @@
    "On Scripts use the All / On / Off / AI drafts / Tennis / Football chips and the search box."
   ],
   "expected": "The library narrows and its heading shows 'N of M'."
+ },
+ {
+  "id": "41.1",
+  "section": "Scalping scripts: ticks from entry and repeat (added 5 Nov)",
+  "intro": "Scripts can now exit relative to where they were matched, and re-arm.",
+  "title": "Scalp example loads and saves",
+  "mode": "Either",
+  "steps": [
+   "On Scripts click Scalp example, then Save."
+  ],
+  "expected": "The script saves; its cards read: back at best price, exit green when 2 ticks in profit from where you were matched, repeat up to 10 times, safety at 6 ticks against."
+ },
+ {
+  "id": "41.2",
+  "section": "Scalping scripts: ticks from entry and repeat (added 5 Nov)",
+  "intro": "Scripts can now exit relative to where they were matched, and re-arm.",
+  "title": "Copilot builds a scalp",
+  "mode": "Practice",
+  "steps": [
+   "Ask the Copilot (Build a script): football Under 2.5 goals scalper, back \u00a310 at best price, green 2 ticks in profit, repeat 10 times."
+  ],
+  "expected": "A valid draft with repeat 10 and a ticks-from-entry exit is returned."
+ },
+ {
+  "id": "41.3",
+  "section": "Scalping scripts: ticks from entry and repeat (added 5 Nov)",
+  "intro": "Scripts can now exit relative to where they were matched, and re-arm.",
+  "title": "One at a time",
+  "mode": "Demo",
+  "steps": [
+   "Add the scalp to an Over/Under 2.5 market on the Under runner and enable it."
+  ],
+  "expected": "Only one entry order exists until its green-up has matched; the Plan row shows 'Run 1 of 10'."
+ },
+ {
+  "id": "41.4",
+  "section": "Scalping scripts: ticks from entry and repeat (added 5 Nov)",
+  "intro": "Scripts can now exit relative to where they were matched, and re-arm.",
+  "title": "Exit 2 ticks from where you were matched",
+  "mode": "Practice",
+  "steps": [
+   "Watch a run where the Lay price drops 2 ticks below your matched price."
+  ],
+  "expected": "The script greens (not before) and logs the profit."
+ },
+ {
+  "id": "41.5",
+  "section": "Scalping scripts: ticks from entry and repeat (added 5 Nov)",
+  "intro": "Scripts can now exit relative to where they were matched, and re-arm.",
+  "title": "Re-arm and stop after the last run",
+  "mode": "Practice",
+  "steps": [
+   "Let several runs complete."
+  ],
+  "expected": "The run counter advances after each green-up and the row ends Done after run 10."
+ },
+ {
+  "id": "41.6",
+  "section": "Scalping scripts: ticks from entry and repeat (added 5 Nov)",
+  "intro": "Scripts can now exit relative to where they were matched, and re-arm.",
+  "title": "Stop at 6 ticks against",
+  "mode": "Practice",
+  "steps": [
+   "If the price moves 6 ticks against the entry."
+  ],
+  "expected": "The position is closed, the script stops and does not re-arm."
  }
 ]

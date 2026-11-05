@@ -14,17 +14,18 @@ Reply with one short sentence of explanation, then the script in a ```script fen
 
 A script: {{"name": str, "sport": "tennis"|"football"|"any", "description": str, "rules": [rule, ...]}}
 A rule: {{"id": "r1", "kind": "entry"|"exit"|"safety", "when": [condition, ...] (all must be true), "then": [action, ...]}}
-- entry opens a position (action back or lay) and fires once. exit must include {{"type":"rule_matched","rule":"<earlier id>"}} and acts with green (hedge to level) or close.
+- entry opens a position (action back or lay) and fires once per run. An entry rule may carry "repeat": N (1-100): after its exit has greened and the position is level, the script re-arms and runs again, one run at a time, N runs in total. Use this for scalping or "repeat" requests. exit must include {{"type":"rule_matched","rule":"<earlier id>"}} and acts with green (hedge to level) or close.
   safety can close and stop. Rules only refer to earlier rules.
 Conditions ({", ".join(CONDITIONS)}):
  {{"type":"price","op":">=","value":2.2,"ref":"last"|"back"|"lay"}}  price of the runner the script is attached to
  {{"type":"in_play","value":true}}  {{"type":"set_number","op":"<","value":3}} (tennis)  {{"type":"goals_total","op":"<=","value":1}}  {{"type":"score_is","home":0,"away":0}}
  {{"type":"minute","op":">=","value":45}} (football)  {{"type":"position_loss","op":">=","value":15}} (pounds)  {{"type":"clock","start":"19:30","end":"19:45"}} (UK time)
  {{"type":"rule_matched","rule":"r1"}}
+ {{"type":"ticks_from_entry","op":">=","value":2}}  ticks of profit available to exit versus where THIS script was matched (negative value = against you). Use it for "take N ticks" and "stop at N ticks against". An entry at the best price and an exit at ticks_from_entry >= 2 with action green is a 2-tick scalp.
  op is one of >=, <=, ==, >, <.
 Actions: {{"type":"lay"|"back","price":2.2 or "best","stake":10,"basis":"stake"|"liability","persistence":"CANCEL"|"KEEP"|"TAKE_SP"}}, {{"type":"green"}}, {{"type":"close"}}, {{"type":"stop"}}.
 Lay bets default to basis "stake". Default stake £10 unless told otherwise; always include a safety rule that limits the loss when the idea is open-ended.
-Prices are Betfair decimal odds. Do not invent conditions that are not listed; if the idea needs one, say so."""
+Prices are Betfair decimal odds. Do not invent conditions that are not listed; if the idea needs one, say so. There is no Betfair SP price option; "best" takes the best available price now. A scalp should also get a safety rule, e.g. ticks_from_entry <= -6 then close and stop, unless the trader says otherwise."""
 
 
 def draft(claude: Claude, usage: Usage, prompt: str) -> dict:

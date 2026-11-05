@@ -399,6 +399,15 @@ sec("Script chooser and Copilot script builder (added 5 Nov)", "Scales as the nu
     c("Scripts library filters", "Either", ["On Scripts use the All / On / Off / AI drafts / Tennis / Football chips and the search box."], "The library narrows and its heading shows 'N of M'."),
 ])
 
+sec("Scalping scripts: ticks from entry and repeat (added 5 Nov)", "Scripts can now exit relative to where they were matched, and re-arm.", [
+    c("Scalp example loads and saves", "Either", ["On Scripts click Scalp example, then Save."], "The script saves; its cards read: back at best price, exit green when 2 ticks in profit from where you were matched, repeat up to 10 times, safety at 6 ticks against."),
+    c("Copilot builds a scalp", "Practice", ["Ask the Copilot (Build a script): football Under 2.5 goals scalper, back £10 at best price, green 2 ticks in profit, repeat 10 times."], "A valid draft with repeat 10 and a ticks-from-entry exit is returned."),
+    c("One at a time", "Demo", ["Add the scalp to an Over/Under 2.5 market on the Under runner and enable it."], "Only one entry order exists until its green-up has matched; the Plan row shows 'Run 1 of 10'."),
+    c("Exit 2 ticks from where you were matched", "Practice", ["Watch a run where the Lay price drops 2 ticks below your matched price."], "The script greens (not before) and logs the profit."),
+    c("Re-arm and stop after the last run", "Practice", ["Let several runs complete."], "The run counter advances after each green-up and the row ends Done after run 10."),
+    c("Stop at 6 ticks against", "Practice", ["If the price moves 6 ticks against the entry."], "The position is closed, the script stops and does not re-arm."),
+])
+
 cases = []
 for si, (name, intro, cs) in enumerate(S, 1):
     for ci, k in enumerate(cs, 1):

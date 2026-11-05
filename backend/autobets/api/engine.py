@@ -562,7 +562,16 @@ class Engine:
                 ctx = self.context_fn({**info, "market_id": row["market_id"]})
             except Exception:       # noqa: BLE001
                 ctx = None
-        return {"prices": {"last": sel.last_traded if sel else None, "back": sel.backs[0].price if sel and sel.backs else None,
+        entry = None
+        eo = row.get("entry_order")
+        if eo:
+            try:
+                o = self.ex.get_order(eo)
+                if o.matched > 0:
+                    entry = {"side": o.request.side.value, "price": o.avg_price}
+            except Exception:       # noqa: BLE001
+                entry = None
+        return {"entry": entry, "prices": {"last": sel.last_traded if sel else None, "back": sel.backs[0].price if sel and sel.backs else None,
                            "lay": sel.lays[0].price if sel and sel.lays else None},
                 "in_play": book.in_play, "ctx": ctx, "position_loss": max(0.0, -min(out)), "clock": self._uk_clock()}
 
@@ -583,6 +592,7 @@ class Engine:
             size = round(stake / (price - 1), 2) if (act["basis"] == "liability" and side == "LAY") else round(stake, 2)
             r = self.place(mid, sid, side, price, size, act["persistence"], source=src)
             row["orders"].append(r["order"]["order_id"])
+            row["entry_order"] = r["order"]["order_id"]
             row["state"] = "running"
         elif t in ("green", "close"):
             self._cancel_source(mid, f"script:{script['name']}")
@@ -614,6 +624,10 @@ class Engine:
                 continue
             self.ex.refresh([book])
             script = self.scripts.current(row["script_id"])
+            if row.get("await_flat"):
+                if self._rearm(row, script, book):
+                    acted += 1
+                continue
             fired = set(row["fired"])
             for rule, act in evaluate(script, self._script_view(row, book), fired):
                 ok = True
@@ -630,9 +644,28 @@ class Engine:
                         row["state"] = "stopped"
                 if (ok or rule["kind"] == "entry") and rule["id"] not in row["fired"]:
                     row["fired"].append(rule["id"])      # entries are never retried; exits are retried on the next pass
-                if row["state"] in ("done", "stopped") or not ok:
+                if ok and rule["kind"] == "exit" and act["type"] in ("green", "close") and row["state"] == "done":
+                    entry_rule = next((r for r in script["rules"] if r["kind"] == "entry"), {})
+                    row["cycle"] = row.get("cycle", 1)
+                    if row["cycle"] < entry_rule.get("repeat", 1):
+                        row["state"], row["await_flat"] = "running", True       # wait for the green-up to level the position, then go again
+                if row["state"] in ("done", "stopped") or not ok or row.get("await_flat"):
                     break
         return acted
+
+    def _rearm(self, row: dict, script: dict, book) -> bool:
+        """After an exit has greened, start the next cycle once the position is level and nothing of this script is still waiting."""
+        mid = row["market_id"]
+        waiting = any(o.status in OPEN and o.request.market_id == mid and o.request.source.startswith(f"script:{script['name']}") for o in self.ex.open_orders())
+        held = self.positions().get(mid, {})
+        full = {sid: held.get(sid, Position()) for sid in book.selections}
+        out = list(pnl.market_outcomes(full).values()) if held else [0.0]
+        if waiting or (max(out) - min(out)) > 0.10:
+            row["note"] = "Waiting for the green-up to match before the next run"
+            return False
+        row.update({"fired": [], "await_flat": False, "state": "armed", "note": "", "cycle": row.get("cycle", 1) + 1, "entry_order": None})
+        self._log(f"Script '{script['name']}' on {row['event']}: run {row['cycle']} of {next((r for r in script['rules'] if r['kind'] == 'entry'), {}).get('repeat', 1)} armed", "info")
+        return True
 
     @locked
     def plan_add(self, market_id: str, selection_id: str | None, script_id: str | None, stake: float | None = None, added_by: str = "you") -> dict:
@@ -668,7 +701,8 @@ class Engine:
                     liab = round(stake * (act["price"] - 1), 2) if act["basis"] == "stake" else stake
             trig = "; ".join(next(d for d in describe(cur) if d["id"] == entry["id"])["if"]) if entry else ""
         info = self._info.get(r["market_id"], {})
-        return {**r, "strategy": cur["name"] if cur else "None (watching)", "script_enabled": bool(sc and sc["enabled"]), "stake": stake, "max_liability": liab,
+        rep = next((x.get("repeat", 1) for x in (cur["rules"] if cur else []) if x["kind"] == "entry"), 1)
+        return {**r, "cycle": r.get("cycle", 1), "repeat": rep, "strategy": cur["name"] if cur else "None (watching)", "script_enabled": bool(sc and sc["enabled"]), "stake": stake, "max_liability": liab,
                 "trigger": trig, "origin": sc["origin"] if sc else "", "start": info.get("start"), "sport": cur["sport"] if cur else ""}
 
     @locked

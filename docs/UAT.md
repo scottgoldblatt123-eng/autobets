@@ -2597,3 +2597,61 @@ Steps:
 **Expected:** The library narrows and its heading shows 'N of M'.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 41. Scalping scripts: ticks from entry and repeat (added 5 Nov)
+
+_Scripts can now exit relative to where they were matched, and re-arm._
+
+### 41.1 Scalp example loads and saves  \[Either\]
+
+Steps:
+1. On Scripts click Scalp example, then Save.
+
+**Expected:** The script saves; its cards read: back at best price, exit green when 2 ticks in profit from where you were matched, repeat up to 10 times, safety at 6 ticks against.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 41.2 Copilot builds a scalp  \[Practice\]
+
+Steps:
+1. Ask the Copilot (Build a script): football Under 2.5 goals scalper, back £10 at best price, green 2 ticks in profit, repeat 10 times.
+
+**Expected:** A valid draft with repeat 10 and a ticks-from-entry exit is returned.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 41.3 One at a time  \[Demo\]
+
+Steps:
+1. Add the scalp to an Over/Under 2.5 market on the Under runner and enable it.
+
+**Expected:** Only one entry order exists until its green-up has matched; the Plan row shows 'Run 1 of 10'.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 41.4 Exit 2 ticks from where you were matched  \[Practice\]
+
+Steps:
+1. Watch a run where the Lay price drops 2 ticks below your matched price.
+
+**Expected:** The script greens (not before) and logs the profit.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 41.5 Re-arm and stop after the last run  \[Practice\]
+
+Steps:
+1. Let several runs complete.
+
+**Expected:** The run counter advances after each green-up and the row ends Done after run 10.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 41.6 Stop at 6 ticks against  \[Practice\]
+
+Steps:
+1. If the price moves 6 ticks against the entry.
+
+**Expected:** The position is closed, the script stops and does not re-arm.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

@@ -41,7 +41,7 @@ export default function PlanScreen({ say }: { say: Say }) {
             <td>{r.strategy}{r.script_id && !r.script_enabled && <div className="muted small">script is off</div>}</td>
             <td><span className={'src' + (r.added_by === 'ai' ? ' ai' : '')}>{r.added_by === 'ai' ? 'AI' : 'You'}</span></td>
             <td>{gbp(r.stake)}</td><td>{gbp(r.max_liability)}</td><td className="small">{r.trigger || '–'}</td>
-            <td><span className={'state ' + r.state}>{STATE[r.state]}</span>{r.note && <div className="loss small">{r.note}</div>}{clash.has(r.id) && <div className="warn small">Clash: another live script on this market</div>}</td>
+            <td><span className={'state ' + r.state}>{STATE[r.state]}</span>{(r.repeat ?? 1) > 1 && <div className="muted small">Run {r.cycle ?? 1} of {r.repeat}</div>}{r.note && <div className="loss small">{r.note}</div>}{clash.has(r.id) && <div className="warn small">Clash: another live script on this market</div>}</td>
             <td className="nowrap"><button className="sm" onClick={() => { setEdit(r); setStake(r.stake == null ? '' : String(r.stake)) }}>Edit</button> <button className="sm" onClick={() => setRm(r)}>Remove</button></td></tr>)}
             {!rows.length && <tr><td colSpan={8} className="muted pad">{view?.rows.length ? 'Nothing matches this filter.' : 'The Plan is empty. Add a market and attach a script, or add one from Scripts.'}</td></tr>}</tbody></table>
         <div className="muted small">Pay-off is not shown: it depends on where each trade exits, which a script decides as the match unfolds.</div></div>

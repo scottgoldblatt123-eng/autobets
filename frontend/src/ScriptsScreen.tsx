@@ -5,6 +5,10 @@ import { markScriptUsed } from './ScriptSelect'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
 const when = (t: number) => new Date(t * 1000).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+const SCALP = { name: 'Scalp: 2 ticks, repeat 10', sport: 'football', description: 'Back at the best price, green up once the exit is 2 ticks in profit, then go again. One run at a time, 10 runs. Attach it to the Under 2.5 Goals runner.',
+  rules: [{ id: 'r1', kind: 'entry', repeat: 10, when: [{ type: 'price', op: '>=', value: 1.01, ref: 'back' }], then: [{ type: 'back', price: 'best', stake: 10, basis: 'stake', persistence: 'CANCEL' }] },
+    { id: 'r2', kind: 'exit', when: [{ type: 'rule_matched', rule: 'r1' }, { type: 'ticks_from_entry', op: '>=', value: 2 }], then: [{ type: 'green' }] },
+    { id: 'r3', kind: 'safety', when: [{ type: 'ticks_from_entry', op: '<=', value: -6 }], then: [{ type: 'close' }, { type: 'stop' }] }] }
 const TEMPLATE = { name: 'New script', sport: 'any', description: '', rules: [
   { id: 'r1', kind: 'entry', when: [{ type: 'price', op: '>=', value: 2.2, ref: 'last' }, { type: 'in_play', value: true }], then: [{ type: 'lay', price: 2.2, stake: 10, basis: 'stake', persistence: 'CANCEL' }] },
   { id: 'r2', kind: 'exit', when: [{ type: 'rule_matched', rule: 'r1' }, { type: 'price', op: '<=', value: 1.8, ref: 'last' }], then: [{ type: 'green' }] },
@@ -33,6 +37,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
       <div className="row"><h1>Scripts</h1><span className="muted">Create, edit, clone and apply automation scripts</span><span className="spacer" />
         <input type="search" placeholder="Search scripts…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search scripts" />
         <button onClick={() => setImporting('')}>Import</button>
+        <button onClick={() => setEditing(JSON.stringify(SCALP, null, 2))}>Scalp example</button>
         <button className="primary" onClick={() => setEditing(JSON.stringify(TEMPLATE, null, 2))}>New script</button></div>
       {err && <div className="loss small">{err}</div>}
       <div className="split">

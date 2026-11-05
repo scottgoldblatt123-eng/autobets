@@ -25,6 +25,7 @@ CONDITIONS = {
     "rule_matched": ("rule",),           # an earlier rule of this script has fired
     "position_loss": ("op", "value"),    # £ the position would lose if the worst outcome happened
     "clock": ("start", "end"),           # UK time window, "HH:MM"
+    "ticks_from_entry": ("op", "value"), # ticks the price you could exit at is better (+) or worse (-) than where this script was matched
 }
 
 
@@ -75,6 +76,8 @@ def validate_condition(c: dict) -> dict:
         out["value"] = _num(c["value"], t, 0, 200)
     elif t == "position_loss":
         out["value"] = _num(c["value"], "loss", 0, 100000)
+    elif t == "ticks_from_entry":
+        out["value"] = int(_num(c["value"], "ticks", -200, 200))
     elif t == "score_is":
         out["home"], out["away"] = int(_num(c["home"], "home", 0, 30)), int(_num(c["away"], "away", 0, 30))
     elif t == "rule_matched":
@@ -138,6 +141,11 @@ def validate(script: dict) -> dict:
             raise ScriptError(f"rule {i}: an exit rule must depend on an earlier rule (add 'rule_matched')")
         if any(a["type"] in ("green", "close", "stop") for a in rule["then"]) and rule["kind"] == "entry":
             raise ScriptError(f"rule {i}: an entry rule opens a position; use back or lay")
+        if rule["kind"] == "entry":
+            rep = r.get("repeat", 1)
+            if isinstance(rep, bool) or not isinstance(rep, int) or not 1 <= rep <= 100:
+                raise ScriptError(f"rule {i}: repeat must be a whole number from 1 to 100")
+            rule["repeat"] = rep
         ids.add(rid)
         rules.append(rule)
     if not any(r["kind"] == "entry" for r in rules):
@@ -182,6 +190,18 @@ def check(cond: dict, view: dict, fired: set[str]) -> bool:
         return cond["rule"] in fired
     if t == "position_loss":
         return _cmp(view.get("position_loss", 0.0), cond["op"], cond["value"])
+    if t == "ticks_from_entry":
+        ent = view.get("entry")
+        if not ent:
+            return False                      # not matched yet
+        side = ent["side"]
+        exit_p = (view.get("prices") or {}).get("lay" if side == "BACK" else "back")
+        if not exit_p:
+            return False
+        from . import ticks
+        e, x = ticks.nearest(ent["price"]), ticks.nearest(exit_p)
+        gained = ticks.ticks_between(x, e) if side == "BACK" else ticks.ticks_between(e, x)
+        return _cmp(gained, cond["op"], cond["value"])
     if t == "clock":
         now, s, e = view.get("clock", ""), cond["start"], cond["end"]
         return s <= now <= e if s <= e else (now >= s or now <= e)
@@ -214,6 +234,7 @@ def describe(script: dict) -> list[dict]:
         if t == "minute": return f"minute {c['op']} {c['value']:g}"
         if t == "rule_matched": return f"rule {c['rule']} has matched"
         if t == "position_loss": return f"position loss {c['op']} £{c['value']:g}"
+        if t == "ticks_from_entry": return f"exit price is {c['op']} {c['value']:g} ticks {'in profit' if c['value'] >= 0 else 'against you'} from where you were matched"
         return f"time is {c['start']}–{c['end']}"
 
     def a_txt(a):
@@ -223,7 +244,9 @@ def describe(script: dict) -> list[dict]:
             return f"{t.capitalize()} {at}, {a['basis']} £{a['stake']:g}, persistence {a['persistence']}"
         return {"green": "Hedge to full green at the best available prices", "close": "Close the position at the best available prices",
                 "stop": "Stop the script"}[t]
-    return [{"id": r["id"], "kind": r["kind"], "if": [c_txt(c) for c in r["when"]], "then": [a_txt(a) for a in r["then"]]} for r in script["rules"]]
+    return [{"id": r["id"], "kind": r["kind"], "if": [c_txt(c) for c in r["when"]],
+             "then": [a_txt(a) for a in r["then"]] + ([f"Repeat up to {r['repeat']} times, one at a time, each after the exit has levelled the position"] if r.get("repeat", 1) > 1 else [])}
+            for r in script["rules"]]
 
 
 class ScriptStore:
