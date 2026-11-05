@@ -7,7 +7,7 @@ const load = (): Msg[] => { try { return JSON.parse(localStorage.getItem(KEY) ??
 const SUGGEST = ['What stands out in these markets right now?', 'Is the market over- or under-reacting to the score?', 'Where would I green up, and what does holding cost me?', 'What would make this idea wrong?']
 
 /** Advisor-mode copilot: asks Claude about the open markets. It sees prices, score, model fair prices, gaps and the position; it cannot place anything. */
-export default function Copilot({ marketIds, onClose, seed }: { marketIds: string[]; onClose: () => void; seed?: string }) {
+export default function Copilot({ marketIds, onClose, seed, docked = false }: { marketIds: string[]; onClose?: () => void; seed?: string; docked?: boolean }) {
   const [msgs, setMsgs] = useState<Msg[]>(load), [text, setText] = useState(seed ?? ''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
   const [status, setStatus] = useState<{ enabled: boolean; estimated_gbp: number; cap_gbp: number } | null>(null)
   const [mode, setModeState] = useState<'advisor' | 'supervised'>(() => { try { return localStorage.getItem(MODE_KEY) === 'supervised' ? 'supervised' : 'advisor' } catch { return 'advisor' } })
@@ -34,17 +34,17 @@ export default function Copilot({ marketIds, onClose, seed }: { marketIds: strin
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   return (
-    <div className="copilot" role="dialog" aria-label="Copilot">
+    <div className={'copilot' + (docked ? ' docked' : '')} role={docked ? 'complementary' : 'dialog'} aria-label="Copilot">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <b>Copilot</b>
-        <span>{msgs.length > 0 && <button className="sm" onClick={() => { setMsgs([]); setErr('') }} title="Clear this conversation">Clear</button>} <button className="sm" onClick={onClose}>✕</button></span>
+        <span>{msgs.length > 0 && <button className="sm" onClick={() => { setMsgs([]); setErr('') }} title="Clear this conversation">Clear</button>} {onClose && <button className="sm" onClick={onClose}>✕</button>}</span>
       </div>
       <div className="row small">
         <button className={'chip' + (mode === 'advisor' ? ' on' : '')} onClick={() => setMode('advisor')} title="Ideas and analysis only">Advisor</button>
         <button className={'chip' + (mode === 'supervised' ? ' on' : '')} onClick={() => setMode('supervised')} title="The copilot may propose a trade; nothing is placed until you approve it">Supervised</button>
         <span className="muted">{mode === 'advisor' ? 'Ideas only. It cannot place bets.' : 'It may propose a trade. Nothing is placed until you approve.'}</span>
       </div>
-      <div className="muted small">Looking at {marketIds.length ? `${Math.min(marketIds.length, 5)} open market${marketIds.length > 1 ? 's' : ''}` : 'no open markets — open one to ask about it'}.
+      <div className="muted small">Looking at {marketIds.length ? `${Math.min(marketIds.length, 5)} open market${marketIds.length > 1 ? 's' : ''}` : 'no markets yet — add some to your Plan or open one to ask about it'}.
         {status && ` Est. spend this month £${status.estimated_gbp.toFixed(2)} of £${status.cap_gbp}.`}</div>
       <div className="cpmsgs">
         {msgs.length === 0 && <div className="muted small pad">Ask about the markets you have open. Try:{SUGGEST.map(s => <div key={s}><button className="chip" onClick={() => send(s)}>{s}</button></div>)}</div>}

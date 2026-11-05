@@ -374,6 +374,19 @@ sec("Real orders safety (added 5 Nov)", "Real order placing exists in code but i
     c("Live mode does not start", "Practice", ["(Server) confirm AUTOBETS_MODE is practice."], "Setting live is refused at start-up with an explanation. Real orders are only enabled later with your live key."),
 ])
 
+sec("Market list on Home and Plan, bulk add, AI panel (added 5 Nov)", "The same market list as the ladder screen, now on Home and Plan.", [
+    c("Market list on Home and Plan", "Either", ["Open Home, then Plan."], "The market list (Tennis / Football tabs, search, In-play, Next hour, sort) is on the left of both. Home also has the Copilot panel docked on the right."),
+    c("All markets on an event", "Practice", ["On Football, click 'All markets on this event' under a match."], "Half time, goal lines, correct score and other markets appear grouped, each with a tick box (not only Match Odds)."),
+    c("Tick and bulk add, watch only", "Either", ["Tick three markets.", "Click Add 3 to Plan.", "Leave script as None and confirm."], "A message says 3 markets were added. They show on the Plan as Watching and as 'in Plan' in the list. The tick boxes clear."),
+    c("Select a whole competition / select all shown", "Either", ["Tick a competition heading, then try Select all shown after a search."], "Every market under that heading (or every market shown after the search) is ticked; the counter matches."),
+    c("Selection survives tab and search changes", "Either", ["Tick a tennis market, switch to Football, tick one, search, then switch back."], "The selected count still includes both."),
+    c("Bulk add with a script", "Either", ["Tick several markets.", "Add to Plan, choose a script and the rule Favourite, set a stake."], "Each market gets a Plan row with the favourite (shortest back price) as its runner. Markets where the rule cannot apply (e.g. Draw on tennis) are skipped and listed."),
+    c("Open a ladder from the list", "Either", ["Click the ladder icon on a market row on Home or Plan."], "Manual Trading opens with that market's ladders."),
+    c("Scripts > Add to Plan uses the same list", "Either", ["On Scripts, click Add to Plan."], "The picker shows the full list including all-markets-on-event; choosing a market then asks which runner."),
+    c("Home AI panel", "Practice", ["Ask the docked Copilot about your Plan markets."], "It answers about the markets in your Plan and any open ladders. It cannot place bets in Advisor mode."),
+    c("Narrow screens", "Either", ["Open Home on a phone or narrow window."], "A 'Market list' button reveals the list above the screen; the AI panel is available from the Copilot button in the header."),
+])
+
 cases = []
 for si, (name, intro, cs) in enumerate(S, 1):
     for ci, k in enumerate(cs, 1):

@@ -12,6 +12,7 @@ import HomeScreen from './HomeScreen'
 import AnalyseScreen from './AnalyseScreen'
 import SettingsScreen from './SettingsScreen'
 import AttachDialog from './AttachDialog'
+import Workbench from './Workbench'
 import MarketHeader, { marketFigure } from './MarketPanel'
 import OrdersPanel from './OrdersPanel'
 import MatchedPanel from './MatchedPanel'
@@ -305,6 +306,13 @@ export default function App() {
     setExpanded(o => ({ ...o, [eventId]: 'loading' }))
     api.eventMarkets(eventId).then(ms => setExpanded(o => ({ ...o, [eventId]: ms }))).catch(e => { say(e.message, 'err'); setExpanded(o => { const n = { ...o }; delete n[eventId]; return n }) })
   }
+  const openById = async (id: string) => {
+    try {
+      const st = await api.state([id]); const m = st.markets[id]
+      if (!m) throw new Error('market not available')
+      openMarket({ market_id: id, name: m.name, event: m.event, competition: m.competition, start: m.start, runners: m.runners, in_play: m.in_play }); setScreen('manual')
+    } catch (e) { say((e as Error).message, 'err') }
+  }
   const openMarket = (m: MarketInfo) => {
     if (!m.shown && Object.keys(m.runners).length > MAX_LADDERS) { setPicker({ m, sel: Object.keys(m.runners).slice(0, 2) }); return }       // e.g. correct score: choose which runners get a ladder
     setOpenList(cur => (cur.some(x => x.market_id === m.market_id) ? cur : [...cur, m]))
@@ -394,12 +402,14 @@ export default function App() {
       <nav className="navbar" aria-label="Screens">
         {([['home', 'Home'], ['recs', 'Recommendations'], ['plan', 'Plan'], ['scripts', 'Scripts'], ['manual', 'Manual Trading'], ['analyse', 'Analyse'], ['alerts', 'Alerts'], ['settings', 'Settings']] as [Screen, string][]).map(([k, l]) => <button key={k} className={screen === k ? 'on' : ''} onClick={() => setScreen(k)}>{l}{k === 'recs' && badge.recs > 0 && <span className="nbadge">{badge.recs}</span>}{k === 'alerts' && badge.needs > 0 && <span className="nbadge bad">{badge.needs}</span>}</button>)}
       </nav>
-      {screen === 'home' && <HomeScreen say={say} go={s => setScreen(s)} openMarket={async id => { try { const st = await api.state([id]); const m = st.markets[id]; if (!m) throw new Error('market not available'); openMarket({ market_id: id, name: m.name, event: m.event, competition: m.competition, start: m.start, runners: m.runners, in_play: m.in_play }); setScreen('manual') } catch (e) { say((e as Error).message, 'err') } }} />}
+      {(screen === 'home' || screen === 'plan') && <Workbench say={say} withCopilot={screen === 'home'} openIds={ids} onOpenLadder={openById}>
+        {screen === 'home' && <HomeScreen say={say} go={s => setScreen(s)} openMarket={openById} />}
+        {screen === 'plan' && <PlanScreen say={say} />}
+      </Workbench>}
       {screen === 'recs' && <RecsScreen say={say} onPlan={() => setScreen('plan')} onDiscuss={r => { setDiscuss({ marketId: r.market_id, text: `Why does the model like ${r.side === 'BACK' ? 'backing' : 'laying'} ${r.runner} in ${r.event}? What would make this wrong?` }); setShowAi(true) }} />}
       {screen === 'settings' && <SettingsScreen theme={theme} onTheme={() => setSettings(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }))} onLadderSettings={() => setShowSettings(true)} />}
       {screen === 'analyse' && <AnalyseScreen say={say} />}
       {screen === 'alerts' && <AlertsScreen say={say} onGo={s => setScreen(s)} onChanged={refreshBadges} />}
-      {screen === 'plan' && <PlanScreen say={say} />}
       {screen === 'scripts' && <ScriptsScreen say={say} onPlan={() => setScreen('plan')} />}
       <div className="body" style={screen === 'manual' ? undefined : { display: 'none' }}>
         <aside>

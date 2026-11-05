@@ -2413,3 +2413,100 @@ Steps:
 **Expected:** Setting live is refused at start-up with an explanation. Real orders are only enabled later with your live key.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 39. Market list on Home and Plan, bulk add, AI panel (added 5 Nov)
+
+_The same market list as the ladder screen, now on Home and Plan._
+
+### 39.1 Market list on Home and Plan  \[Either\]
+
+Steps:
+1. Open Home, then Plan.
+
+**Expected:** The market list (Tennis / Football tabs, search, In-play, Next hour, sort) is on the left of both. Home also has the Copilot panel docked on the right.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.2 All markets on an event  \[Practice\]
+
+Steps:
+1. On Football, click 'All markets on this event' under a match.
+
+**Expected:** Half time, goal lines, correct score and other markets appear grouped, each with a tick box (not only Match Odds).
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.3 Tick and bulk add, watch only  \[Either\]
+
+Steps:
+1. Tick three markets.
+2. Click Add 3 to Plan.
+3. Leave script as None and confirm.
+
+**Expected:** A message says 3 markets were added. They show on the Plan as Watching and as 'in Plan' in the list. The tick boxes clear.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.4 Select a whole competition / select all shown  \[Either\]
+
+Steps:
+1. Tick a competition heading, then try Select all shown after a search.
+
+**Expected:** Every market under that heading (or every market shown after the search) is ticked; the counter matches.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.5 Selection survives tab and search changes  \[Either\]
+
+Steps:
+1. Tick a tennis market, switch to Football, tick one, search, then switch back.
+
+**Expected:** The selected count still includes both.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.6 Bulk add with a script  \[Either\]
+
+Steps:
+1. Tick several markets.
+2. Add to Plan, choose a script and the rule Favourite, set a stake.
+
+**Expected:** Each market gets a Plan row with the favourite (shortest back price) as its runner. Markets where the rule cannot apply (e.g. Draw on tennis) are skipped and listed.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.7 Open a ladder from the list  \[Either\]
+
+Steps:
+1. Click the ladder icon on a market row on Home or Plan.
+
+**Expected:** Manual Trading opens with that market's ladders.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.8 Scripts > Add to Plan uses the same list  \[Either\]
+
+Steps:
+1. On Scripts, click Add to Plan.
+
+**Expected:** The picker shows the full list including all-markets-on-event; choosing a market then asks which runner.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.9 Home AI panel  \[Practice\]
+
+Steps:
+1. Ask the docked Copilot about your Plan markets.
+
+**Expected:** It answers about the markets in your Plan and any open ladders. It cannot place bets in Advisor mode.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.10 Narrow screens  \[Either\]
+
+Steps:
+1. Open Home on a phone or narrow window.
+
+**Expected:** A 'Market list' button reveals the list above the screen; the AI panel is available from the Copilot button in the header.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

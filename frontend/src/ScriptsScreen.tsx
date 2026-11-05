@@ -85,7 +85,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
       {hist && cur && <div className="overlay" onClick={() => setHist(false)}><div className="card" role="dialog" aria-label="Version history" onClick={e => e.stopPropagation()}><h3>Version history</h3>
         {[...cur.history].reverse().map(h => <div key={h.version} className="small">v{h.version} · {when(h.t)} · {h.note}</div>)}
         <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={() => setHist(false)}>Close</button></div></div></div>}
-      {pick && cur && <MarketPicker needRunner title={`Add "${cur.name}" to Plan`} onClose={() => setPick(false)}
+      {pick && cur && <MarketPicker say={say} needRunner title={`Add "${cur.name}" to Plan`} onClose={() => setPick(false)}
         onPick={(m, sid) => { setPick(false); void guard(() => api.planAdd({ market_id: m.market_id, selection_id: sid, script_id: cur.id }), `Added to your Plan: ${m.event}.`).then(onPlan) }} />}
     </div>
   )

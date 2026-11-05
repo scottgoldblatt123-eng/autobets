@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type PlanBet, type PlanRow, type PlanView, type Script } from './api'
-import MarketPicker from './MarketPicker'
 import AttachDialog from './AttachDialog'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
@@ -14,7 +13,7 @@ const TABS: Record<BetTab, string[]> = { Unmatched: ['UNMATCHED'], 'Partially ma
 export default function PlanScreen({ say }: { say: Say }) {
   const [view, setView] = useState<PlanView | null>(null), [bets, setBets] = useState<PlanBet[]>([]), [scripts, setScripts] = useState<Script[]>([])
   const [filter, setFilter] = useState<Filter>('all'), [tab, setTab] = useState<BetTab>('Unmatched'), [err, setErr] = useState('')
-  const [adding, setAdding] = useState(false), [edit, setEdit] = useState<PlanRow | null>(null), [stake, setStake] = useState(''), [rm, setRm] = useState<PlanRow | null>(null), [pickScript, setPickScript] = useState<{ m: string; sid: string | null; name: string } | null>(null)
+  const [edit, setEdit] = useState<PlanRow | null>(null), [stake, setStake] = useState(''), [rm, setRm] = useState<PlanRow | null>(null), [pickScript, setPickScript] = useState<{ m: string; sid: string | null; name: string } | null>(null)
   const load = useCallback(() => Promise.all([api.plan(), api.planBets(), api.scripts()]).then(([p, b, s]) => { setView(p); setBets(b); setScripts(s); setErr('') }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load(); const t = window.setInterval(() => void load(), 4000); return () => window.clearInterval(t) }, [load])
   const act = async (f: () => Promise<unknown>, ok: string) => { try { await f(); say(ok); await load() } catch (e) { say((e as Error).message, 'err') } }
@@ -24,7 +23,8 @@ export default function PlanScreen({ say }: { say: Say }) {
   const tabBets = bets.filter(b => TABS[tab].includes(b.status))
   return (
     <div className="screen">
-      <div className="row"><h1>Plan</h1><span className="muted">Everything planned or running, chosen by you or recommended by the AI</span><span className="spacer" /><button className="primary" onClick={() => setAdding(true)}>Add market</button></div>
+      <div className="row"><h1>Plan</h1><span className="muted">Everything planned or running, chosen by you or recommended by the AI</span></div>
+      <div className="muted small">Tick markets in the list on the left (or a whole competition), then Add to Plan. Use ＋ on a match for half time, goal lines, correct score and the rest.</div>
       {err && <div className="loss small">{err}</div>}
       <div className="kpis">
         <div className="card kpi"><span className="cap">Markets in plan</span><b>{sm?.markets ?? 0}</b><small className="muted">{sm?.you ?? 0} yours · {sm?.ai ?? 0} AI</small></div>
@@ -51,7 +51,6 @@ export default function PlanScreen({ say }: { say: Say }) {
             <td className="small">£{b.matched.toFixed(2)} of £{b.size.toFixed(2)}{b.remaining > 0 && b.status !== 'CANCELLED' ? ` · £${b.remaining.toFixed(2)} waiting` : ''}</td><td>{b.placed_by}</td>
             <td>{(b.status === 'UNMATCHED' || b.status === 'PARTIAL') && <button className="sm" onClick={() => act(() => api.cancel(b.order_id), 'Cancelled.')}>Cancel</button>}</td></tr>)}
             {!tabBets.length && <tr><td colSpan={8} className="muted pad">No {tab.toLowerCase()} bets.</td></tr>}</tbody></table></div>
-      {adding && <MarketPicker needRunner={false} onClose={() => setAdding(false)} onPick={m => { setAdding(false); setPickScript({ m: m.market_id, sid: null, name: m.event }) }} />}
       {pickScript && <AttachDialog marketId={pickScript.m} title={pickScript.name} onClose={() => setPickScript(null)} onDone={(m, k) => { say(m, k); void load() }} />}
       {edit && <div className="overlay" onClick={() => setEdit(null)}><div className="card" role="dialog" aria-label="Edit plan row" onClick={e => e.stopPropagation()} style={{ width: 420 }}>
         <h3>Edit before applying</h3><div className="muted small">{edit.event} · {edit.market_name} · {edit.strategy}</div>

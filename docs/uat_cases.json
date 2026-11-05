@@ -2752,5 +2752,118 @@
    "(Server) confirm AUTOBETS_MODE is practice."
   ],
   "expected": "Setting live is refused at start-up with an explanation. Real orders are only enabled later with your live key."
+ },
+ {
+  "id": "39.1",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Market list on Home and Plan",
+  "mode": "Either",
+  "steps": [
+   "Open Home, then Plan."
+  ],
+  "expected": "The market list (Tennis / Football tabs, search, In-play, Next hour, sort) is on the left of both. Home also has the Copilot panel docked on the right."
+ },
+ {
+  "id": "39.2",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "All markets on an event",
+  "mode": "Practice",
+  "steps": [
+   "On Football, click 'All markets on this event' under a match."
+  ],
+  "expected": "Half time, goal lines, correct score and other markets appear grouped, each with a tick box (not only Match Odds)."
+ },
+ {
+  "id": "39.3",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Tick and bulk add, watch only",
+  "mode": "Either",
+  "steps": [
+   "Tick three markets.",
+   "Click Add 3 to Plan.",
+   "Leave script as None and confirm."
+  ],
+  "expected": "A message says 3 markets were added. They show on the Plan as Watching and as 'in Plan' in the list. The tick boxes clear."
+ },
+ {
+  "id": "39.4",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Select a whole competition / select all shown",
+  "mode": "Either",
+  "steps": [
+   "Tick a competition heading, then try Select all shown after a search."
+  ],
+  "expected": "Every market under that heading (or every market shown after the search) is ticked; the counter matches."
+ },
+ {
+  "id": "39.5",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Selection survives tab and search changes",
+  "mode": "Either",
+  "steps": [
+   "Tick a tennis market, switch to Football, tick one, search, then switch back."
+  ],
+  "expected": "The selected count still includes both."
+ },
+ {
+  "id": "39.6",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Bulk add with a script",
+  "mode": "Either",
+  "steps": [
+   "Tick several markets.",
+   "Add to Plan, choose a script and the rule Favourite, set a stake."
+  ],
+  "expected": "Each market gets a Plan row with the favourite (shortest back price) as its runner. Markets where the rule cannot apply (e.g. Draw on tennis) are skipped and listed."
+ },
+ {
+  "id": "39.7",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Open a ladder from the list",
+  "mode": "Either",
+  "steps": [
+   "Click the ladder icon on a market row on Home or Plan."
+  ],
+  "expected": "Manual Trading opens with that market's ladders."
+ },
+ {
+  "id": "39.8",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Scripts > Add to Plan uses the same list",
+  "mode": "Either",
+  "steps": [
+   "On Scripts, click Add to Plan."
+  ],
+  "expected": "The picker shows the full list including all-markets-on-event; choosing a market then asks which runner."
+ },
+ {
+  "id": "39.9",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Home AI panel",
+  "mode": "Practice",
+  "steps": [
+   "Ask the docked Copilot about your Plan markets."
+  ],
+  "expected": "It answers about the markets in your Plan and any open ladders. It cannot place bets in Advisor mode."
+ },
+ {
+  "id": "39.10",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Narrow screens",
+  "mode": "Either",
+  "steps": [
+   "Open Home on a phone or narrow window."
+  ],
+  "expected": "A 'Market list' button reveals the list above the screen; the AI panel is available from the Copilot button in the header."
  }
 ]
