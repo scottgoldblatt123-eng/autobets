@@ -14,8 +14,11 @@ const TEMPLATE = { name: 'New script', sport: 'any', description: '', rules: [
   { id: 'r2', kind: 'exit', when: [{ type: 'rule_matched', rule: 'r1' }, { type: 'price', op: '<=', value: 1.8, ref: 'last' }], then: [{ type: 'green' }] },
   { id: 'r3', kind: 'safety', when: [{ type: 'rule_matched', rule: 'r1' }, { type: 'position_loss', op: '>=', value: 15 }], then: [{ type: 'close' }, { type: 'stop' }] }] }
 
-export function RuleCards({ text }: { text: ScriptRuleText[] }) {
-  return <>{text.map(r => (
+/** The rules of a script, one compact card each. `fold` shows just the headline with a toggle, for lists and chat. */
+export function RuleCards({ text, fold, headline }: { text: ScriptRuleText[]; fold?: boolean; headline?: string }) {
+  const [open, setOpen] = useState(!fold)
+  if (fold && !open) return <button className="foldbtn" onClick={() => setOpen(true)} aria-expanded={false}>▸ {headline || `${text.length} rules`}</button>
+  return <>{fold && <button className="foldbtn" onClick={() => setOpen(false)} aria-expanded>▾ {headline || `${text.length} rules`}</button>}{text.map(r => (
     <div key={r.id} className="rulecard"><div className="row" style={{ gap: 8, marginBottom: 4 }}><b>{r.kind === 'entry' ? 'Entry' : r.kind === 'exit' ? 'Exit' : 'Safety'}</b><span className="tag">Rule {r.id.replace(/^r/, '')}</span></div>
       <div className="small muted"><b className="ink">If</b> {r.if.join(' · ')}<br /><b className="ink">Then</b> {r.then.join(', then ')}</div></div>))}</>
 }
@@ -43,7 +46,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
       <div className="split">
         <aside className="card library"><div className="cap">Library ({shown.length}{shown.length !== list.length ? ` of ${list.length}` : ''})</div>
           <div className="chips">{[['all', 'All'], ['on', 'On'], ['off', 'Off'], ['ai', 'AI drafts'], ['tennis', 'Tennis'], ['football', 'Football']].map(([k, l]) => <button key={k} className={'chip' + (lf === k ? ' on' : '')} onClick={() => setLf(k)}>{l}</button>)}</div>
-          {shown.map(s => <button key={s.id} className={'librow' + (s.id === sel ? ' on' : '')} onClick={() => setSel(s.id)}>{s.name}<span className="muted small">{s.sport === 'any' ? 'Any' : s.sport[0].toUpperCase() + s.sport.slice(1)} · v{s.version} · {s.origin === 'ai' ? 'AI built' : 'yours'}{s.enabled ? ' · ON' : ''}</span></button>)}
+          {shown.map(s => <button key={s.id} className={'librow' + (s.id === sel ? ' on' : '')} onClick={() => setSel(s.id)}>{s.name}{s.headline && <span className="muted small trunc">{s.headline}</span>}<span className="muted small">{s.sport === 'any' ? 'Any' : s.sport[0].toUpperCase() + s.sport.slice(1)} · v{s.version} · {s.origin === 'ai' ? 'AI built' : 'yours'}{s.enabled ? ' · ON' : ''}</span></button>)}
           {!shown.length && <div className="muted small pad">{list.length ? 'No script matches.' : 'No scripts yet. Describe one above, or start from New script.'}</div>}
         </aside>
         <section className="detail">

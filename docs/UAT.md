@@ -2655,3 +2655,52 @@ Steps:
 **Expected:** The position is closed, the script stops and does not re-arm.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 42. Compact scripts: headlines and expandable rules (added 5 Nov)
+
+_Plan, Scripts and Copilot show one headline per script; the full rules expand on demand._
+
+### 42.1 Plan rows show a headline  \[Either\]
+
+Steps:
+1. Open Plan with a script attached to a market.
+
+**Expected:** Each row shows the strategy name and a one-line headline (e.g. 'Back £10 at best · exit: green · 1 safety rule · ×10') on one line, with Edit and Remove still visible.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 42.2 Expand a row's rules  \[Either\]
+
+Steps:
+1. Click the arrow at the start of a Plan row.
+
+**Expected:** The entry trigger and the Entry / Exit / Safety rules open under the row; clicking again collapses them.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 42.3 Expand all / collapse all  \[Either\]
+
+Steps:
+1. Click the arrow in the Plan table header.
+
+**Expected:** All rows with a script expand or collapse together.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 42.4 Scripts library headlines  \[Either\]
+
+Steps:
+1. Open Scripts.
+
+**Expected:** Each library entry shows its name, a one-line headline, sport, version and origin, so more scripts fit on screen.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 42.5 Copilot drafts are folded  \[Practice\]
+
+Steps:
+1. Ask the Copilot to build a script.
+
+**Expected:** The draft shows a one-line headline you can open to read every rule.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

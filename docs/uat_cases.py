@@ -408,6 +408,14 @@ sec("Scalping scripts: ticks from entry and repeat (added 5 Nov)", "Scripts can 
     c("Stop at 6 ticks against", "Practice", ["If the price moves 6 ticks against the entry."], "The position is closed, the script stops and does not re-arm."),
 ])
 
+sec("Compact scripts: headlines and expandable rules (added 5 Nov)", "Plan, Scripts and Copilot show one headline per script; the full rules expand on demand.", [
+    c("Plan rows show a headline", "Either", ["Open Plan with a script attached to a market."], "Each row shows the strategy name and a one-line headline (e.g. 'Back £10 at best · exit: green · 1 safety rule · ×10') on one line, with Edit and Remove still visible."),
+    c("Expand a row's rules", "Either", ["Click the arrow at the start of a Plan row."], "The entry trigger and the Entry / Exit / Safety rules open under the row; clicking again collapses them."),
+    c("Expand all / collapse all", "Either", ["Click the arrow in the Plan table header."], "All rows with a script expand or collapse together."),
+    c("Scripts library headlines", "Either", ["Open Scripts."], "Each library entry shows its name, a one-line headline, sport, version and origin, so more scripts fit on screen."),
+    c("Copilot drafts are folded", "Practice", ["Ask the Copilot to build a script."], "The draft shows a one-line headline you can open to read every rule."),
+])
+
 cases = []
 for si, (name, intro, cs) in enumerate(S, 1):
     for ci, k in enumerate(cs, 1):

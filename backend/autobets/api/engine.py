@@ -19,7 +19,7 @@ from ..ledger import Ledger
 from ..plan import Plan
 from ..recs import Recs
 from ..order_service import Blocked, OrderService
-from ..scripts import ScriptStore, describe, evaluate
+from ..scripts import ScriptStore, describe, evaluate, headline
 from ..settings import Settings
 from .demo import DemoFeed
 from .history import Tracker, load_logged
@@ -703,7 +703,7 @@ class Engine:
         info = self._info.get(r["market_id"], {})
         rep = next((x.get("repeat", 1) for x in (cur["rules"] if cur else []) if x["kind"] == "entry"), 1)
         return {**r, "cycle": r.get("cycle", 1), "repeat": rep, "strategy": cur["name"] if cur else "None (watching)", "script_enabled": bool(sc and sc["enabled"]), "stake": stake, "max_liability": liab,
-                "trigger": trig, "origin": sc["origin"] if sc else "", "start": info.get("start"), "sport": cur["sport"] if cur else ""}
+                "trigger": trig, "headline": headline(cur) if cur else "", "text": describe(cur) if cur else [], "origin": sc["origin"] if sc else "", "start": info.get("start"), "sport": cur["sport"] if cur else ""}
 
     @locked
     def plan_view(self) -> dict:

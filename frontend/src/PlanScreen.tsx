@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, type PlanBet, type PlanRow, type PlanView } from './api'
 import AttachDialog from './AttachDialog'
 import ScriptSelect from './ScriptSelect'
+import { RuleCards } from './ScriptsScreen'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
 const gbp = (v: number | null | undefined) => (v == null ? '–' : '£' + v.toFixed(2))
@@ -14,6 +15,8 @@ const TABS: Record<BetTab, string[]> = { Unmatched: ['UNMATCHED'], 'Partially ma
 export default function PlanScreen({ say }: { say: Say }) {
   const [view, setView] = useState<PlanView | null>(null), [bets, setBets] = useState<PlanBet[]>([])
   const [filter, setFilter] = useState<Filter>('all'), [tab, setTab] = useState<BetTab>('Unmatched'), [err, setErr] = useState('')
+  const [open, setOpen] = useState<Set<string>>(new Set())
+  const flip = (id: string) => setOpen(o => { const n = new Set(o); n.has(id) ? n.delete(id) : n.add(id); return n })
   const [edit, setEdit] = useState<PlanRow | null>(null), [stake, setStake] = useState(''), [rm, setRm] = useState<PlanRow | null>(null), [pickScript, setPickScript] = useState<{ m: string; sid: string | null; name: string } | null>(null)
   const load = useCallback(() => Promise.all([api.plan(), api.planBets()]).then(([p, b]) => { setView(p); setBets(b); setErr('') }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load(); const t = window.setInterval(() => void load(), 4000); return () => window.clearInterval(t) }, [load])
@@ -35,15 +38,15 @@ export default function PlanScreen({ say }: { say: Say }) {
       </div>
       <div className="row">{([['all', 'All'], ['you', 'You'], ['ai', 'AI'], ['attention', 'Needs attention']] as [Filter, string][]).map(([k, l]) => <button key={k} className={'chip' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{l}</button>)}</div>
       <div className="card tcard"><h3>Planned and running</h3><div className="muted small">Source tags show who chose each row</div>
-        <table className="tbl"><thead><tr><th>Market</th><th>Strategy (script name)</th><th>Source</th><th>Stake</th><th>Max liability</th><th>Trigger / window</th><th>State</th><th /></tr></thead>
-          <tbody>{rows.map(r => <tr key={r.id} className={clash.has(r.id) ? 'clash' : ''}>
-            <td><b>{r.event}</b><div className="muted small">{r.market_name}{r.runner ? ` · ${r.runner}` : ''}</div></td>
-            <td>{r.strategy}{r.script_id && !r.script_enabled && <div className="muted small">script is off</div>}</td>
-            <td><span className={'src' + (r.added_by === 'ai' ? ' ai' : '')}>{r.added_by === 'ai' ? 'AI' : 'You'}</span></td>
-            <td>{gbp(r.stake)}</td><td>{gbp(r.max_liability)}</td><td className="small">{r.trigger || '–'}</td>
-            <td><span className={'state ' + r.state}>{STATE[r.state]}</span>{(r.repeat ?? 1) > 1 && <div className="muted small">Run {r.cycle ?? 1} of {r.repeat}</div>}{r.note && <div className="loss small">{r.note}</div>}{clash.has(r.id) && <div className="warn small">Clash: another live script on this market</div>}</td>
-            <td className="nowrap"><button className="sm" onClick={() => { setEdit(r); setStake(r.stake == null ? '' : String(r.stake)) }}>Edit</button> <button className="sm" onClick={() => setRm(r)}>Remove</button></td></tr>)}
-            {!rows.length && <tr><td colSpan={8} className="muted pad">{view?.rows.length ? 'Nothing matches this filter.' : 'The Plan is empty. Add a market and attach a script, or add one from Scripts.'}</td></tr>}</tbody></table>
+        <table className="tbl"><thead><tr><th style={{ width: 28 }}><button className="sm" title={open.size ? 'Collapse all' : 'Expand all'} onClick={() => setOpen(open.size ? new Set() : new Set(rows.filter(r => r.script_id).map(r => r.id)))}>{open.size ? '▾' : '▸'}</button></th><th>Market</th><th>Strategy (script name)</th><th>Stake / max loss</th><th>State</th><th /></tr></thead>
+          <tbody>{rows.map(r => [<tr key={r.id} className={clash.has(r.id) ? 'clash' : ''}>
+            <td>{r.script_id && <button className="sm" aria-expanded={open.has(r.id)} aria-label="Show script rules" onClick={() => flip(r.id)}>{open.has(r.id) ? '▾' : '▸'}</button>}</td>
+            <td style={{ minWidth: 150 }}><b>{r.event}</b> <span className={'src' + (r.added_by === 'ai' ? ' ai' : '')}>{r.added_by === 'ai' ? 'AI' : 'You'}</span><div className="muted small">{r.market_name}{r.runner ? ` · ${r.runner}` : ''}</div></td>
+            <td>{r.strategy}{r.headline && <div className="muted small trunc" title={r.headline}>{r.headline}</div>}{r.script_id && !r.script_enabled && <div className="muted small">script is off</div>}</td>
+            <td>{gbp(r.stake)}<div className="muted small">max {gbp(r.max_liability)}</div></td>            <td><span className={'state ' + r.state}>{STATE[r.state]}</span>{(r.repeat ?? 1) > 1 && <div className="muted small">Run {r.cycle ?? 1} of {r.repeat}</div>}{r.note && <div className="loss small">{r.note}</div>}{clash.has(r.id) && <div className="warn small">Clash: another live script on this market</div>}</td>
+            <td className="nowrap"><button className="sm" onClick={() => { setEdit(r); setStake(r.stake == null ? '' : String(r.stake)) }}>Edit</button> <button className="sm" onClick={() => setRm(r)}>Remove</button></td></tr>,
+            open.has(r.id) && r.text && <tr key={r.id + 'x'} className="ruleexp"><td /><td colSpan={7}>{r.trigger && <div className="muted small" style={{ marginBottom: 4 }}>Entry trigger: {r.trigger}</div>}<RuleCards text={r.text} /></td></tr>])}
+            {!rows.length && <tr><td colSpan={6} className="muted pad">{view?.rows.length ? 'Nothing matches this filter.' : 'The Plan is empty. Add a market and attach a script, or add one from Scripts.'}</td></tr>}</tbody></table>
         <div className="muted small">Pay-off is not shown: it depends on where each trade exits, which a script decides as the match unfolds.</div></div>
       <div className="card tcard"><h3>Bets</h3><div className="muted small">All bets from you, scripts and the AI</div>
         <div className="row">{(Object.keys(TABS) as BetTab[]).map(t => <button key={t} className={'tab' + (tab === t ? ' on' : '')} onClick={() => setTab(t)}>{t} ({bets.filter(b => TABS[t].includes(b.status)).length})</button>)}</div>

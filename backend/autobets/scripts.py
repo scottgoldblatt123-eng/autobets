@@ -249,6 +249,25 @@ def describe(script: dict) -> list[dict]:
             for r in script["rules"]]
 
 
+def headline(script: dict) -> str:
+    """One line that says what a script does, for lists: entry action, how it exits, safety rules, repeats."""
+    rules = script["rules"]
+    ent = next((r for r in rules if r["kind"] == "entry"), None)
+    parts = []
+    if ent:
+        a = ent["then"][0]
+        parts.append(f"{a['type'].capitalize()} £{a['stake']:g} at {'best' if a['price'] == 'best' else format(a['price'], 'g')}")
+    ex = [a["type"] for r in rules if r["kind"] == "exit" for a in r["then"]]
+    if ex:
+        parts.append("exit: " + "/".join(dict.fromkeys(ex)))
+    n = sum(1 for r in rules if r["kind"] == "safety")
+    if n:
+        parts.append(f"{n} safety rule{'s' if n != 1 else ''}")
+    if ent and ent.get("repeat", 1) > 1:
+        parts.append(f"×{ent['repeat']}")
+    return " · ".join(parts)
+
+
 class ScriptStore:
     """Scripts with their version history. Editing creates a new version; plan rows follow the script by id, so renaming flows through."""
 
@@ -266,7 +285,7 @@ class ScriptStore:
     @staticmethod
     def view(s: dict) -> dict:
         cur = s["versions"][-1]
-        return {"id": s["id"], "name": cur["name"], "sport": cur["sport"], "description": cur["description"], "rules": cur["rules"], "text": describe(cur),
+        return {"id": s["id"], "name": cur["name"], "sport": cur["sport"], "description": cur["description"], "rules": cur["rules"], "text": describe(cur), "headline": headline(cur),
                 "version": len(s["versions"]), "origin": s["origin"], "enabled": s["enabled"], "updated": s["updated"],
                 "history": [{"version": i + 1, "t": v["t"], "note": v["note"]} for i, v in enumerate(s["versions"])]}
 

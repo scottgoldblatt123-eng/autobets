@@ -76,7 +76,7 @@ export default function Copilot({ marketIds, onClose, seed, docked = false, star
             </div>))}
           {m.draft && <div className="draft">
             {m.draft.error && <div className="loss small">{m.draft.error}</div>}
-            {m.draft.script && <><div className="small"><b>{String(m.draft.script.name)}</b></div><RuleCards text={m.draft.text ?? []} />
+            {m.draft.script && <><div className="small"><b>{String(m.draft.script.name)}</b></div><RuleCards fold text={m.draft.text ?? []} headline={m.draft.headline} />
               {m.saved ? <div className="gain small">Saved as “{m.saved}” (off). It is now in the script list: review and enable it on Scripts, or add it to a market from the Plan.</div>
                 : <div className="row"><button className="primary sm" disabled={acting === 'draft' + i} onClick={() => saveDraft(i, m.draft!)}>Save as draft script</button><span className="muted small">or type a change to refine it</span></div>}</>}
           </div>}

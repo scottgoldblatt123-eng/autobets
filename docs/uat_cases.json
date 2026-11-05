@@ -3032,5 +3032,60 @@
    "If the price moves 6 ticks against the entry."
   ],
   "expected": "The position is closed, the script stops and does not re-arm."
+ },
+ {
+  "id": "42.1",
+  "section": "Compact scripts: headlines and expandable rules (added 5 Nov)",
+  "intro": "Plan, Scripts and Copilot show one headline per script; the full rules expand on demand.",
+  "title": "Plan rows show a headline",
+  "mode": "Either",
+  "steps": [
+   "Open Plan with a script attached to a market."
+  ],
+  "expected": "Each row shows the strategy name and a one-line headline (e.g. 'Back \u00a310 at best \u00b7 exit: green \u00b7 1 safety rule \u00b7 \u00d710') on one line, with Edit and Remove still visible."
+ },
+ {
+  "id": "42.2",
+  "section": "Compact scripts: headlines and expandable rules (added 5 Nov)",
+  "intro": "Plan, Scripts and Copilot show one headline per script; the full rules expand on demand.",
+  "title": "Expand a row's rules",
+  "mode": "Either",
+  "steps": [
+   "Click the arrow at the start of a Plan row."
+  ],
+  "expected": "The entry trigger and the Entry / Exit / Safety rules open under the row; clicking again collapses them."
+ },
+ {
+  "id": "42.3",
+  "section": "Compact scripts: headlines and expandable rules (added 5 Nov)",
+  "intro": "Plan, Scripts and Copilot show one headline per script; the full rules expand on demand.",
+  "title": "Expand all / collapse all",
+  "mode": "Either",
+  "steps": [
+   "Click the arrow in the Plan table header."
+  ],
+  "expected": "All rows with a script expand or collapse together."
+ },
+ {
+  "id": "42.4",
+  "section": "Compact scripts: headlines and expandable rules (added 5 Nov)",
+  "intro": "Plan, Scripts and Copilot show one headline per script; the full rules expand on demand.",
+  "title": "Scripts library headlines",
+  "mode": "Either",
+  "steps": [
+   "Open Scripts."
+  ],
+  "expected": "Each library entry shows its name, a one-line headline, sport, version and origin, so more scripts fit on screen."
+ },
+ {
+  "id": "42.5",
+  "section": "Compact scripts: headlines and expandable rules (added 5 Nov)",
+  "intro": "Plan, Scripts and Copilot show one headline per script; the full rules expand on demand.",
+  "title": "Copilot drafts are folded",
+  "mode": "Practice",
+  "steps": [
+   "Ask the Copilot to build a script."
+  ],
+  "expected": "The draft shows a one-line headline you can open to read every rule."
  }
 ]

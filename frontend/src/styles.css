@@ -347,3 +347,17 @@ textarea.code { font-family: ui-monospace, monospace; font-size: 12px; width: 10
 .sslist { max-height: 260px; overflow: auto; display: flex; flex-direction: column; }
 .sslist .pickrow { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
 .copilot .draft { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
+
+/* ---- compact scripts ---- */
+.trunc { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.librow .trunc { max-width: 100%; }
+.foldbtn { display: block; width: 100%; text-align: left; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); padding: 4px 8px; font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rulecard { padding: 6px 10px !important; line-height: 1.4 !important; }
+.ruleexp > td { background: var(--surface-raised); padding-top: 4px; padding-bottom: 8px; }
+.ruleexp .rulecard + .rulecard { margin-top: 4px; }
+.tcard { overflow-x: auto; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
+.copilot .chips, .copilot .row { flex-wrap: wrap; }
+.ruleexp > td:last-child { max-width: 0; overflow-wrap: anywhere; }
+.nowrap { white-space: nowrap; }
+.screen > * { flex-shrink: 0; }

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 
-from ..scripts import CONDITIONS, ScriptError, describe, validate
+from ..scripts import CONDITIONS, ScriptError, describe, headline, validate
 from .claude import AiError, Claude
 from .usage import Usage
 
@@ -44,4 +44,4 @@ def draft(claude: Claude, usage: Usage, prompt: str) -> dict:
         script = validate(json.loads(m.group(1)))
     except (json.JSONDecodeError, ScriptError) as e:
         return {"explanation": explanation, "script": None, "error": f"Claude's draft was not a valid script ({e}). Try rewording the idea.", "cost_gbp": round(gbp, 4)}
-    return {"explanation": explanation, "script": script, "text": describe(script), "error": None, "cost_gbp": round(gbp, 4)}
+    return {"explanation": explanation, "script": script, "text": describe(script), "headline": headline(script), "error": None, "cost_gbp": round(gbp, 4)}
