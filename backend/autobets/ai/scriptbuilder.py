@@ -28,9 +28,14 @@ Conditions ({", ".join(CONDITIONS)}):
  {{"type":"price_move","op":"<=","value":-3,"seconds":60}}  ticks the runner's price moved in the last N seconds (+ drifted out, - shortened)
  {{"type":"set_games_diff","op":"<=","value":-1}} (tennis) games won by the runner the script is on, minus the opponent's, in the current set (-1 = a game behind, e.g. just broken; +1 = a game ahead)
  {{"type":"sets_diff","op":">=","value":1}} (tennis) sets won by this runner minus the opponent's
+ {{"type":"serving","value":true}}  (tennis) the runner is serving  {{"type":"game_points_diff","op":"<=","value":-2}}  points in the current game, runner minus opponent (0,15,30,40 count as 0..3)
+ {{"type":"game_score_is","me":"0","opp":"0"}}  (tennis) exact game score from the runner's view  {{"type":"break_point","side":"against"|"for"}}  (tennis) runner serving and facing a break point / receiving with one
+ {{"type":"set_games_total","op":"<=","value":3}}  (tennis) games played in the set  {{"type":"prev_set_games_diff","op":">=","value":3}}  (tennis) previous set's game margin for the runner
+ {{"type":"breaks_diff","op":">=","value":1}}  (tennis) service breaks the runner is ahead (+) or behind (-) in the current set
+ {{"type":"half_time","value":true}}  (football) the half-time break
  {{"type":"ticks_from_entry","op":">=","value":2}}  ticks of profit available to exit versus where THIS script was matched (negative value = against you). Use it for "take N ticks" and "stop at N ticks against". An entry at the best price and an exit at ticks_from_entry >= 2 with action green is a 2-tick scalp.
  op is one of >=, <=, ==, >, <.
-Actions: {{"type":"lay"|"back","price":2.2 or "best","stake":10,"basis":"stake"|"liability","persistence":"CANCEL"|"KEEP"|"TAKE_SP"}}, {{"type":"green"}}, {{"type":"close"}}, {{"type":"stop"}}.
+Actions: {{"type":"lay"|"back","price":2.2 or "best","stake":10,"basis":"stake"|"liability","persistence":"CANCEL"|"KEEP"|"TAKE_SP"}}, {{"type":"green"}}, {{"type":"close"}} (either may carry "percent": 50 to take out only part of the position), {{"type":"stop"}}.
 Lay bets default to basis "stake". Default stake £10 unless told otherwise; always include a safety rule that limits the loss when the idea is open-ended.
 Prices are Betfair decimal odds. Do not invent conditions that are not listed; if the idea needs one, say so. There is no Betfair SP price option; "best" takes the best available price now. A scalp should also get a safety rule, e.g. ticks_from_entry <= -6 then close and stop, unless the trader says otherwise."""
 

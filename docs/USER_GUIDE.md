@@ -53,3 +53,6 @@ Recommendations has Football / Tennis / All sports chips. **Propose new scripts*
 
 ### Editing a script
 Edit on the Scripts screen opens three tabs. **Settings** is a form: name, sport, description and each rule's conditions and actions (stake, price, persistence, repeat) as fields. **Ask Claude to change it** takes a plain-English change, shows you the revised script, and loads it into Settings only if you press Use this version. **Advanced** is the raw data for experts. Save as new version keeps the old version in History; Save as a copy leaves the original untouched.
+
+### Starter library
+Scripts has a **Starter library** button. It holds ready-made tennis and football scripts based on well-known community automation ideas (such as laying a player who breaks early, backing the server each game, laying the draw at half time), rebuilt in our own wording. Each shows what it does, which runner to attach it to, its caveats and its rules. **Add to my library** puts a switched-off copy in Scripts; **Add all** adds the ones you have not got yet. They are starting points, not proven: read them, change the numbers, test in practice mode. A "Not available yet" list explains which popular bots cannot be built here (for example correct-score dutching, and anything that needs the history of earlier points).

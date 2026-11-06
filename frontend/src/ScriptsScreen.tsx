@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, type Rec, type Script, type ScriptRuleText } from './api'
 import MarketPicker from './MarketPicker'
 import ScriptEditor from './ScriptEditor'
+import StarterLibrary from './StarterLibrary'
 import { markScriptUsed } from './ScriptSelect'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
@@ -27,7 +28,7 @@ export function RuleCards({ text, fold, headline, startOpen }: { text: ScriptRul
 /** Scripts: build with Claude or by hand, review in plain English, clone, version, enable, and put on the Plan. */
 export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () => void }) {
   const [list, setList] = useState<Script[]>([]), [sel, setSel] = useState<string>(''), [q, setQ] = useState('')
-  const [editor, setEditor] = useState<{ script: Script | null; initial?: Record<string, unknown> } | null>(null), [err, setErr] = useState(''), [hist, setHist] = useState(false), [pick, setPick] = useState(false), [importing, setImporting] = useState<string | null>(null)
+  const [editor, setEditor] = useState<{ script: Script | null; initial?: Record<string, unknown> } | null>(null), [err, setErr] = useState(''), [hist, setHist] = useState(false), [pick, setPick] = useState(false), [starters, setStarters] = useState(false), [importing, setImporting] = useState<string | null>(null)
   const load = useCallback(() => api.scripts().then(l => { setList(l); setSel(s => (l.some(x => x.id === s) ? s : l[0]?.id ?? '')) }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load() }, [load])
   useEffect(() => { const f = (e: Event) => { void load().then(() => { const id = (e as CustomEvent<string>).detail; if (id) setSel(id) }) }; window.addEventListener('autobets:scripts-changed', f); return () => window.removeEventListener('autobets:scripts-changed', f) }, [load])
@@ -42,6 +43,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
     <div className="screen">
       <div className="row"><h1>Scripts</h1><span className="muted">Create, edit, clone and apply automation scripts</span><span className="spacer" />
         <input type="search" placeholder="Search scripts…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search scripts" />
+        <button onClick={() => setStarters(true)}>Starter library</button>
         <button onClick={() => setImporting('')}>Import</button>
         <button onClick={() => setEditor({ script: null, initial: SCALP as unknown as Record<string, unknown> })}>Scalp example</button>
         <button className="primary" onClick={() => setEditor({ script: null, initial: TEMPLATE as unknown as Record<string, unknown> })}>New script</button></div>
@@ -54,6 +56,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
           <button className="sm" onClick={() => api.recDismiss(r.id, 'not interested').then(loadProps)}>Dismiss</button>
         </div>)}
       </div>}
+      {starters && <StarterLibrary onClose={() => setStarters(false)} onAdded={() => void load()} say={say} />}
       {err && <div className="loss small">{err}</div>}
       <div className="split">
         <aside className="card library"><div className="cap">Library ({shown.length}{shown.length !== list.length ? ` of ${list.length}` : ''})</div>

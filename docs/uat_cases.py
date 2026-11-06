@@ -473,6 +473,16 @@ for si, (name, intro, cs) in enumerate(S, 1):
     for ci, k in enumerate(cs, 1):
         cases.append({"id": f"{si}.{ci}", "section": name, "intro": intro, **k})
 
+sec("Starter library", "Ready-made scripts from community ideas, rebuilt for AutoBets.", [
+    c("Open the library", "Either", ["Scripts, then Starter library."], "A list of tennis and football scripts, each with summary, attach-to advice, caveats and a rules toggle. A Not available yet list is at the bottom."),
+    c("Filter by sport", "Either", ["Click Tennis, then Football."], "Only that sport's starters and unavailable items show."),
+    c("Add one", "Either", ["Click Add to my library on any starter."], "It shows In your library and appears in Scripts switched OFF."),
+    c("Cannot add twice", "Either", ["Add the same starter again (reopen the dialog)."], "Button is replaced by In your library; no duplicate."),
+    c("Add all", "Either", ["Click Add all."], "Every remaining starter in the current filter is added, all switched off."),
+    c("Edit a starter", "Either", ["Edit an added starter.", "Add a condition such as Breaks ahead."], "New tennis and football conditions appear in the list and are editable."),
+    c("Test in practice", "Practice", ["Attach a tennis starter to a live match on the Plan.", "Switch it on."], "It places practice orders only when its conditions are met; safety rule closes losing trades."),
+])
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     json.dump(cases, open(os.path.join(here, "uat_cases.json"), "w"), indent=1)

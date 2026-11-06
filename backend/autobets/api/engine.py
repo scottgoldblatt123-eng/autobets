@@ -658,10 +658,12 @@ class Engine:
             row["state"] = "running"
         elif t in ("green", "close"):
             self._cancel_source(mid, f"script:{script['name']}")
-            res = self.green_market(mid, hard=(t == "close"), source=src)
+            part = act.get("percent")
+            res = self.green_market(mid, hard=(t == "close" and not part), pct=(part / 100 if part else 1.0), source=src)
             if not res.get("greened") and "nothing to green" not in res.get("reason", ""):
                 raise RuntimeError(res.get("reason", "could not close"))
-            row["state"] = "done"
+            if not part:
+                row["state"] = "done"
         elif t == "stop":
             self._cancel_source(mid, f"script:{script['name']}")
             row["state"] = "stopped"

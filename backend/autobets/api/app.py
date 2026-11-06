@@ -218,6 +218,27 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             return {"deleted": sid}
         return _script_call(lambda: engine.update_locked(go))
 
+    @app.get("/api/starters")
+    def starters_list(_=Depends(auth)):
+        from .. import starters as st
+        from ..scripts import describe, headline, validate
+        have = {x["name"] for x in engine.scripts.list()}
+        out = []
+        for s in st.STARTERS:
+            v = validate(s["script"])
+            out.append({k: s[k] for k in ("id", "sport", "title", "summary", "attach", "caveats", "source")} | {"headline": headline(v), "text": describe(v), "added": s["script"]["name"] in have})
+        return {"items": out, "unsupported": st.UNSUPPORTED}
+
+    @app.post("/api/starters/{sid}/add")
+    def starters_add(sid: str, _=Depends(auth)):
+        from .. import starters as st
+        s = next((x for x in st.STARTERS if x["id"] == sid), None)
+        if not s:
+            raise HTTPException(404, "unknown starter")
+        if any(x["name"] == s["script"]["name"] for x in engine.scripts.list()):
+            raise HTTPException(409, "already in your library")
+        return _script_call(lambda: engine.update_locked(lambda: engine.scripts.create(dict(s["script"]), "you", "added from the starter library")))
+
     @app.post("/api/scripts/build")
     def scripts_build(body: dict, _=Depends(auth)):
         try:

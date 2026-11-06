@@ -11,6 +11,9 @@ const LABEL: Record<string, string> = {
   goals_total: 'Total goals (football)', score_is: 'Exact score (football)', minute: 'Match minute (football)', rule_matched: 'An earlier rule has fired', position_loss: 'Possible loss £',
   clock: 'Time of day (UK)', ticks_from_entry: 'Ticks of profit (+) or loss (−) since entry', ticks_from_peak: 'Ticks given back from the best (trailing stop)',
   minutes_to_start: 'Minutes to the scheduled start', spread_ticks: 'Spread in ticks', market_matched: 'Matched on the market £', price_move: 'Price move in ticks over N seconds',
+  serving: 'Runner is serving (tennis)', game_points_diff: 'Points ahead (+) or behind (−) in the game (tennis)', game_score_is: 'Exact game score, e.g. 0-0 or 15-40 (tennis)',
+  break_point: 'Break point (tennis): against = runner serving and facing one, for = runner receiving', breaks_diff: 'Breaks ahead (+) or behind (−) in the set (tennis)',
+  set_games_total: 'Games played in the set (tennis)', prev_set_games_diff: 'Margin of the previous set (tennis)', half_time: 'Half-time break (football)',
 }
 const DEFAULT: Record<string, Obj> = {
   price: { type: 'price', op: '>=', value: 2, ref: 'back' }, in_play: { type: 'in_play', value: true }, set_number: { type: 'set_number', op: '==', value: 1 },
@@ -19,6 +22,9 @@ const DEFAULT: Record<string, Obj> = {
   clock: { type: 'clock', start: '19:00', end: '22:00' }, ticks_from_entry: { type: 'ticks_from_entry', op: '>=', value: 2 }, ticks_from_peak: { type: 'ticks_from_peak', value: 3 },
   minutes_to_start: { type: 'minutes_to_start', op: '<=', value: 30 }, spread_ticks: { type: 'spread_ticks', op: '<=', value: 2 }, market_matched: { type: 'market_matched', op: '>=', value: 50000 },
   price_move: { type: 'price_move', op: '<=', value: -3, seconds: 60 },
+  serving: { type: 'serving', value: true }, game_points_diff: { type: 'game_points_diff', op: '<=', value: -2 }, game_score_is: { type: 'game_score_is', me: '0', opp: '0' },
+  break_point: { type: 'break_point', side: 'against' }, breaks_diff: { type: 'breaks_diff', op: '>=', value: 1 }, set_games_total: { type: 'set_games_total', op: '<=', value: 3 },
+  prev_set_games_diff: { type: 'prev_set_games_diff', op: '>=', value: 3 }, half_time: { type: 'half_time', value: true },
 }
 const KIND: Record<string, string> = { entry: 'Entry: opens the position', exit: 'Exit: takes it off', safety: 'Safety: limits the loss' }
 

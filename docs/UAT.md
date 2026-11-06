@@ -3109,3 +3109,72 @@ Steps:
 **Expected:** It passes while the server is up. If the server is stopped it fails (and GitHub emails you).
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 46. Starter library
+
+_Ready-made scripts from community ideas, rebuilt for AutoBets._
+
+### 46.1 Open the library  \[Either\]
+
+Steps:
+1. Scripts, then Starter library.
+
+**Expected:** A list of tennis and football scripts, each with summary, attach-to advice, caveats and a rules toggle. A Not available yet list is at the bottom.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 46.2 Filter by sport  \[Either\]
+
+Steps:
+1. Click Tennis, then Football.
+
+**Expected:** Only that sport's starters and unavailable items show.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 46.3 Add one  \[Either\]
+
+Steps:
+1. Click Add to my library on any starter.
+
+**Expected:** It shows In your library and appears in Scripts switched OFF.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 46.4 Cannot add twice  \[Either\]
+
+Steps:
+1. Add the same starter again (reopen the dialog).
+
+**Expected:** Button is replaced by In your library; no duplicate.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 46.5 Add all  \[Either\]
+
+Steps:
+1. Click Add all.
+
+**Expected:** Every remaining starter in the current filter is added, all switched off.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 46.6 Edit a starter  \[Either\]
+
+Steps:
+1. Edit an added starter.
+2. Add a condition such as Breaks ahead.
+
+**Expected:** New tennis and football conditions appear in the list and are editable.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 46.7 Test in practice  \[Practice\]
+
+Steps:
+1. Attach a tennis starter to a live match on the Plan.
+2. Switch it on.
+
+**Expected:** It places practice orders only when its conditions are met; safety rule closes losing trades.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

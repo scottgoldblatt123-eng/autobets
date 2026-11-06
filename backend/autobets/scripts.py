@@ -21,6 +21,14 @@ CONDITIONS = {
     "set_number": ("op", "value"),       # tennis: the set being played (1, 2, 3 …)
     "set_games_diff": ("op", "value"),   # tennis: games won by the target player minus the opponent in the current set (-1 = a game behind, e.g. broken)
     "sets_diff": ("op", "value"),        # tennis: sets won by the target player minus the opponent
+    "serving": ("value",),               # tennis: true when the target player is serving
+    "game_points_diff": ("op", "value"), # tennis: points won in the current game by the target player minus the opponent (0, 15, 30, 40, advantage = 0..4)
+    "game_score_is": ("me", "opp"),      # tennis: exact points in the current game from the target player's view, e.g. 0 and 0, or 15 and 40
+    "breaks_diff": ("op", "value"),      # tennis: service breaks in the current set, the target player's minus the opponent's (+1 = one break up). Worked out from the games and who serves
+    "break_point": ("side",),            # tennis: 'against' = the target is serving and facing a break point; 'for' = the target is receiving with a break point
+    "set_games_total": ("op", "value"),  # tennis: games played so far in the current set
+    "prev_set_games_diff": ("op", "value"),  # tennis: games won by the target in the previous set minus the opponent (+3 = won it by 3 or more)
+    "half_time": ("value",),             # football: true during the half-time break
     "goals_total": ("op", "value"),      # football: goals scored so far by both teams
     "score_is": ("home", "away"),        # football: exact score
     "minute": ("op", "value"),           # football: match minute
@@ -79,8 +87,28 @@ def validate_condition(c: dict) -> dict:
         if not isinstance(c["value"], bool):
             raise ScriptError("in_play must be true or false")
         out["value"] = c["value"]
-    elif t in ("set_games_diff", "sets_diff"):
+    elif t in ("set_games_diff", "sets_diff", "prev_set_games_diff"):
         out["value"] = _num(c["value"], t, -20, 20)
+    elif t == "set_games_total":
+        out["value"] = _num(c["value"], t, 0, 40)
+    elif t == "breaks_diff":
+        out["value"] = _num(c["value"], t, -6, 6)
+    elif t in ("serving", "half_time"):
+        if not isinstance(c["value"], bool):
+            raise ScriptError(f"{t} must be true or false")
+        out["value"] = c["value"]
+    elif t == "game_points_diff":
+        out["value"] = int(_num(c["value"], t, -4, 4))
+    elif t == "game_score_is":
+        for k in ("me", "opp"):
+            v = str(c[k]).upper().replace("AD", "A")
+            if v not in ("0", "15", "30", "40", "A"):
+                raise ScriptError(f"game_score_is {k} must be 0, 15, 30, 40 or A")
+            out[k] = v
+    elif t == "break_point":
+        if c["side"] not in ("against", "for"):
+            raise ScriptError("break_point side must be 'against' or 'for'")
+        out["side"] = c["side"]
     elif t in ("set_number", "goals_total", "minute"):
         out["value"] = _num(c["value"], t, 0, 200)
     elif t == "position_loss":
@@ -121,6 +149,8 @@ def validate_action(a: dict) -> dict:
         out["persistence"] = a.get("persistence", "CANCEL")
         if out["persistence"] not in PERSIST:
             raise ScriptError(f"persistence must be one of {PERSIST}")
+    if t in ("green", "close") and a.get("percent") not in (None, 100):
+        out["percent"] = int(_num(a["percent"], "percent", 1, 99))
     return out
 
 
@@ -196,6 +226,55 @@ def gain_ticks(side: str, entry_price: float, prices: dict) -> int | None:
     return ticks.ticks_between(x, e) if side == "BACK" else ticks.ticks_between(e, x)
 
 
+_PTS = {"0": 0, "15": 1, "30": 2, "40": 3, "A": 4, "AD": 4}
+
+
+def _pt(x) -> int | None:
+    return _PTS.get(str(x).strip().upper())
+
+
+def _tennis_football_check(cond: dict, view: dict, ctx: dict) -> bool:
+    t, i = cond["type"], view.get("player_idx")
+    if t == "half_time":
+        return (ctx.get("code") == "HT") == cond["value"]
+    if i is None:
+        return False
+    try:
+        if t == "set_games_total":
+            return bool(ctx.get("sets")) and _cmp(sum(ctx["sets"][-1]), cond["op"], cond["value"])
+        if t == "prev_set_games_diff":
+            sets = ctx.get("sets") or []
+            return len(sets) >= 2 and _cmp(sets[-2][i] - sets[-2][1 - i], cond["op"], cond["value"])
+        srv = ctx.get("serving")
+        if t == "breaks_diff":
+            sets = ctx.get("sets")
+            if srv is None or not sets or sum(sets[-1]) >= 12:                 # unknown server, or a tie-break set where alternation no longer holds
+                return False
+            n, d = sum(sets[-1]), sets[-1][i] - sets[-1][1 - i]
+            me_first = (srv == i) == (n % 2 == 0)                              # who served the first game of this set
+            hold_only = (1 if me_first else -1) if n % 2 else 0                # the games difference if every game had been held
+            return _cmp((d - hold_only) / 2, cond["op"], cond["value"])
+        if t == "serving":
+            return srv is not None and (srv == i) == cond["value"]
+        game = ctx.get("game")
+        if not game:
+            return False
+        me, opp = _pt(game[i]), _pt(game[1 - i])
+        if me is None or opp is None:
+            return False
+        if t == "game_points_diff":
+            return _cmp(me - opp, cond["op"], cond["value"])
+        if t == "game_score_is":
+            return me == _pt(cond["me"]) and opp == _pt(cond["opp"])
+        if t == "break_point":
+            if srv is None:
+                return False
+            return (srv == i and opp >= 3 and opp > me) if cond["side"] == "against" else (srv != i and me >= 3 and me > opp)
+    except (TypeError, ValueError, IndexError):
+        return False
+    return False
+
+
 def check(cond: dict, view: dict, fired: set[str]) -> bool:
     """Is one condition true right now? `view` carries prices, in_play, ctx (score/set/minute), position_loss, clock (UK 'HH:MM')."""
     t, ctx = cond["type"], view.get("ctx") or {}
@@ -207,6 +286,8 @@ def check(cond: dict, view: dict, fired: set[str]) -> bool:
     if t == "set_number":
         sets = ctx.get("sets")
         return bool(sets) and _cmp(len(sets), cond["op"], cond["value"])
+    if t in ("serving", "game_points_diff", "game_score_is", "break_point", "set_games_total", "prev_set_games_diff", "half_time", "breaks_diff"):
+        return _tennis_football_check(cond, view, ctx)
     if t in ("set_games_diff", "sets_diff"):
         i = view.get("player_idx")
         try:
@@ -294,6 +375,14 @@ def describe(script: dict) -> list[dict]:
         if t == "price": return f"price ({c['ref']}) is {c['op']} {c['value']:g}"
         if t == "in_play": return "market is in-play" if c["value"] else "market is not yet in-play"
         if t == "set_number": return f"set number {c['op']} {c['value']:g}"
+        if t == "serving": return "this player is serving" if c["value"] else "this player is receiving"
+        if t == "game_points_diff": return f"points in the current game, this player minus opponent, {c['op']} {c['value']:g}"
+        if t == "game_score_is": return f"game score is {c['me']}-{c['opp']} (this player first)"
+        if t == "breaks_diff": return f"service breaks in this set, this player's minus the opponent's, {c['op']} {c['value']:g} (+1 = one break up)"
+        if t == "break_point": return "this player is serving and facing a break point" if c["side"] == "against" else "this player has a break point on the opponent's serve"
+        if t == "set_games_total": return f"games played in the set {c['op']} {c['value']:g}"
+        if t == "prev_set_games_diff": return f"games margin in the previous set, this player minus opponent, {c['op']} {c['value']:g}"
+        if t == "half_time": return "it is half time" if c["value"] else "it is not half time"
         if t == "set_games_diff": return f"games won in the current set, this player minus opponent, {c['op']} {c['value']:g} (negative = behind)"
         if t == "sets_diff": return f"sets won, this player minus opponent, {c['op']} {c['value']:g}"
         if t == "goals_total": return f"total goals {c['op']} {c['value']:g}"
@@ -314,6 +403,8 @@ def describe(script: dict) -> list[dict]:
         if t in ("back", "lay"):
             at = "at the best available price" if a["price"] == "best" else f"at {a['price']:g}"
             return f"{t.capitalize()} {at}, {a['basis']} £{a['stake']:g}, persistence {a['persistence']}"
+        if t in ("green", "close") and a.get("percent"):
+            return f"Take out {a['percent']}% of the position (a partial hedge), the rest stays open"
         return {"green": "Hedge to full green at the best available prices", "close": "Close the position at the best available prices",
                 "stop": "Stop the script"}[t]
     return [{"id": r["id"], "kind": r["kind"], "if": [c_txt(c) for c in r["when"]],
