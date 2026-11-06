@@ -3178,3 +3178,34 @@ Steps:
 **Expected:** It places practice orders only when its conditions are met; safety rule closes losing trades.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 47. Home quick apply
+
+_Applying recommended trades from Home._
+
+### 47.1 Apply one idea  \[Demo\]
+
+Steps:
+1. On Home, press Apply on a recommended trade.
+
+**Expected:** A confirmation shows; the idea leaves the list and a row appears on the Plan.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 47.2 Apply all asks first  \[Demo\]
+
+Steps:
+1. Press Apply all (N).
+
+**Expected:** It asks 'Add N to the Plan?'. No cancels; nothing is applied.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 47.3 Apply all confirmed  \[Demo\]
+
+Steps:
+1. Press Apply all, then Yes, apply all.
+
+**Expected:** Every shown idea is applied; any that fail are reported, not silently dropped.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

@@ -59,3 +59,6 @@ Scripts has a **Starter library** button. It holds ready-made tennis and footbal
 
 ### Recommended trades reuse scripts
 Accepting a trade setup does not create a script per match. There is one reusable script for each kind of setup (for example "Setup: Back the player on the swing"). The first time you accept that kind it is added to your library; after that, accepting adds only a Plan row for the new market using the same script. Match-specific numbers (the stake, and the price the market had when you accepted) live on the Plan row, not in the script. AI script proposals are different: those are genuinely new ideas, so approving one adds it to the library once.
+
+### Quick apply on Home
+In AI recommended trades on Home, **Apply** on a row accepts that idea straight away (a setup is added to the Plan with its reusable script switched on; a script proposal is added to the library switched off). **Apply all** at the top accepts every idea shown, after one Yes/No check. Review still opens the Recommendations screen. Ideas that fail (for example the market has gone) are skipped and reported.

@@ -483,6 +483,12 @@ sec("Starter library", "Ready-made scripts from community ideas, rebuilt for Aut
     c("Test in practice", "Practice", ["Attach a tennis starter to a live match on the Plan.", "Switch it on."], "It places practice orders only when its conditions are met; safety rule closes losing trades."),
 ])
 
+sec("Home quick apply", "Applying recommended trades from Home.", [
+    c("Apply one idea", "Demo", ["On Home, press Apply on a recommended trade."], "A confirmation shows; the idea leaves the list and a row appears on the Plan."),
+    c("Apply all asks first", "Demo", ["Press Apply all (N)."], "It asks 'Add N to the Plan?'. No cancels; nothing is applied."),
+    c("Apply all confirmed", "Demo", ["Press Apply all, then Yes, apply all."], "Every shown idea is applied; any that fail are reported, not silently dropped."),
+])
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     json.dump(cases, open(os.path.join(here, "uat_cases.json"), "w"), indent=1)
