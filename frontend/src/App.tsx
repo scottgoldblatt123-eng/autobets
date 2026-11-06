@@ -411,7 +411,7 @@ export default function App() {
         {screen === 'home' && <HomeScreen say={say} go={s => setScreen(s)} openMarket={openById} />}
         {screen === 'plan' && <PlanScreen say={say} />}
       </Workbench>}
-      {screen === 'recs' && <RecsScreen say={say} onPlan={() => setScreen('plan')} onDiscuss={r => { setDiscuss({ marketId: r.market_id, text: `Why does the model like ${r.side === 'BACK' ? 'backing' : 'laying'} ${r.runner} in ${r.event}? What would make this wrong?` }); setShowAi(true) }} />}
+      {screen === 'recs' && <div className="body workbench"><div className="wbmain"><RecsScreen say={say} onPlan={() => setScreen('plan')} onDiscuss={r => { setDiscuss({ marketId: r.market_id, text: `Why does the model like ${r.side === 'BACK' ? 'backing' : 'laying'} ${r.runner} in ${r.event}? What would make this wrong?` }); }} /></div><div className="wbright"><Copilot docked marketIds={discuss ? [discuss.marketId] : ids} seed={discuss?.text} /></div></div>}
       {screen === 'settings' && <SettingsScreen theme={theme} onTheme={() => setSettings(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }))} onLadderSettings={() => setShowSettings(true)} />}
       {screen === 'analyse' && <AnalyseScreen say={say} />}
       {screen === 'alerts' && <AlertsScreen say={say} onGo={s => setScreen(s)} onChanged={refreshBadges} />}

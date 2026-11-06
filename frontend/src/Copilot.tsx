@@ -10,6 +10,7 @@ const SUGGEST = ['What stands out in these markets right now?', 'Is the market o
 /** Advisor-mode copilot: asks Claude about the open markets. It sees prices, score, model fair prices, gaps and the position; it cannot place anything. */
 export default function Copilot({ marketIds, onClose, seed, docked = false, startBuild = false }: { marketIds: string[]; onClose?: () => void; seed?: string; docked?: boolean; startBuild?: boolean }) {
   const [msgs, setMsgs] = useState<Msg[]>(load), [text, setText] = useState(seed ?? ''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+  useEffect(() => { if (seed) setText(seed) }, [seed])                       // a new "Discuss" click fills the prompt even when already open
   const [status, setStatus] = useState<{ enabled: boolean; estimated_gbp: number; cap_gbp: number } | null>(null)
   const [mode, setModeState] = useState<'advisor' | 'supervised'>(() => { try { return localStorage.getItem(MODE_KEY) === 'supervised' ? 'supervised' : 'advisor' } catch { return 'advisor' } })
   useEffect(() => { api.settings().then(s => setModeState(s.ai_mode === 'supervised' ? 'supervised' : 'advisor')).catch(() => undefined) }, [])     // the saved setting (Safety and limits) is the source of truth
