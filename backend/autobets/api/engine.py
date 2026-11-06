@@ -6,6 +6,7 @@ import itertools
 import json
 import os
 import threading
+import datetime as dt
 import re
 import time
 from collections import defaultdict
@@ -20,7 +21,7 @@ from ..ledger import Ledger
 from ..plan import Plan
 from ..recs import Recs
 from ..order_service import Blocked, OrderService
-from ..scripts import ScriptStore, describe, evaluate, headline
+from ..scripts import ScriptStore, describe, evaluate, gain_ticks, headline
 from ..settings import Settings
 from .demo import DemoFeed
 from .history import Tracker, load_logged
@@ -119,6 +120,7 @@ class Engine:
         self.feed_ok_at, self.feed_error, self.feed_error_at = 0.0, "", 0.0
         self.lock = threading.RLock()          # the API serves requests on several threads
         self.ex = exchange or PracticeExchange()
+        self._pxhist: dict[tuple, list] = {}
         self.live = mode == "live"
         self.guard = Guardrails()
         self.service = OrderService(self.ex, Journal(journal_path), self.guard)
@@ -577,15 +579,32 @@ class Engine:
                 ctx = None
         entry = None
         eo = row.get("entry_order")
+        prices = {"last": sel.last_traded if sel else None, "back": sel.backs[0].price if sel and sel.backs else None,
+                  "lay": sel.lays[0].price if sel and sel.lays else None}
         if eo:
             try:
                 o = self.ex.get_order(eo)
                 if o.matched > 0:
-                    entry = {"side": o.request.side.value, "price": o.avg_price}
+                    g = gain_ticks(o.request.side.value, o.avg_price, prices)
+                    if g is not None:
+                        row["peak"] = max(row.get("peak", 0), g)               # best the exit price has been since we were matched (for trailing stops)
+                    entry = {"side": o.request.side.value, "price": o.avg_price, "peak": row.get("peak", 0)}
             except Exception:       # noqa: BLE001
                 entry = None
-        return {"entry": entry, "prices": {"last": sel.last_traded if sel else None, "back": sel.backs[0].price if sel and sel.backs else None,
-                           "lay": sel.lays[0].price if sel and sel.lays else None},
+        now = time.time()
+        key = (row["market_id"], row["selection_id"])
+        hist = self._pxhist.setdefault(key, [])
+        px = prices["back"] or prices["last"]
+        if px and (not hist or now - hist[-1][0] >= 1.0):
+            hist.append((now, px))
+        while hist and now - hist[0][0] > 900:
+            hist.pop(0)
+        start = info.get("start")
+        try:
+            mins = (dt.datetime.fromisoformat(str(start).replace("Z", "+00:00")).timestamp() - now) / 60 if start else None
+        except ValueError:
+            mins = None
+        return {"entry": entry, "mins_to_start": mins, "matched": info.get("matched"), "history": list(hist), "now": now, "prices": prices,
                 "in_play": book.in_play, "ctx": ctx, "position_loss": max(0.0, -min(out)), "clock": self._uk_clock()}
 
     def _fire(self, row: dict, rule: dict, act: dict, script: dict, book) -> None:
@@ -729,7 +748,7 @@ class Engine:
         if waiting or (max(out) - min(out)) > 0.10:
             row["note"] = "Waiting for the green-up to match before the next run"
             return False
-        row.update({"fired": [], "await_flat": False, "state": "armed", "note": "", "cycle": row.get("cycle", 1) + 1, "entry_order": None})
+        row.update({"fired": [], "await_flat": False, "state": "armed", "note": "", "cycle": row.get("cycle", 1) + 1, "entry_order": None, "peak": 0})
         self._log(f"Script '{script['name']}' on {row['event']}: run {row['cycle']} of {next((r for r in script['rules'] if r['kind'] == 'entry'), {}).get('repeat', 1)} armed", "info")
         return True
 

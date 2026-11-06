@@ -26,6 +26,11 @@ CONDITIONS = {
     "position_loss": ("op", "value"),    # £ the position would lose if the worst outcome happened
     "clock": ("start", "end"),           # UK time window, "HH:MM"
     "ticks_from_entry": ("op", "value"), # ticks the price you could exit at is better (+) or worse (-) than where this script was matched
+    "ticks_from_peak": ("value",),       # trailing stop: the exit price has given back this many ticks from its best since you were matched
+    "minutes_to_start": ("op", "value"), # minutes until the scheduled start (negative once it should have started)
+    "spread_ticks": ("op", "value"),     # ticks between best back and best lay on the runner
+    "market_matched": ("op", "value"),   # £ matched on the whole market so far
+    "price_move": ("op", "value", "seconds"),  # ticks the runner's price has moved over the last N seconds (+ = drifted out, - = shortened)
 }
 
 
@@ -78,6 +83,17 @@ def validate_condition(c: dict) -> dict:
         out["value"] = _num(c["value"], "loss", 0, 100000)
     elif t == "ticks_from_entry":
         out["value"] = int(_num(c["value"], "ticks", -200, 200))
+    elif t == "ticks_from_peak":
+        out["value"] = int(_num(c["value"], "ticks", 1, 200))
+    elif t == "minutes_to_start":
+        out["value"] = _num(c["value"], "minutes", -600, 100000)
+    elif t == "spread_ticks":
+        out["value"] = int(_num(c["value"], "ticks", 0, 200))
+    elif t == "market_matched":
+        out["value"] = _num(c["value"], "matched £", 0, 1e9)
+    elif t == "price_move":
+        out["value"] = int(_num(c["value"], "ticks", -200, 200))
+        out["seconds"] = int(_num(c["seconds"], "seconds", 5, 600))
     elif t == "score_is":
         out["home"], out["away"] = int(_num(c["home"], "home", 0, 30)), int(_num(c["away"], "away", 0, 30))
     elif t == "rule_matched":
@@ -166,6 +182,16 @@ def _price(view: dict, ref: str) -> float | None:
     return None
 
 
+def gain_ticks(side: str, entry_price: float, prices: dict) -> int | None:
+    """Ticks of profit available to exit now versus the entry price (negative = against you); None if there is no exit price."""
+    from . import ticks
+    exit_p = (prices or {}).get("lay" if side == "BACK" else "back")
+    if not exit_p:
+        return None
+    e, x = ticks.nearest(entry_price), ticks.nearest(exit_p)
+    return ticks.ticks_between(x, e) if side == "BACK" else ticks.ticks_between(e, x)
+
+
 def check(cond: dict, view: dict, fired: set[str]) -> bool:
     """Is one condition true right now? `view` carries prices, in_play, ctx (score/set/minute), position_loss, clock (UK 'HH:MM')."""
     t, ctx = cond["type"], view.get("ctx") or {}
@@ -194,14 +220,37 @@ def check(cond: dict, view: dict, fired: set[str]) -> bool:
         ent = view.get("entry")
         if not ent:
             return False                      # not matched yet
-        side = ent["side"]
-        exit_p = (view.get("prices") or {}).get("lay" if side == "BACK" else "back")
-        if not exit_p:
+        g = gain_ticks(ent["side"], ent["price"], view.get("prices"))
+        return g is not None and _cmp(g, cond["op"], cond["value"])
+    if t == "ticks_from_peak":
+        ent = view.get("entry")
+        if not ent:
             return False
+        g = gain_ticks(ent["side"], ent["price"], view.get("prices"))
+        return g is not None and ent.get("peak", 0) - g >= cond["value"]
+    if t == "minutes_to_start":
+        m = view.get("mins_to_start")
+        return m is not None and _cmp(m, cond["op"], cond["value"])
+    if t == "spread_ticks":
         from . import ticks
-        e, x = ticks.nearest(ent["price"]), ticks.nearest(exit_p)
-        gained = ticks.ticks_between(x, e) if side == "BACK" else ticks.ticks_between(e, x)
-        return _cmp(gained, cond["op"], cond["value"])
+        pr = view.get("prices") or {}
+        if not pr.get("back") or not pr.get("lay"):
+            return False
+        return _cmp(ticks.ticks_between(ticks.nearest(pr["back"]), ticks.nearest(pr["lay"])), cond["op"], cond["value"])
+    if t == "market_matched":
+        m = view.get("matched")
+        return m is not None and _cmp(m, cond["op"], cond["value"])
+    if t == "price_move":
+        from . import ticks
+        hist, now = view.get("history") or [], view.get("now")
+        cur = (view.get("prices") or {}).get("back") or (view.get("prices") or {}).get("last")
+        if not hist or now is None or not cur:
+            return False
+        old = [h for h in hist if h[0] <= now - cond["seconds"]]
+        if not old or now - hist[0][0] < cond["seconds"] * 0.9:
+            return False                      # not enough history yet
+        then = old[-1][1]
+        return _cmp(ticks.ticks_between(ticks.nearest(then), ticks.nearest(cur)), cond["op"], cond["value"])
     if t == "clock":
         now, s, e = view.get("clock", ""), cond["start"], cond["end"]
         return s <= now <= e if s <= e else (now >= s or now <= e)
@@ -235,6 +284,11 @@ def describe(script: dict) -> list[dict]:
         if t == "rule_matched": return f"rule {c['rule']} has matched"
         if t == "position_loss": return f"position loss {c['op']} £{c['value']:g}"
         if t == "ticks_from_entry": return f"exit price is {c['op']} {c['value']:g} ticks {'in profit' if c['value'] >= 0 else 'against you'} from where you were matched"
+        if t == "ticks_from_peak": return f"the exit price has given back {c['value']:g} ticks from its best since you were matched (trailing stop)"
+        if t == "minutes_to_start": return f"minutes to the scheduled start {c['op']} {c['value']:g}"
+        if t == "spread_ticks": return f"spread between best back and lay {c['op']} {c['value']:g} ticks"
+        if t == "market_matched": return f"matched on the market {c['op']} £{c['value']:,.0f}"
+        if t == "price_move": return f"price moved {c['op']} {c['value']:g} ticks in the last {c['seconds']}s (+ drifting out, - shortening)"
         return f"time is {c['start']}–{c['end']}"
 
     def a_txt(a):

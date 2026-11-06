@@ -21,6 +21,11 @@ Conditions ({", ".join(CONDITIONS)}):
  {{"type":"in_play","value":true}}  {{"type":"set_number","op":"<","value":3}} (tennis)  {{"type":"goals_total","op":"<=","value":1}}  {{"type":"score_is","home":0,"away":0}}
  {{"type":"minute","op":">=","value":45}} (football)  {{"type":"position_loss","op":">=","value":15}} (pounds)  {{"type":"clock","start":"19:30","end":"19:45"}} (UK time)
  {{"type":"rule_matched","rule":"r1"}}
+ {{"type":"ticks_from_peak","value":3}}  trailing stop: the exit price has given back 3 ticks from its best since you were matched (use with a close action)
+ {{"type":"minutes_to_start","op":"<=","value":30}}  minutes until the scheduled start (negative after it)
+ {{"type":"spread_ticks","op":"<=","value":2}}  ticks between best back and best lay on the runner (use to avoid wide, illiquid books)
+ {{"type":"market_matched","op":">=","value":50000}}  £ matched on the whole market so far
+ {{"type":"price_move","op":"<=","value":-3,"seconds":60}}  ticks the runner's price moved in the last N seconds (+ drifted out, - shortened)
  {{"type":"ticks_from_entry","op":">=","value":2}}  ticks of profit available to exit versus where THIS script was matched (negative value = against you). Use it for "take N ticks" and "stop at N ticks against". An entry at the best price and an exit at ticks_from_entry >= 2 with action green is a 2-tick scalp.
  op is one of >=, <=, ==, >, <.
 Actions: {{"type":"lay"|"back","price":2.2 or "best","stake":10,"basis":"stake"|"liability","persistence":"CANCEL"|"KEEP"|"TAKE_SP"}}, {{"type":"green"}}, {{"type":"close"}}, {{"type":"stop"}}.

@@ -135,3 +135,49 @@ def test_scalp_runs_one_at_a_time_and_stops_after_repeat(eng):
     entries.discard(None)
     assert len(entries) == 3 and row["cycle"] == 3          # exactly three runs, one at a time
     assert row["state"] == "done" and not row.get("await_flat")
+
+
+def test_new_conditions():
+    from autobets.scripts import check, validate_condition as vc
+    ent = {"side": "BACK", "price": 2.0, "peak": 5}
+    v = {"entry": ent, "prices": {"back": 2.0, "lay": 2.02}, "mins_to_start": 20.0, "matched": 80000}
+    assert check(vc({"type": "minutes_to_start", "op": "<=", "value": 30}), v, set())
+    assert not check(vc({"type": "minutes_to_start", "op": "<=", "value": 10}), v, set())
+    assert check(vc({"type": "spread_ticks", "op": "<=", "value": 1}), v, set()) and not check(vc({"type": "spread_ticks", "op": ">", "value": 1}), v, set())
+    assert check(vc({"type": "market_matched", "op": ">=", "value": 50000}), v, set())
+    # gain now: back at 2.0, lay available 2.02 -> -1 tick; peak was +5 -> gave back 6
+    assert check(vc({"type": "ticks_from_peak", "value": 6}), v, set()) and not check(vc({"type": "ticks_from_peak", "value": 7}), v, set())
+    assert not check(vc({"type": "ticks_from_peak", "value": 1}), {**v, "entry": None}, set())
+
+
+def test_price_move_needs_history_and_signs_correctly():
+    from autobets.scripts import check, validate_condition as vc
+    c = vc({"type": "price_move", "op": "<=", "value": -3, "seconds": 60})
+    hist = [(0, 2.20), (30, 2.14), (61, 2.10)]
+    v = {"history": hist, "now": 61, "prices": {"back": 2.10, "lay": 2.12}}
+    assert check(c, v, set())                                                  # 2.20 -> 2.10 is 5 ticks shorter
+    assert not check(c, {**v, "history": hist[1:]}, set())                     # only 31 s of history: not enough yet
+    assert not check(vc({"type": "price_move", "op": ">=", "value": 3, "seconds": 60}), v, set())
+    with pytest.raises(Exception):
+        vc({"type": "price_move", "op": "<=", "value": -3, "seconds": 1})
+
+
+def test_runner_tracks_peak_for_a_trailing_stop(eng):
+    s = eng.scripts.create({"name": "Trail", "sport": "any", "rules": [
+        {"id": "r1", "kind": "entry", "when": [{"type": "price", "op": ">=", "value": 1.01, "ref": "back"}], "then": [{"type": "back", "price": "best", "stake": 5}]},
+        {"id": "r2", "kind": "safety", "when": [{"type": "ticks_from_peak", "value": 3}], "then": [{"type": "close"}, {"type": "stop"}]}]})
+    eng.scripts.set_enabled(s["id"], True)
+    row = eng.plan.add(MID, "101", s["id"], "A v B", "Match Odds", "A. Player")
+    eng.run_scripts()
+    assert row["entry_order"]
+    book = eng.ex.get_book(MID)
+    sel = book.selections["101"]
+    entry_price = eng.ex.get_order(row["entry_order"]).avg_price
+    from autobets.domain import PriceLevel
+    from autobets import ticks
+    p = entry_price
+    for _ in range(4):                                      # price shortens 4 ticks: exit lay price improves, peak rises
+        p = ticks.move(p, -1)
+    sel.lays = [PriceLevel(p, 100)]; sel.backs = [PriceLevel(ticks.move(p, -1), 100)]
+    eng._script_view(row, book)
+    assert row["peak"] >= 3
