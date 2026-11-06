@@ -46,12 +46,12 @@ export default function MarketFinder({ say, mode, onPick, onAddToPlan, onOpenLad
     }).sort((a, b) => (byName ? a.event.localeCompare(b.event) : (a.start ?? '').localeCompare(b.start ?? '')))
   }, [markets, q, fIn, fSoon, byName])
   const groups = useMemo(() => { const g = new Map<string, MarketInfo[]>(); for (const m of list) g.set(m.competition || 'Other', [...(g.get(m.competition || 'Other') ?? []), m]); return Array.from(g.entries()) }, [list])
-  const row = (m: MarketInfo, sub: string, cls: string) => {
+  const row = (m: MarketInfo, sub: string, cls: string, title?: string) => {
     const on = sel.has(m.market_id), inPlan = planned?.has(m.market_id)
     return <div className="mrowx" key={m.market_id}>
       {mode === 'select' && <label className="mcheck" title="Select for Plan"><input type="checkbox" checked={on} onChange={e => tick([m], e.target.checked)} aria-label={`Select ${m.event} ${m.name}`} /></label>}
       <button className={cls + (on ? ' open' : '')} onClick={() => (mode === 'pick' ? onPick?.(m) : tick([m], !on))}>
-        <span>{m.in_play && <b className="livedot" title="In play" />}{m.event}{inPlan && <em className="inplan">in Plan</em>}</span><small className="muted">{sub}</small></button>
+        <span>{m.in_play && <b className="livedot" title="In play" />}{title ?? m.event}{inPlan && <em className="inplan">in Plan</em>}</span><small className="muted">{sub}</small></button>
       {mode === 'select' && onOpenGrid && <button className="mexp" title="Open the betting grid" onClick={() => onOpenGrid(m)}>⊞</button>}
       {mode === 'select' && onOpenLadder && <button className="mexp" title="Open the ladder" onClick={() => onOpenLadder(m)}>▦</button>}
     </div>
@@ -86,7 +86,7 @@ export default function MarketFinder({ say, mode, onPick, onAddToPlan, onOpenLad
               {m.event_id && expanded[m.event_id] === 'loading' && <div className="muted small pad">Loading markets…</div>}
               {m.event_id && Array.isArray(expanded[m.event_id]) && groupMarkets(expanded[m.event_id] as MarketInfo[], m.event).map(([label, xs]) => <div key={label} className="mxgroup">
                 <div className="mxh">{label}</div>
-                {xs.map(x => row({ ...x, event: x.event || m.event, competition: x.competition || m.competition }, `${x.name} · ${Object.keys(x.runners).length} runners`, 'market mx2'))}
+                {xs.map(x => row({ ...x, event: x.event || m.event, competition: x.competition || m.competition }, `${x.event || m.event} · ${Object.keys(x.runners).length} runners`, 'market mx2', x.name))}
               </div>)}
             </div>)}
           </div>
