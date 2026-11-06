@@ -31,7 +31,19 @@ def make_engine() -> Engine:
                    os.environ.get("AUTOBETS_STATE", "/opt/autobets/data/state.json"))
         e.start_background()
         return e
-    raise SystemExit(f"unknown AUTOBETS_MODE {mode!r} (live mode is deliberately not started: the Betfair order methods are built and mock-tested but not wired into the engine until the live key is in place)")
+    if mode == "live":
+        if os.environ.get("AUTOBETS_LIVE_CONFIRM") != "SEND-REAL-ORDERS":
+            raise SystemExit("live mode needs AUTOBETS_LIVE_CONFIRM=SEND-REAL-ORDERS in the service environment (real money)")
+        from ..exchange.betfair import BetfairAdapter
+        from ..exchange.live import LiveExchange
+        data = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
+        bf = BetfairAdapter.from_env_file(os.environ.get("AUTOBETS_BETFAIR_ENV", "/opt/autobets/secrets/betfair.env"))
+        e = Engine(bf, "live", os.environ.get("AUTOBETS_JOURNAL", data + "/live_journal.db"),
+                   os.environ.get("AUTOBETS_PRICES_DB", data + "/betfair_prices.db"),
+                   os.environ.get("AUTOBETS_STATE", data + "/live_state.json"), exchange=LiveExchange(bf))   # separate files: practice history never mixes with real
+        e.start_background()
+        return e
+    raise SystemExit(f"unknown AUTOBETS_MODE {mode!r} (use demo, practice or live)")
 
 
 class DutchIn(BaseModel):
@@ -322,6 +334,24 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         engine.update_locked(lambda: engine.backtests.append(res))
         engine.backtests[:] = engine.backtests[-10:]
         return res
+
+    @app.get("/api/live")
+    def live_status(_=Depends(auth)):
+        return engine.live_status()
+
+    @app.post("/api/live/arm")
+    def live_arm(body: dict, _=Depends(auth)):
+        try:
+            return engine.live_arm(str(body.get("confirm", "")))
+        except (ValueError, ExchangeError) as e:
+            raise HTTPException(400, str(e))
+
+    @app.post("/api/live/disarm")
+    def live_disarm(_=Depends(auth)):
+        try:
+            return engine.live_disarm()
+        except ValueError as e:
+            raise HTTPException(400, str(e))
 
     @app.get("/api/credentials")
     def credentials(_=Depends(auth)):

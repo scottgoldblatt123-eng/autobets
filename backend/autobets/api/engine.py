@@ -114,11 +114,12 @@ def is_placeholder(m: dict) -> bool:
 
 
 class Engine:
-    def __init__(self, feed, mode: str, journal_path: str = ":memory:", prices_db: str = "", state_path: str = "") -> None:
+    def __init__(self, feed, mode: str, journal_path: str = ":memory:", prices_db: str = "", state_path: str = "", exchange=None) -> None:
         self.feed, self.mode = _TrackedFeed(feed, self), mode
         self.feed_ok_at, self.feed_error, self.feed_error_at = 0.0, "", 0.0
         self.lock = threading.RLock()          # the API serves requests on several threads
-        self.ex = PracticeExchange()
+        self.ex = exchange or PracticeExchange()
+        self.live = mode == "live"
         self.guard = Guardrails()
         self.service = OrderService(self.ex, Journal(journal_path), self.guard)
         self._info: dict[str, dict] = {}
@@ -434,6 +435,7 @@ class Engine:
                 if self.ledger.add(b.market_id, ev, now, out.get(winners[0], 0.0), winners[0], self._staked(b.market_id), self._parts(b.market_id, winners[0], b.selections)):
                     booked += 1
                     self._log(f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "info")
+                    self._check_cleared(b.market_id, ev, out.get(winners[0], 0.0))
                     self.alerts.add("trade", f"Settled {ev}: {out.get(winners[0], 0.0):+.2f}", "Result booked to today's P&L", False, {"kind": "market", "id": b.market_id})
             elif b.status != "CLOSED":
                 held_m = out and any(abs(p.win) > 0.004 or abs(p.lose) > 0.004 for p in full.values())
@@ -616,6 +618,59 @@ class Engine:
             row["state"] = "stopped"
 
     @locked
+    def _check_cleared(self, market_id: str, event: str, ours: float) -> None:
+        """Live only: compare our computed result (before commission) with what Betfair actually cleared. A gap means a fill was missed or mis-priced."""
+        if not self.live:
+            return
+        try:
+            c = self.feed.cleared_orders(market_id)
+        except Exception:        # noqa: BLE001
+            return
+        if c["bets"] and abs((c["profit"] + c["commission"]) - ours) > 0.10:
+            self.alerts.add("warning", f"Result differs from Betfair for {event}",
+                            f"AutoBets computed {ours:+.2f} before commission; Betfair cleared {c['profit'] + c['commission']:+.2f}. Check the bets for this market.", False, {"kind": "market", "id": market_id})
+
+    def live_status(self) -> dict:
+        """Live trading state for Settings and the header: armed or not, whether Betfair order sync is healthy, funds."""
+        if not self.live:
+            return {"live": False}
+        out = {"live": True, "armed": self.ex.armed, "sync_error": self.ex.sync_error, "sync_ok_at": self.ex.sync_ok_at, "funds": None}
+        if time.time() - getattr(self, "_funds_at", 0) > 60:
+            try:
+                self._funds, self._funds_at = self.feed.account_funds(), time.time()
+            except Exception:        # noqa: BLE001
+                self._funds, self._funds_at = None, time.time()
+        out["funds"] = getattr(self, "_funds", None)
+        return out
+
+    @locked
+    def live_arm(self, confirm: str) -> dict:
+        if not self.live:
+            raise ValueError("not in live mode")
+        self.ex.arm(confirm)
+        self._log("LIVE TRADING ARMED: new orders are real Betfair orders", "warn")
+        self.alerts.add("warning", "Live trading armed", "Real orders can now be placed", False)
+        return self.live_status()
+
+    @locked
+    def live_disarm(self) -> dict:
+        if not self.live:
+            raise ValueError("not in live mode")
+        self.ex.disarm()
+        self._log("Live trading disarmed: no new orders will be sent (cancels still work)", "warn")
+        return self.live_status()
+
+    def live_reconcile(self) -> dict:
+        """Start-up: compare the saved orders with what Betfair holds and say what differed."""
+        r = self.ex.reconcile()
+        if not r["ok"]:
+            self.alerts.add("warning", "Could not check your Betfair orders at start-up", r["error"][:160], False)
+        elif r["adopted"] or r["closed"]:
+            self.alerts.add("warning", f"Start-up check: {len(r['adopted'])} Betfair order(s) were not in AutoBets and are now shown; {len(r['closed'])} saved order(s) no longer exist on Betfair",
+                            "Review Manual Trading > open orders", False)
+        self._log(f"Start-up check against Betfair: {r}", "info")
+        return r
+
     def run_scripts(self) -> int:
         """One pass of the script runner: evaluate every live plan row against current prices and score, and act on rules that fire."""
         if not self.settings.automation_enabled:
@@ -1217,12 +1272,19 @@ class Engine:
         """Keep triggers working when no browser is open."""
         if self._bg:
             return
+        if self.live:
+            try:
+                self.live_reconcile()
+            except Exception as e:        # noqa: BLE001
+                self._log(f"Start-up check against Betfair failed: {e}", "warn")
         def loop():
             n = 0
             while True:
                 time.sleep(every)
                 n += 1
                 try:
+                    if self.live:
+                        self.ex.sync()
                     self.check_triggers_now()
                     self.run_scripts()
                     if n % max(1, int(15 / every)) == 0:

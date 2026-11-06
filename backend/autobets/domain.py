@@ -97,3 +97,4 @@ class MarketBook:
     in_play: bool = False
     selections: dict[str, SelectionBook] = field(default_factory=dict)
     status: str = "OPEN"                                   # OPEN | SUSPENDED | CLOSED | INACTIVE
+    bet_delay: int = 0                                     # seconds an in-play bet waits before it is matched (0 pre-match)

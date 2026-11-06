@@ -41,6 +41,12 @@ def build(engine, football: dict | None, tennis: dict | None, pricelog: dict | N
     items = []
     fe = engine.feed_health()
     items.append({"key": "betfair", "name": "Betfair prices", "level": "ok" if fe["ok"] else "bad", "detail": fe["detail"]})
+    if getattr(engine, "live", False):
+        ls = engine.live_status()
+        age = _age(ls.get("sync_ok_at") or None)
+        bad = bool(ls.get("sync_error")) or age is None or age > 30
+        items.append({"key": "orders", "name": "Betfair orders sync", "level": "bad" if bad else "ok",
+                      "detail": (ls.get("sync_error") or f"Orders last checked {_human(age)}") + (" · ARMED" if ls.get("armed") else " · not armed (no new orders)")})
     items.append(collector("Tennis data (live scores, history)", tennis, "tennis"))
     items.append(collector("Football data (live scores, team news, line-ups)", football, "football"))
     if pricelog is not None and pricelog.get("enabled") is not False:

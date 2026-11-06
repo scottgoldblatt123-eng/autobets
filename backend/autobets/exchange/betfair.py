@@ -12,6 +12,7 @@ from ..domain import MarketBook, Order, OrderRequest, OrderType, Persistence, Pr
 from .base import ExchangeAdapter, ExchangeError
 
 API = "https://api.betfair.com/exchange/betting/rest/v1.0/"
+ACCOUNT_API = "https://api.betfair.com/exchange/account/rest/v1.0/"
 CERT_LOGIN = "https://identitysso-cert.betfair.com/api/certlogin"
 
 
@@ -68,17 +69,17 @@ class BetfairAdapter(ExchangeAdapter):
             raise ExchangeError(f"login failed: {res.get('loginStatus') or res}")
         self.token = res["sessionToken"]
 
-    def _call(self, op: str, body: dict, _retry: bool = True):
+    def _call(self, op: str, body: dict, _retry: bool = True, base: str = API):
         if not self.token:
             self.login()
-        code, res = self.http.post(API + op + "/", {"X-Application": self.app_key,
+        code, res = self.http.post(base + op + "/", {"X-Application": self.app_key,
                                    "X-Authentication": self.token, "Accept": "application/json"}, body=body)
         if code == 200:
             return res
         text = json.dumps(res)
         if _retry and ("INVALID_SESSION_INFORMATION" in text or "NO_SESSION" in text):
             self.token = None
-            return self._call(op, body, _retry=False)       # re-login once, then give up
+            return self._call(op, body, _retry=False, base=base)       # re-login once, then give up
         raise ExchangeError(f"{op} failed: HTTP {code} {text[:200]}")
 
     # ---- discovery -----------------------------------------------------
@@ -131,7 +132,7 @@ class BetfairAdapter(ExchangeAdapter):
 
     @staticmethod
     def parse_book(raw: dict) -> MarketBook:
-        book = MarketBook(raw["marketId"], in_play=bool(raw.get("inplay")), status=raw.get("status", "OPEN"))
+        book = MarketBook(raw["marketId"], in_play=bool(raw.get("inplay")), status=raw.get("status", "OPEN"), bet_delay=int(raw.get("betDelay", 0) or 0))
         for r in raw.get("runners", []):
             ex = r.get("ex", {})
             book.selections[str(r["selectionId"])] = SelectionBook(
@@ -206,6 +207,18 @@ class BetfairAdapter(ExchangeAdapter):
             raise ExchangeError(f"cancelOrders refused: {rep.get('errorCode') or res.get('status')}")
         return self.get_order(order_id)
 
+    def update_persistence(self, order_id: str, persistence: Persistence) -> Order:
+        self._require_trading()
+        cur = self.get_order(order_id)
+        new = self._PERSIST[persistence]
+        if new == "MARKET_ON_CLOSE":
+            raise ExchangeError("changing an order to SP is not supported")
+        res = self._call("updateOrders", {"marketId": cur.request.market_id, "instructions": [{"betId": order_id, "newPersistenceType": new}]})
+        rep = (res.get("instructionReports") or [{}])[0]
+        if rep.get("status") != "SUCCESS":
+            raise ExchangeError(f"updateOrders refused: {rep.get('errorCode') or res.get('status')}")
+        return self.get_order(order_id)
+
     def replace_order(self, order_id: str, new_price: float) -> Order:
         self._require_trading()
         cur = self.get_order(order_id)
@@ -223,6 +236,16 @@ class BetfairAdapter(ExchangeAdapter):
             if not res.get("moreAvailable"):
                 return out
             start = len(out)
+
+    def cleared_orders(self, market_id: str) -> dict:
+        """What Betfair says a settled market paid: profit after commission and the commission itself."""
+        res = self._call("listClearedOrders", {"betStatus": "SETTLED", "marketIds": [market_id], "groupBy": "MARKET"})
+        rows = res.get("clearedOrders", [])
+        return {"profit": round(sum(r.get("profit", 0.0) for r in rows), 2), "commission": round(sum(r.get("commission", 0.0) for r in rows), 2), "bets": sum(r.get("betCount", 0) for r in rows)}
+
+    def account_funds(self) -> dict:
+        res = self._call("getAccountFunds", {"wallet": "UK"}, base=ACCOUNT_API)
+        return {"available": res.get("availableToBetBalance"), "exposure": res.get("exposure")}
 
     def open_orders(self) -> list[Order]:
         return [self._to_order(o) for o in self._current()]

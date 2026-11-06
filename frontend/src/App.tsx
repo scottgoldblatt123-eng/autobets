@@ -88,6 +88,8 @@ export default function App() {
   const [bootError, setBootError] = useState('')
   const [tokenInput, setTokenInput] = useState('')
   const [mode, setMode] = useState('')
+  const [armed, setArmed] = useState(false)
+  useEffect(() => { if (mode !== 'live') return; const f = () => api.live().then(l => setArmed(!!l.armed)).catch(() => undefined); f(); const t = window.setInterval(f, 8000); return () => window.clearInterval(t) }, [mode])
   const [sport, setSport] = useState<'tennis' | 'football'>('tennis')
   const [markets, setMarkets] = useState<MarketInfo[]>([])
   const [ladders, setLadders] = useState<LadderRef[]>([])
@@ -381,7 +383,8 @@ export default function App() {
     <div className="app">
       <header>
         <b className="logo">AutoBets</b>
-        <span className="badge">{mode === 'practice' ? 'PRACTICE MODE' : mode === 'demo' ? 'DEMO — FAKE PRICES' : mode.toUpperCase()}</span>
+        <span className={'badge' + (mode === 'live' ? ' live' : '')}>{mode === 'practice' ? 'PRACTICE MODE' : mode === 'demo' ? 'DEMO — FAKE PRICES' : mode === 'live' ? 'LIVE — REAL MONEY' : mode.toUpperCase()}</span>
+        {mode === 'live' && <span className={'badge ' + (armed ? 'live' : 'warn')} title="Settings > Live trading">{armed ? 'ARMED' : 'NOT ARMED'}</span>}
         <span className="spacer" />
         {(() => {
           const figs = Object.values(state?.markets ?? {}).map(marketFigure).filter((x): x is number => x != null)

@@ -100,6 +100,9 @@ export interface ModelsData { available: boolean; reason?: string; live?: Record
 export interface AiLearning { stats: RecStats; dismiss_reasons: { reason: string; n: number }[]; clv_by_confidence: Record<string, { n: number; avg_clv_pts: number }>; ideas: number }
 
 export const api = {
+  live: () => call<{ live: boolean; armed?: boolean; sync_error?: string; sync_ok_at?: number; funds?: { available: number | null; exposure: number | null } | null }>('/api/live'),
+  liveArm: (confirm: string) => call<{ armed: boolean }>('/api/live/arm', { method: 'POST', body: JSON.stringify({ confirm }) }),
+  liveDisarm: () => call<{ armed: boolean }>('/api/live/disarm', { method: 'POST' }),
   credentials: () => call<{ items: { name: string; set: boolean; detail: string }[]; where: string }>('/api/credentials'),
   perf: (days: number) => call<PerfData>(`/api/analyse/performance?days=${days}`),
   anModels: () => call<ModelsData>('/api/analyse/models'),
