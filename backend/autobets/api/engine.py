@@ -629,7 +629,12 @@ class Engine:
             mins = (dt.datetime.fromisoformat(str(start).replace("Z", "+00:00")).timestamp() - now) / 60 if start else None
         except ValueError:
             mins = None
-        return {"entry": entry, "mins_to_start": mins, "matched": info.get("matched"), "history": list(hist), "now": now, "prices": prices,
+        pidx = None
+        if ctx and ctx.get("kind") == "tennis" and ctx.get("players"):
+            from .ai.snapshot import same_name
+            nm = info.get("runners", {}).get(row["selection_id"], "")
+            pidx = next((i for i, pl in enumerate(ctx["players"]) if same_name(pl, nm)), None)
+        return {"player_idx": pidx, "entry": entry, "mins_to_start": mins, "matched": info.get("matched"), "history": list(hist), "now": now, "prices": prices,
                 "in_play": book.in_play, "ctx": ctx, "position_loss": max(0.0, -min(out)), "clock": self._uk_clock()}
 
     def _fire(self, row: dict, rule: dict, act: dict, script: dict, book) -> None:
@@ -867,8 +872,12 @@ class Engine:
         r = self.recs.items.get(rid)
         if r is None:
             raise KeyError(rid)
-        if r["status"] != "pending" or r["kind"] != "trade":
+        if r["status"] != "pending":
             raise ValueError(f"this recommendation is {r['status']}")
+        if r["kind"] == "setup":
+            return self._accept_setup(r, stake)
+        if r["kind"] != "trade":
+            raise ValueError("this recommendation cannot be applied")
         book = self.feed.get_books([r["market_id"]], depth=False)[0]
         if book.status != "OPEN":
             raise ValueError(f"the market is {book.status.lower()}")
@@ -891,6 +900,26 @@ class Engine:
             pass
         return {"rec": r, "order": res["order"], "warnings": res["warnings"]}
 
+    def _accept_setup(self, r: dict, stake: float | None) -> dict:
+        """Accepting a trade setup saves its script to the library (switched on) and puts the market on the Plan with it. No bet is placed now:
+        the script places bets itself, in play, when its conditions are met."""
+        body = {**r["script"]}
+        if stake:
+            if stake < 1:
+                raise ValueError("minimum stake is £1")
+        names = {s["versions"][-1]["name"] for s in self.scripts.scripts.values()}
+        base, n = body["name"], 1
+        while body["name"] in names:
+            n += 1
+            body["name"] = f"{base} #{n}"
+        view = self.scripts.create(body, "ai", f"from recommendation {r['id']}")
+        view = self.scripts.set_enabled(view["id"], True)
+        row = self.plan_add(r["market_id"], r["selection_id"], view["id"], float(stake or r["stake"]), "ai")
+        r.update(status="applied", applied_at=time.time(), script_id=view["id"], plan_row=row["id"], stake=float(stake or r["stake"]))
+        self.alerts.resolve_ref("rec", r["id"], "Added to the Plan")
+        self._save()
+        return {"rec": r, "script": view, "row": row, "order": None, "warnings": []}
+
     @locked
     def rec_dismiss(self, rid: str, reason: str = "") -> dict:
         r = self.recs.items.get(rid)
@@ -907,6 +936,10 @@ class Engine:
         created = self.recs.scan(self, stake)
         self.recs.measure_clv(self)
         with self.lock:
+            booked = {e["market_id"]: e["result"] for e in self.ledger.entries}
+            for r in self.recs.items.values():                           # how did each accepted setup turn out, once its market settled
+                if r["kind"] == "setup" and r["status"] == "applied" and r.get("result") is None and r["market_id"] in booked:
+                    r["result"] = booked[r["market_id"]]
             for r in created:
                 self.alerts.add("recommendation", f"New idea: {r['title']} (edge {r['edge'] * 100:+.1f} pts)", "Waiting for your decision", True, {"kind": "rec", "id": r["id"]})
             self._save()

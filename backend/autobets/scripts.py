@@ -19,6 +19,8 @@ CONDITIONS = {
     "price": ("op", "value"),            # price of the target runner; optional "ref": last | back | lay
     "in_play": ("value",),               # true / false
     "set_number": ("op", "value"),       # tennis: the set being played (1, 2, 3 …)
+    "set_games_diff": ("op", "value"),   # tennis: games won by the target player minus the opponent in the current set (-1 = a game behind, e.g. broken)
+    "sets_diff": ("op", "value"),        # tennis: sets won by the target player minus the opponent
     "goals_total": ("op", "value"),      # football: goals scored so far by both teams
     "score_is": ("home", "away"),        # football: exact score
     "minute": ("op", "value"),           # football: match minute
@@ -77,6 +79,8 @@ def validate_condition(c: dict) -> dict:
         if not isinstance(c["value"], bool):
             raise ScriptError("in_play must be true or false")
         out["value"] = c["value"]
+    elif t in ("set_games_diff", "sets_diff"):
+        out["value"] = _num(c["value"], t, -20, 20)
     elif t in ("set_number", "goals_total", "minute"):
         out["value"] = _num(c["value"], t, 0, 200)
     elif t == "position_loss":
@@ -203,6 +207,18 @@ def check(cond: dict, view: dict, fired: set[str]) -> bool:
     if t == "set_number":
         sets = ctx.get("sets")
         return bool(sets) and _cmp(len(sets), cond["op"], cond["value"])
+    if t in ("set_games_diff", "sets_diff"):
+        i = view.get("player_idx")
+        try:
+            if i is None:
+                return False
+            if t == "sets_diff":
+                won = ctx.get("sets_won")
+                return bool(won) and _cmp(int(won[i]) - int(won[1 - i]), cond["op"], cond["value"])
+            sets = ctx.get("sets")
+            return bool(sets) and _cmp(sets[-1][i] - sets[-1][1 - i], cond["op"], cond["value"])
+        except (TypeError, ValueError, IndexError):
+            return False
     if t in ("goals_total", "score_is", "minute"):
         goals = ctx.get("goals")
         if t == "minute":
@@ -278,6 +294,8 @@ def describe(script: dict) -> list[dict]:
         if t == "price": return f"price ({c['ref']}) is {c['op']} {c['value']:g}"
         if t == "in_play": return "market is in-play" if c["value"] else "market is not yet in-play"
         if t == "set_number": return f"set number {c['op']} {c['value']:g}"
+        if t == "set_games_diff": return f"games won in the current set, this player minus opponent, {c['op']} {c['value']:g} (negative = behind)"
+        if t == "sets_diff": return f"sets won, this player minus opponent, {c['op']} {c['value']:g}"
         if t == "goals_total": return f"total goals {c['op']} {c['value']:g}"
         if t == "score_is": return f"score is {c['home']}-{c['away']}"
         if t == "minute": return f"minute {c['op']} {c['value']:g}"

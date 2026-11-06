@@ -53,3 +53,7 @@ Queue position and own-order market impact are not simulated (practice flatters 
 
 ### Market listing by day
 `GET /api/markets?sport=&date=YYYY-MM-DD` lists a UK calendar day. `Engine._markets_on` splits the day into 3-hour `marketStartTime` windows (Betfair caps catalogue results at ~100), merges and sorts them; cached 30 s per sport+day. No `date` keeps the "next to start" list. Demo mode returns markets for today only.
+
+### Trade setups (recommendations v2)
+`setups.py` holds the generators: `tennis()` (market vs model win probability picks the lean; entry needs `set_games_diff` and a >=12% price reaction), `football()` (pre-match `pre_model.over_2.5` from `context._football` vs the normalised Over/Under 2.5 book, found via `engine.event_markets`). `Recs.scan` calls them; `upsert_setup` keeps one pending setup per market+template. `Engine._accept_setup` creates the script (origin ai, enabled; name de-duplicated with "#2") and a Plan row; it places no order. New script conditions: `set_games_diff`, `sets_diff` (need `view.player_idx`, matched from the runner name). `result` is filled from the ledger when the market settles. The old winner-edge `Recs.candidate` is no longer called by the scan.
+Not yet done: replaying setup scripts over the recorded price log (needs in-play scores recorded alongside prices).

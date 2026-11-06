@@ -49,6 +49,7 @@ def _iso(x) -> dt.datetime | None:
 class MatchContext:
     def __init__(self, tennis=None, football=None):
         self.tennis, self.football = tennis, football          # the live stores, or None when that collector is off
+        self._fpre: dict = {}                                   # football fixture key -> pre-match model price (goals lines, mu)
         self._pre: dict = {}                                    # event_key -> calibrated pre-match serve rates (API first, second player)
 
     def for_market(self, info: dict) -> dict | None:
@@ -151,7 +152,19 @@ class MatchContext:
                     live_model = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in lp.items()}
         except Exception:
             live_model = None
-        return {"kind": "football", "source": "API-Football", "status": FOOTBALL_STATUS.get(status, status), "code": status, "model": live_model,
+        pre_model = None
+        try:
+            fk = (league, ko, hid, aid)
+            if fk not in self._fpre:
+                from .football import model as fbmodel
+                self._fpre[fk] = fbmodel.predict(self.football.db, self.football.lock, league, ko, hid, aid)
+            pm = self._fpre[fk]
+            pre_model = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in pm.items() if k in ("home", "draw", "away", "over_1.5", "over_2.5", "over_3.5", "btts", "mu")} if pm else None
+            if pre_model and "mu" in pre_model:
+                pre_model["mu"] = [round(x, 3) for x in pre_model["mu"]]
+        except Exception:
+            pre_model = None
+        return {"kind": "football", "source": "API-Football", "status": FOOTBALL_STATUS.get(status, status), "code": status, "model": live_model, "pre_model": pre_model,
                 "live": status in ("1H", "HT", "2H", "ET", "BT", "P", "LIVE"), "elapsed": elapsed, "teams": [h, a],
                 "goals": [gh, ga] if gh is not None else None, "ht": [hh, ha] if hh is not None else None, "kickoff": ko}
 

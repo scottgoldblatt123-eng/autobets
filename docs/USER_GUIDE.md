@@ -34,3 +34,10 @@ Real money orders, email/push alerts, auto-apply for recommendations, Full AI mo
 
 ### Picking markets on a future day
 Every market list (Home, Plan, Manual Trading and the Add to Plan picker) has a day strip: Next up, Today, Tomorrow, the following days, and a calendar box for any later date. Pick a day to list all match-odds markets scheduled on that UK calendar day, then tick and add them to the Plan as usual.
+
+### Recommendations are trade setups
+Betfair's prices for who wins are better than any model we can build, so AutoBets does not suggest winners. It looks for games where the model and the market see the *shape* of the game differently and offers a plan to trade it, with a ready-made script:
+- **Tennis, back or lay on the swing:** the model rates a player higher (or lower) than the market. The script waits for an early break in set 1 and the price reaction, backs (or lays) the player, and greens up when the set is level, on 8 ticks profit, at the end of set 1, or closes at 10 ticks against.
+- **Football, back Over 2.5 after 15 minutes:** the model is more confident of goals than the market. The script waits until minute 15 with 0 or 1 goals and a price at least as good as before kick-off, and holds to the end.
+- **Football, scalp Under 2.5:** the model and market both expect a low-scoring game with Under near evens. The script scalps 2 ticks at a time, up to 10 runs, closes a run that goes 6 ticks against and tries again, and stops at 2 goals.
+Add to Plan saves the script (switched on) and puts the market on your Plan. Nothing is bet until it is in play and the rules are met. Use Discuss with Claude to challenge a setup or change its rules first.

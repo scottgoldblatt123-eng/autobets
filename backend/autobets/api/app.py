@@ -387,7 +387,16 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     @app.get("/api/recs")
     def recs_list(kind: str = "all", status: str = "pending", _=Depends(auth)):
-        return {"items": engine.recs.list(kind, status), "stats": engine.recs.stats(time.time() - 30 * 86400)}
+        items = [dict(r) for r in engine.recs.list(kind, status)]
+        for r in items:
+            if r.get("kind") == "setup" and r.get("script"):
+                try:
+                    from ..scripts import validate as validate_script, describe, headline
+                    cur = validate_script(r["script"])
+                    r["text"], r["headline"] = describe(cur), headline(cur)
+                except Exception:       # noqa: BLE001
+                    r["text"], r["headline"] = [], ""
+        return {"items": items, "stats": engine.recs.stats(time.time() - 30 * 86400)}
 
     @app.post("/api/recs/{rid}/apply")
     def recs_apply(rid: str, body: dict | None = None, _=Depends(auth)):

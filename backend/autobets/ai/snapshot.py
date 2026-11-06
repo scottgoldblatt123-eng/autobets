@@ -8,6 +8,16 @@ def _best(levels):
     return levels[0][0] if levels else None
 
 
+def _norm(s: str) -> str:
+    return " ".join("".join(c if c.isalpha() else " " for c in (s or "").lower()).split())
+
+
+def same_name(a: str, b: str) -> bool:
+    """Do two player or team names refer to the same one? Tolerant of initials, order and extra words."""
+    na, nb = _norm(a), _norm(b)
+    return bool(na) and bool(nb) and (na in nb or nb in na or na.split()[-1] == nb.split()[-1])
+
+
 def _model_odds(ctx: dict | None, runners: dict) -> dict:
     """Runner id -> model fair odds, matched by name. Empty when the live model or the names do not line up."""
     m = (ctx or {}).get("model")

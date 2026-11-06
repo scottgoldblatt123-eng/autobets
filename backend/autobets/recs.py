@@ -9,6 +9,7 @@ from __future__ import annotations
 import time
 
 from . import ticks
+from . import setups as _setups
 from .ai.snapshot import _model_odds
 
 EDGE_MIN = 0.04            # probability points between model and market before a trade is suggested
@@ -85,6 +86,23 @@ class Recs:
         self.items[rid] = r
         return r, True
 
+    def upsert_setup(self, market_id: str, info: dict, cand: dict) -> tuple[dict, bool]:
+        """One pending setup per market and template. A refresh keeps the id (and what the user is looking at) but updates the live numbers."""
+        for r in self.items.values():
+            if r["kind"] == "setup" and r["status"] == "pending" and r["market_id"] == market_id and r["template"] == cand["template"]:
+                r.update(price=cand["price"], model_p=cand["model_p"], market_p=cand["market_p"], edge=cand["edge"], seen=time.time())
+                return r, False
+            if r["kind"] == "setup" and r["status"] == "pending" and r["market_id"] == market_id:
+                r["status"] = "expired"
+        rid = f"c{self._next}"
+        self._next += 1
+        r = {"id": rid, "kind": "setup", "market_id": market_id, "event": info.get("event", ""), "market_name": cand.get("market_name") or info.get("name", ""),
+             "start": info.get("start"), "status": "pending", "created": time.time(), "seen": time.time(), "confidence": "Low", "clv": None, "dismiss_reason": "",
+             "entry_price": cand["price"], "plan_row": None, "script_id": None, "result": None,
+             **{k: cand[k] for k in ("template", "sport", "selection_id", "runner", "side", "price", "model_p", "market_p", "edge", "title", "reason", "watch", "script", "stake", "max_loss")}}
+        self.items[rid] = r
+        return r, True
+
     def scan(self, engine, stake: float) -> list[dict]:
         """One pass over upcoming pre-match markets. Returns the recommendations created this pass."""
         created = []
@@ -125,14 +143,27 @@ class Recs:
                         ctx = engine.context_fn({**m, "market_id": m["market_id"]}) if engine.context_fn else None
                     except Exception:   # noqa: BLE001
                         ctx = None
-                    cand = self.candidate(sport, m, b, ctx)
+                    if not ctx:
+                        continue
+                    try:
+                        cand = None
+                        if sport == "tennis":
+                            cand = _setups.tennis(m, b, ctx, stake)
+                        else:
+                            ou = _setups.goals_market(engine.event_markets(m.get("event_id", ""))) if m.get("event_id") and (ctx.get("pre_model") or {}).get("over_2.5") is not None else None
+                            if ou:
+                                seen_markets.add(ou["market_id"])
+                                ob = engine.feed.get_books([ou["market_id"]], depth=False)[0]
+                                cand = _setups.football(m, ou, ob, ctx, stake) if ob.status == "OPEN" else None
+                    except Exception:   # noqa: BLE001
+                        cand = None
                     if cand:
-                        r, new = self.upsert(m["market_id"], m, cand, stake)
+                        r, new = self.upsert_setup(cand.get("market_id", m["market_id"]), m, cand)
                         if new:
                             created.append(r)
         # pending ideas that no longer qualify (edge gone, market off the board) expire; CLV is captured as markets go in play
         for r in list(self.items.values()):
-            if r["kind"] != "trade":
+            if r["kind"] not in ("trade", "setup"):
                 continue
             if r["status"] == "pending" and r["market_id"] not in seen_markets and (now - r["seen"] > 300):
                 r["status"] = "expired"
@@ -140,7 +171,7 @@ class Recs:
         return created
 
     def _pending_cap(self) -> None:
-        pend = sorted((r for r in list(self.items.values()) if r["status"] == "pending"), key=lambda r: -r["edge"])
+        pend = sorted((r for r in list(self.items.values()) if r["status"] == "pending" and "edge" in r), key=lambda r: -r["edge"])
         for r in pend[MAX_PENDING:]:
             r["status"] = "expired"
 
@@ -177,7 +208,7 @@ class Recs:
 
     # ---- reading ----------------------------------------------------------------------------------------------
     def stats(self, since: float = 0.0) -> dict:
-        trades = [r for r in list(self.items.values()) if r["kind"] == "trade" and r["created"] >= since]
+        trades = [r for r in list(self.items.values()) if r["kind"] in ("trade", "setup") and r["created"] >= since]
         applied = [r for r in trades if r["status"] == "applied"]
         measured = [r for r in list(self.items.values()) if r["kind"] == "trade" and r["clv"] is not None]
         avg_clv = round(100 * sum(r["clv"] for r in measured) / len(measured), 2) if measured else None
@@ -187,9 +218,12 @@ class Recs:
                 "avg_edge_applied": round(100 * sum(r["edge"] for r in applied) / len(applied), 1) if applied else None,
                 "evidence": len(measured), "evidence_needed": EVIDENCE_NEEDED, "avg_clv_pts": avg_clv,
                 "auto_apply_unlocked": len(measured) >= EVIDENCE_NEEDED and (avg_clv or 0) > 0,
-                "counts": {"all": len(pend), "trades": sum(1 for r in pend if r["kind"] == "trade"), "scripts": sum(1 for r in pend if r["kind"] == "script"),
+                "setups": sum(1 for r in self.items.values() if r["kind"] == "setup" and r["status"] == "applied"),
+                "setup_results": {"n": sum(1 for r in self.items.values() if r["kind"] == "setup" and r.get("result") is not None),
+                                  "net": round(sum(r["result"] for r in self.items.values() if r["kind"] == "setup" and r.get("result") is not None), 2)},
+                "counts": {"all": len(pend), "setups": sum(1 for r in pend if r["kind"] == "setup"), "trades": sum(1 for r in pend if r["kind"] == "trade"), "scripts": sum(1 for r in pend if r["kind"] == "script"),
                            "models": sum(1 for r in pend if r["kind"] == "model")}}
 
     def list(self, kind: str = "all", status: str = "pending") -> list[dict]:
         rows = [r for r in list(self.items.values()) if (status == "all" or r["status"] == status) and (kind == "all" or r["kind"] == kind.rstrip("s"))]
-        return sorted(rows, key=lambda r: -r["edge"] if r["kind"] == "trade" else 0)
+        return sorted(rows, key=lambda r: -r["edge"] if r["kind"] in ("trade", "setup") else 0)

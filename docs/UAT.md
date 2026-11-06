@@ -2456,7 +2456,53 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.5 Discuss a recommendation in the side panel  \[Either\]
+### 39.5 Recommendations are trade setups, not winners  \[Either\]
+
+Steps:
+1. Open Recommendations and click Scan now with upcoming tennis and football listed.
+
+**Expected:** Any cards are 'Trade setup' cards: a plan for how to trade the game (for example back a player if he is broken, back Over 2.5 after 15 minutes, scalp Under 2.5). None says who will win. Each shows the model's and the market's probability, what has to happen, and the script's rules (expand them).
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.6 Add a setup to the Plan  \[Either\]
+
+Steps:
+1. Click Add to Plan on a setup, leave the stake, confirm.
+
+**Expected:** A message says it was added. The script appears in the Scripts library (switched on, origin AI) and the market is on the Plan, Armed, on the right runner. No bet is placed until the game is in play and the rules are met.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.7 Setup script fires in play  \[Practice\]
+
+Steps:
+1. Add a football Under 2.5 scalp or tennis swing setup for a match that is live.
+2. Watch the Plan as the match goes in play.
+
+**Expected:** A tennis swing bets only after the player is a game or more behind in set 1 and the price has lengthened; it greens up when the set is level, on 8 ticks profit, at the end of set 1, or closes at 10 ticks against. The Under scalp repeats up to 10 times and stops at 2 goals.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.8 Dismiss and reappear  \[Either\]
+
+Steps:
+1. Dismiss a setup with a reason, then scan again.
+
+**Expected:** It disappears, the reason is kept, and it does not return while the game and prices are unchanged.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.9 Setup results  \[Either\]
+
+Steps:
+1. After an accepted setup's match has settled, open Recommendations.
+
+**Expected:** A line shows how many accepted setups have settled and their net result (the whole-market result).
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.10 Discuss a recommendation in the side panel  \[Either\]
 
 Steps:
 1. Open Recommendations, click Discuss on an idea.
@@ -2465,7 +2511,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.6 Pick a future day  \[Either\]
+### 39.11 Pick a future day  \[Either\]
 
 Steps:
 1. On Home, Plan or Manual Trading, click Tomorrow in the day strip above the search box.
@@ -2475,7 +2521,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.7 Next up and Today  \[Either\]
+### 39.12 Next up and Today  \[Either\]
 
 Steps:
 1. Click Next up, then Today.
@@ -2484,7 +2530,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.8 Future markets can be added to the Plan  \[Either\]
+### 39.13 Future markets can be added to the Plan  \[Either\]
 
 Steps:
 1. Choose Tomorrow, tick a few matches, Add to Plan.
@@ -2493,7 +2539,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.9 Selection survives tab and search changes  \[Either\]
+### 39.14 Selection survives tab and search changes  \[Either\]
 
 Steps:
 1. Tick a tennis market, switch to Football, tick one, search, then switch back.
@@ -2502,7 +2548,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.10 Bulk add with a script  \[Either\]
+### 39.15 Bulk add with a script  \[Either\]
 
 Steps:
 1. Tick several markets.
@@ -2512,7 +2558,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.11 Open a ladder from the list  \[Either\]
+### 39.16 Open a ladder from the list  \[Either\]
 
 Steps:
 1. Click the ladder icon on a market row on Home or Plan.
@@ -2521,7 +2567,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.12 Scripts > Add to Plan uses the same list  \[Either\]
+### 39.17 Scripts > Add to Plan uses the same list  \[Either\]
 
 Steps:
 1. On Scripts, click Add to Plan.
@@ -2530,7 +2576,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.13 Home AI panel  \[Practice\]
+### 39.18 Home AI panel  \[Practice\]
 
 Steps:
 1. Ask the docked Copilot about your Plan markets.
@@ -2539,7 +2585,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.14 Narrow screens  \[Either\]
+### 39.19 Narrow screens  \[Either\]
 
 Steps:
 1. Open Home on a phone or narrow window.

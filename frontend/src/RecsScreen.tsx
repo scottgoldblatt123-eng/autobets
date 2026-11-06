@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Rec, type RecStats } from './api'
+import { RuleCards } from './ScriptsScreen'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
-type Kind = 'all' | 'trade' | 'script' | 'model'
+type Kind = 'all' | 'setup' | 'script' | 'model'
 
-/** Recommendations: ideas the models surface. Nothing is placed until you confirm here. */
+/** Recommendations: trade setups the models surface, each with a ready-made script. Nothing is bet until you add it to the Plan, and then only in play when its conditions are met. */
 export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDiscuss: (r: Rec) => void; onPlan: () => void }) {
   const [items, setItems] = useState<Rec[]>([]), [stats, setStats] = useState<RecStats | null>(null), [kind, setKind] = useState<Kind>('all'), [err, setErr] = useState('')
   const [apply, setApply] = useState<Rec | null>(null), [price, setPrice] = useState(''), [stake, setStake] = useState(''), [dismiss, setDismiss] = useState<Rec | null>(null), [reason, setReason] = useState(''), [busy, setBusy] = useState(false)
@@ -17,7 +18,7 @@ export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDis
     const st = Number(stake)
     if (!(st >= 1)) { say('Stake must be at least £1.', 'err'); return }
     setBusy(true)
-    try { const r = await api.recApply(apply.id, { stake: st, ...(price.trim() ? { price: Number(price) } : {}) }); say(`Placed (practice mode): ${r.order.side} £${r.order.size.toFixed(2)} at ${r.order.price.toFixed(2)}. See it on the Plan.`, r.warnings.length ? 'warn' : 'ok'); setApply(null); await load() }
+    try { const r = await api.recApply(apply.id, { stake: st, ...(price.trim() ? { price: Number(price) } : {}) }); if (!r.order) { say(`Added to the Plan with script '${r.script?.name ?? ''}'. It bets in play when its conditions are met.`); setApply(null); void load(); return } say(`Placed (practice mode): ${r.order.side} £${r.order.size.toFixed(2)} at ${r.order.price.toFixed(2)}. See it on the Plan.`, r.warnings.length ? 'warn' : 'ok'); setApply(null); await load() }
     catch (e) { say((e as Error).message, 'err') } finally { setBusy(false) }
   }
   const c = stats?.counts
@@ -32,11 +33,22 @@ export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDis
         <div className="card kpi"><span className="cap">Evidence so far</span><b>{stats?.avg_clv_pts == null ? '–' : `${stats.avg_clv_pts > 0 ? '+' : ''}${stats.avg_clv_pts} pts`}</b><small className="muted">avg CLV over {stats?.evidence ?? 0} measured ideas</small></div>
         <div className="card kpi"><span className="cap">Auto-apply</span><b>{stats?.auto_apply_unlocked ? 'Available' : 'Locked'}</b><small className="muted">{stats?.evidence ?? 0} / {stats?.evidence_needed ?? 300} evidence needed</small></div>
       </div>
+      {!!stats?.setup_results?.n && <div className="small muted">Accepted setups that have settled: {stats.setup_results.n}, net <b className={stats.setup_results.net >= 0 ? 'gain' : 'loss'}>{stats.setup_results.net >= 0 ? '+' : ''}£{stats.setup_results.net.toFixed(2)}</b> (whole-market result, practice mode)</div>}
       <div className="row">
-        {([['all', `All (${c?.all ?? 0})`], ['trade', `Trades (${c?.trades ?? 0})`], ['script', `Scripts (${c?.scripts ?? 0})`], ['model', `Model improvements (${c?.models ?? 0})`]] as [Kind, string][]).map(([k, l]) => <button key={k} className={'chip' + (kind === k ? ' on' : '')} onClick={() => setKind(k)}>{l}</button>)}
+        {([['all', `All (${c?.all ?? 0})`], ['setup', `Trade setups (${c?.setups ?? 0})`], ['script', `Scripts (${c?.scripts ?? 0})`], ['model', `Model improvements (${c?.models ?? 0})`]] as [Kind, string][]).map(([k, l]) => <button key={k} className={'chip' + (kind === k ? ' on' : '')} onClick={() => setKind(k)}>{l}</button>)}
         <span className="spacer" /><label className="sw"><input type="checkbox" disabled /> Auto-apply recommendations</label><span className="muted small">Unlocks after {stats?.evidence_needed ?? 300} recommendations with positive CLV</span>
       </div>
-      {shown.map(r => (
+      {shown.map(r => r.kind === 'setup' ? (
+        <div key={r.id} className="card reccard">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="row" style={{ gap: 8 }}><span className="src ai">Trade setup</span><h3>{r.title}{r.start ? ` · ${new Date(r.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</h3></div>
+            <p className="small muted" style={{ margin: '6px 0 8px', lineHeight: 1.5 }}>{r.reason}</p>
+            {!!r.watch?.length && <div className="small" style={{ marginBottom: 8 }}><b>What has to happen</b><ul style={{ margin: '4px 0 0 18px', padding: 0 }}>{r.watch.map(w => <li key={w}>{w}</li>)}</ul></div>}
+            {!!r.text?.length && <div style={{ marginBottom: 8 }}><RuleCards text={r.text} fold headline={r.headline} /></div>}
+            <div className="row small" style={{ gap: 20 }}><span>Model <b>{(r.model_p * 100).toFixed(0)}%</b> · market <b>{(r.market_p * 100).toFixed(0)}%</b></span><span>{r.side === 'BACK' ? 'Back' : 'Lay'} {r.runner} (now {r.price.toFixed(2)})</span><span>Stake £{r.stake}</span><span>{r.side === 'LAY' ? 'Liability' : 'Worst case'} £{r.max_loss}</span></div>
+          </div>
+          <div className="reccta"><button className="primary" onClick={() => open(r, false)}>Add to Plan</button><button onClick={() => onDiscuss(r)}>Discuss with Claude</button><button onClick={() => { setDismiss(r); setReason('') }}>Dismiss</button></div>
+        </div>) : (
         <div key={r.id} className="card reccard">
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="row" style={{ gap: 8 }}><span className="src ai">{r.kind === 'trade' ? 'Trade' : r.kind === 'script' ? 'Script' : 'Model improvement'}</span><h3>{r.title}{r.start ? ` · ${new Date(r.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</h3></div>
@@ -45,12 +57,12 @@ export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDis
           </div>
           <div className="reccta"><button className="primary" onClick={() => open(r, false)}>Apply</button><button onClick={() => open(r, true)}>Edit</button><button onClick={() => onDiscuss(r)}>Discuss with Claude</button><button onClick={() => { setDismiss(r); setReason('') }}>Dismiss</button></div>
         </div>))}
-      {!shown.length && <div className="card muted small">{kind === 'script' || kind === 'model' ? 'None yet. Script and model recommendations need backtest results, which arrive with the Analyse screens.' : 'No ideas right now. Every couple of minutes AutoBets checks pre-match tennis and football markets starting in the next 8 hours, and suggests a trade only when the model and the market differ by at least 4 points. Most of the time there is nothing, and that is the right answer.'}</div>}
+      {!shown.length && <div className="card muted small">{kind === 'script' || kind === 'model' ? 'None yet. Script and model recommendations need backtest results, which arrive with the Analyse screens.' : 'No setups right now. Every couple of minutes AutoBets checks pre-match tennis and football markets starting in the next 8 hours and suggests a trade setup (a plan for how to trade the game, with a ready-made script) only when the model and the market see the game differently. Quiet spells are normal.'}</div>}
       {apply && <div className="overlay" onClick={() => setApply(null)}><div className="card" role="dialog" aria-label="Apply recommendation" onClick={e => e.stopPropagation()} style={{ width: 440 }}>
-        <h3>{price ? 'Edit before applying' : 'Apply recommendation'}</h3><div className="small">{apply.title}</div>
+        <h3>{apply.kind === 'setup' ? 'Add to Plan' : price ? 'Edit before applying' : 'Apply recommendation'}</h3><div className="small">{apply.title}</div>
         <label>Stake (£)<input inputMode="decimal" value={stake} onChange={e => setStake(e.target.value)} /></label>
-        <label>Price (blank = the best price right now, checked again when you confirm)<input inputMode="decimal" value={price} placeholder={apply.price.toFixed(2)} onChange={e => setPrice(e.target.value)} /></label>
-        <div className="muted small">Placed as an AI order, so your safety limits apply. Practice mode: no real money. The bet appears on the Plan.</div>
+        {apply.kind !== 'setup' && <label>Price (blank = the best price right now, checked again when you confirm)<input inputMode="decimal" value={price} placeholder={apply.price.toFixed(2)} onChange={e => setPrice(e.target.value)} /></label>}
+        <div className="muted small">{apply.kind === 'setup' ? 'Saves the script to your library (switched on) and adds this market to the Plan. Nothing is bet now: the script bets in play, only when its conditions are met, and your safety limits apply. Practice mode: no real money.' : 'Placed as an AI order, so your safety limits apply. Practice mode: no real money. The bet appears on the Plan.'}</div>
         <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={() => setApply(null)}>Cancel</button><button className="primary" disabled={busy} onClick={confirm}>{busy ? 'Placing…' : 'Confirm and place'}</button></div></div></div>}
       {dismiss && <div className="overlay" onClick={() => setDismiss(null)}><div className="card" role="dialog" aria-label="Dismiss recommendation" onClick={e => e.stopPropagation()} style={{ width: 420 }}>
         <h3>Dismiss recommendation</h3><div className="small">{dismiss.title}</div>
