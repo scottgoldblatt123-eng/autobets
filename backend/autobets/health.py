@@ -37,7 +37,7 @@ def collector(name: str, status: dict | None, key: str) -> dict:
     return {"key": key, "name": name, "level": "ok", "detail": f"Last update {_human(age)}"}
 
 
-def build(engine, football: dict | None, tennis: dict | None, pricelog: dict | None, claude_enabled: bool, ai_status: dict) -> dict:
+def build(engine, football: dict | None, tennis: dict | None, pricelog: dict | None, claude_enabled: bool, ai_status: dict, server: dict | None = None) -> dict:
     items = []
     fe = engine.feed_health()
     items.append({"key": "betfair", "name": "Betfair prices", "level": "ok" if fe["ok"] else "bad", "detail": fe["detail"]})
@@ -59,5 +59,16 @@ def build(engine, football: dict | None, tennis: dict | None, pricelog: dict | N
         used = ai_status.get("estimated_gbp") or 0
         over = cap and used >= cap
         items.append({"key": "claude", "name": "Claude API", "level": "bad" if over else "ok", "detail": f"Spend this month about £{used:.2f} of £{cap:g} cap" + (" (cap reached, AI calls stopped)" if over else "")})
+    if server:
+        d, b = server.get("disk"), server.get("backup")
+        if d:
+            lvl = "bad" if d["free_pct"] < 10 else "off" if d["free_pct"] < 20 else "ok"
+            items.append({"key": "disk", "name": "Server disk", "level": "bad" if lvl == "bad" else "ok",
+                          "detail": f"{d['free_gb']} GB free of {d['total_gb']} GB ({d['free_pct']}%); databases use {server.get('db_mb', 0):,.0f} MB" + (" · getting low" if lvl == "off" else "")})
+        if b is not None:
+            age = _age(b.get("last_ok"))
+            bad = bool(b.get("last_error")) and (age is None or age > 36 * 3600) or age is None or age > 36 * 3600
+            items.append({"key": "backup", "name": "Daily backup", "level": "bad" if bad else "ok",
+                          "detail": (b.get("last_error") or f"Last backup {_human(age)}") if bad else f"Last backup {_human(age)}; the last 7 days are kept on the server"})
     issues = [i for i in items if i["level"] == "bad"]
     return {"items": items, "issues": len(issues)}

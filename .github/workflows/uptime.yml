@@ -1,0 +1,18 @@
+name: uptime
+# Every 15 minutes, check that the practice server answers over HTTPS. If it does not, this run fails and GitHub emails you.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: AutoBets answers
+        run: |
+          URL="https://159-65-20-243.sslip.io/api/mode"
+          for try in 1 2 3; do
+            if body=$(curl -fsS --max-time 20 "$URL") && echo "$body" | grep -q '"mode"'; then echo "up: $body"; exit 0; fi
+            sleep 20
+          done
+          echo "::error::AutoBets did not answer at $URL three times in a row"; exit 1

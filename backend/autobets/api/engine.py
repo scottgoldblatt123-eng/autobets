@@ -202,6 +202,7 @@ class Engine:
             self._trigger_ids = itertools.count(top + 1)
             self._last_saved = json.dumps(self._snapshot(), sort_keys=True)
             self._log(f"Restarted: restored {len(self.ex.all_orders())} orders, {len(self.triggers)} stops, {len(self.entries)} entries and {len(self.mtriggers)} auto-greens", "info")
+            self.alerts.add("system", f"AutoBets restarted at {self._uk_clock()}", f"Restored {len(self.ex.all_orders())} orders, {len(self.triggers)} stops and {len(self.entries)} entries. If you did not expect this, check the server log.", False)
         except Exception as ex:          # noqa: BLE001
             self._log(f"Could not restore saved state ({ex}); starting empty", "warn")
 

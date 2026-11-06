@@ -72,8 +72,7 @@ def test_close_nearly_level_position_is_a_message_not_an_error(client):
 
 
 def test_open_orders_list_excludes_matched(client):
-    st = client.get(f"/api/state?ids={MID}").json()
-    client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": st["markets"][MID]["selections"]["101"]["backs"][0][0], "size": 5})
+    client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": 1.01, "size": 5})      # any price at or above 1.01 is available, so it matches at once even as demo prices move
     assert client.get(f"/api/state?ids={MID}").json()["orders"] == []
 
 

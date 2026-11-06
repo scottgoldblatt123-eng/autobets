@@ -2704,3 +2704,195 @@ Steps:
 **Expected:** The draft shows a one-line headline you can open to read every rule.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 43. New script conditions (added 6 Nov)
+
+_More ways to say when a script acts. Build them with the Copilot or in the JSON editor._
+
+### 43.1 Trailing stop  \[Demo\]
+
+Steps:
+1. Ask the Copilot for a script that backs, then closes and stops if the exit price gives back 3 ticks from its best.
+
+**Expected:** The draft uses ticks_from_peak and reads 'given back 3 ticks from its best since you were matched'. In use, the stop only fires after the price has gone your way and then retreated.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 43.2 Time to kick-off  \[Practice\]
+
+Steps:
+1. Create a script that enters only when minutes to the scheduled start is 30 or less.
+
+**Expected:** It does not enter earlier than 30 minutes before the start.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 43.3 Spread filter  \[Practice\]
+
+Steps:
+1. Create an entry that needs a spread of 2 ticks or less.
+
+**Expected:** It does not enter on a wide book and does when the book tightens.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 43.4 Market matched  \[Practice\]
+
+Steps:
+1. Create an entry that needs at least 50,000 matched on the market.
+
+**Expected:** It waits for a liquid market.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 43.5 Price move over time  \[Practice\]
+
+Steps:
+1. Create an entry for a price shortening 3 ticks or more in 60 seconds.
+
+**Expected:** It only acts after the price has been watched for a minute (no action immediately after a restart) and fires on a genuine move.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 43.6 Invalid values are refused  \[Either\]
+
+Steps:
+1. Save a script with a price move of 1 second or a negative spread.
+
+**Expected:** The save is refused with a message saying what is wrong.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 44. Live trading safeguards (added 6 Nov)
+
+_Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes._
+
+### 44.1 Live mode needs a deliberate server setting  \[Live\]
+
+Steps:
+1. Start the service with AUTOBETS_MODE=live but without AUTOBETS_LIVE_CONFIRM.
+
+**Expected:** The service refuses to start and says why.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 44.2 Starts not armed  \[Live\]
+
+Steps:
+1. Start in live mode and open Settings > Live trading.
+
+**Expected:** The header shows LIVE — REAL MONEY and NOT ARMED. Trying to place a bet is refused with 'live trading is not armed'.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 44.3 Arming needs the phrase  \[Live\]
+
+Steps:
+1. Type something other than SEND-REAL-ORDERS, then the exact phrase.
+
+**Expected:** The Arm button stays disabled until the exact phrase is typed. The header then shows ARMED.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 44.4 Disarm still lets you cancel  \[Live\]
+
+Steps:
+1. Place a small order, disarm, then cancel it.
+
+**Expected:** New orders are refused after disarming; the cancel works.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 44.5 Orders match Betfair  \[Live\]
+
+Steps:
+1. Place a £1 bet from the ladder and check the Betfair website.
+
+**Expected:** The same bet appears on Betfair with the same price and size; fills show in AutoBets within a couple of seconds.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 44.6 Start-up check  \[Live\]
+
+Steps:
+1. Place an order on the Betfair website, then restart the service.
+
+**Expected:** An alert says an order Betfair holds was not in AutoBets; it appears as an external order.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 44.7 Stop all automation cancels real unmatched orders  \[Live\]
+
+Steps:
+1. Let a script rest an unmatched order, then Stop all automation.
+
+**Expected:** The order is cancelled on Betfair.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 44.8 Result check against Betfair  \[Live\]
+
+Steps:
+1. Let a small market settle.
+
+**Expected:** No warning if AutoBets' result matches what Betfair cleared; a warning if they differ by more than 10p.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 44.9 Betfair orders health row  \[Live\]
+
+Steps:
+1. Open the Health panel.
+
+**Expected:** Shows 'Betfair orders sync' with the last check time and whether you are armed.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 45. Backups and monitoring (added 6 Nov)
+
+_Server-side safety nets._
+
+### 45.1 Daily backup runs  \[Practice\]
+
+Steps:
+1. After a day, open the Health panel.
+
+**Expected:** A 'Daily backup' row shows a recent backup time; the server keeps 7 days plus 4 Sundays under the data folder.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 45.2 Backup restores  \[Practice\]
+
+Steps:
+1. On the server, gunzip a backup of journal.db and open it with sqlite3.
+
+**Expected:** It opens and holds your orders and journal.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 45.3 Disk space row  \[Practice\]
+
+Steps:
+1. Open the Health panel.
+
+**Expected:** Shows free space and the database size, and turns red below 10% free.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 45.4 Restart alert  \[Practice\]
+
+Steps:
+1. Restart the service.
+
+**Expected:** An alert 'AutoBets restarted at HH:MM' appears with what was restored.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 45.5 Uptime check  \[Either\]
+
+Steps:
+1. In GitHub, Actions > uptime > Run workflow.
+
+**Expected:** It passes while the server is up. If the server is stopped it fails (and GitHub emails you).
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

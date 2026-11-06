@@ -260,9 +260,24 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     def _statuses():
         return (football.status() if football else None, tennis.status() if tennis else None, pricelog.status() if pricelog else None)
 
+    from .. import backup as backup_mod
+    data_dir = os.environ.get("AUTOBETS_DATA", "/opt/autobets/data")
+    backups = None
+    if engine.mode != "demo" and os.path.isdir(data_dir) and os.environ.get("AUTOBETS_BACKUPS", "1") != "0":
+        backups = backup_mod.Backups(data_dir)
+        backups.start()
+
+    def _server() -> dict | None:
+        if engine.mode == "demo" or not os.path.isdir(data_dir):
+            return None
+        try:
+            return {"disk": backup_mod.disk(data_dir), "db_mb": backup_mod.folder_mb(data_dir), "backup": backups.status() if backups else None}
+        except OSError:
+            return None
+
     def _health() -> dict:
         fb, tn, pl = _statuses()
-        return health_mod.build(engine, fb, tn, pl, copilot.claude.enabled, {"estimated_gbp": ai_usage.status().get("estimated_gbp"), "cap_gbp": ai_usage.cap})
+        return health_mod.build(engine, fb, tn, pl, copilot.claude.enabled, {"estimated_gbp": ai_usage.status().get("estimated_gbp"), "cap_gbp": ai_usage.cap}, _server())
 
     @app.get("/api/health")
     def health(_=Depends(auth)):

@@ -416,6 +416,35 @@ sec("Compact scripts: headlines and expandable rules (added 5 Nov)", "Plan, Scri
     c("Copilot drafts are folded", "Practice", ["Ask the Copilot to build a script."], "The draft shows a one-line headline you can open to read every rule."),
 ])
 
+sec("New script conditions (added 6 Nov)", "More ways to say when a script acts. Build them with the Copilot or in the JSON editor.", [
+    c("Trailing stop", "Demo", ["Ask the Copilot for a script that backs, then closes and stops if the exit price gives back 3 ticks from its best."], "The draft uses ticks_from_peak and reads 'given back 3 ticks from its best since you were matched'. In use, the stop only fires after the price has gone your way and then retreated."),
+    c("Time to kick-off", "Practice", ["Create a script that enters only when minutes to the scheduled start is 30 or less."], "It does not enter earlier than 30 minutes before the start."),
+    c("Spread filter", "Practice", ["Create an entry that needs a spread of 2 ticks or less."], "It does not enter on a wide book and does when the book tightens."),
+    c("Market matched", "Practice", ["Create an entry that needs at least 50,000 matched on the market."], "It waits for a liquid market."),
+    c("Price move over time", "Practice", ["Create an entry for a price shortening 3 ticks or more in 60 seconds."], "It only acts after the price has been watched for a minute (no action immediately after a restart) and fires on a genuine move."),
+    c("Invalid values are refused", "Either", ["Save a script with a price move of 1 second or a negative spread."], "The save is refused with a message saying what is wrong."),
+])
+
+sec("Live trading safeguards (added 6 Nov)", "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.", [
+    c("Live mode needs a deliberate server setting", "Live", ["Start the service with AUTOBETS_MODE=live but without AUTOBETS_LIVE_CONFIRM."], "The service refuses to start and says why."),
+    c("Starts not armed", "Live", ["Start in live mode and open Settings > Live trading."], "The header shows LIVE — REAL MONEY and NOT ARMED. Trying to place a bet is refused with 'live trading is not armed'."),
+    c("Arming needs the phrase", "Live", ["Type something other than SEND-REAL-ORDERS, then the exact phrase."], "The Arm button stays disabled until the exact phrase is typed. The header then shows ARMED."),
+    c("Disarm still lets you cancel", "Live", ["Place a small order, disarm, then cancel it."], "New orders are refused after disarming; the cancel works."),
+    c("Orders match Betfair", "Live", ["Place a £1 bet from the ladder and check the Betfair website."], "The same bet appears on Betfair with the same price and size; fills show in AutoBets within a couple of seconds."),
+    c("Start-up check", "Live", ["Place an order on the Betfair website, then restart the service."], "An alert says an order Betfair holds was not in AutoBets; it appears as an external order."),
+    c("Stop all automation cancels real unmatched orders", "Live", ["Let a script rest an unmatched order, then Stop all automation."], "The order is cancelled on Betfair."),
+    c("Result check against Betfair", "Live", ["Let a small market settle."], "No warning if AutoBets' result matches what Betfair cleared; a warning if they differ by more than 10p."),
+    c("Betfair orders health row", "Live", ["Open the Health panel."], "Shows 'Betfair orders sync' with the last check time and whether you are armed."),
+])
+
+sec("Backups and monitoring (added 6 Nov)", "Server-side safety nets.", [
+    c("Daily backup runs", "Practice", ["After a day, open the Health panel."], "A 'Daily backup' row shows a recent backup time; the server keeps 7 days plus 4 Sundays under the data folder."),
+    c("Backup restores", "Practice", ["On the server, gunzip a backup of journal.db and open it with sqlite3."], "It opens and holds your orders and journal."),
+    c("Disk space row", "Practice", ["Open the Health panel."], "Shows free space and the database size, and turns red below 10% free."),
+    c("Restart alert", "Practice", ["Restart the service."], "An alert 'AutoBets restarted at HH:MM' appears with what was restored."),
+    c("Uptime check", "Either", ["In GitHub, Actions > uptime > Run workflow."], "It passes while the server is up. If the server is stopped it fails (and GitHub emails you)."),
+])
+
 cases = []
 for si, (name, intro, cs) in enumerate(S, 1):
     for ci, k in enumerate(cs, 1):

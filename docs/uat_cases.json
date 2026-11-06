@@ -3087,5 +3087,225 @@
    "Ask the Copilot to build a script."
   ],
   "expected": "The draft shows a one-line headline you can open to read every rule."
+ },
+ {
+  "id": "43.1",
+  "section": "New script conditions (added 6 Nov)",
+  "intro": "More ways to say when a script acts. Build them with the Copilot or in the JSON editor.",
+  "title": "Trailing stop",
+  "mode": "Demo",
+  "steps": [
+   "Ask the Copilot for a script that backs, then closes and stops if the exit price gives back 3 ticks from its best."
+  ],
+  "expected": "The draft uses ticks_from_peak and reads 'given back 3 ticks from its best since you were matched'. In use, the stop only fires after the price has gone your way and then retreated."
+ },
+ {
+  "id": "43.2",
+  "section": "New script conditions (added 6 Nov)",
+  "intro": "More ways to say when a script acts. Build them with the Copilot or in the JSON editor.",
+  "title": "Time to kick-off",
+  "mode": "Practice",
+  "steps": [
+   "Create a script that enters only when minutes to the scheduled start is 30 or less."
+  ],
+  "expected": "It does not enter earlier than 30 minutes before the start."
+ },
+ {
+  "id": "43.3",
+  "section": "New script conditions (added 6 Nov)",
+  "intro": "More ways to say when a script acts. Build them with the Copilot or in the JSON editor.",
+  "title": "Spread filter",
+  "mode": "Practice",
+  "steps": [
+   "Create an entry that needs a spread of 2 ticks or less."
+  ],
+  "expected": "It does not enter on a wide book and does when the book tightens."
+ },
+ {
+  "id": "43.4",
+  "section": "New script conditions (added 6 Nov)",
+  "intro": "More ways to say when a script acts. Build them with the Copilot or in the JSON editor.",
+  "title": "Market matched",
+  "mode": "Practice",
+  "steps": [
+   "Create an entry that needs at least 50,000 matched on the market."
+  ],
+  "expected": "It waits for a liquid market."
+ },
+ {
+  "id": "43.5",
+  "section": "New script conditions (added 6 Nov)",
+  "intro": "More ways to say when a script acts. Build them with the Copilot or in the JSON editor.",
+  "title": "Price move over time",
+  "mode": "Practice",
+  "steps": [
+   "Create an entry for a price shortening 3 ticks or more in 60 seconds."
+  ],
+  "expected": "It only acts after the price has been watched for a minute (no action immediately after a restart) and fires on a genuine move."
+ },
+ {
+  "id": "43.6",
+  "section": "New script conditions (added 6 Nov)",
+  "intro": "More ways to say when a script acts. Build them with the Copilot or in the JSON editor.",
+  "title": "Invalid values are refused",
+  "mode": "Either",
+  "steps": [
+   "Save a script with a price move of 1 second or a negative spread."
+  ],
+  "expected": "The save is refused with a message saying what is wrong."
+ },
+ {
+  "id": "44.1",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Live mode needs a deliberate server setting",
+  "mode": "Live",
+  "steps": [
+   "Start the service with AUTOBETS_MODE=live but without AUTOBETS_LIVE_CONFIRM."
+  ],
+  "expected": "The service refuses to start and says why."
+ },
+ {
+  "id": "44.2",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Starts not armed",
+  "mode": "Live",
+  "steps": [
+   "Start in live mode and open Settings > Live trading."
+  ],
+  "expected": "The header shows LIVE \u2014 REAL MONEY and NOT ARMED. Trying to place a bet is refused with 'live trading is not armed'."
+ },
+ {
+  "id": "44.3",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Arming needs the phrase",
+  "mode": "Live",
+  "steps": [
+   "Type something other than SEND-REAL-ORDERS, then the exact phrase."
+  ],
+  "expected": "The Arm button stays disabled until the exact phrase is typed. The header then shows ARMED."
+ },
+ {
+  "id": "44.4",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Disarm still lets you cancel",
+  "mode": "Live",
+  "steps": [
+   "Place a small order, disarm, then cancel it."
+  ],
+  "expected": "New orders are refused after disarming; the cancel works."
+ },
+ {
+  "id": "44.5",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Orders match Betfair",
+  "mode": "Live",
+  "steps": [
+   "Place a \u00a31 bet from the ladder and check the Betfair website."
+  ],
+  "expected": "The same bet appears on Betfair with the same price and size; fills show in AutoBets within a couple of seconds."
+ },
+ {
+  "id": "44.6",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Start-up check",
+  "mode": "Live",
+  "steps": [
+   "Place an order on the Betfair website, then restart the service."
+  ],
+  "expected": "An alert says an order Betfair holds was not in AutoBets; it appears as an external order."
+ },
+ {
+  "id": "44.7",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Stop all automation cancels real unmatched orders",
+  "mode": "Live",
+  "steps": [
+   "Let a script rest an unmatched order, then Stop all automation."
+  ],
+  "expected": "The order is cancelled on Betfair."
+ },
+ {
+  "id": "44.8",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Result check against Betfair",
+  "mode": "Live",
+  "steps": [
+   "Let a small market settle."
+  ],
+  "expected": "No warning if AutoBets' result matches what Betfair cleared; a warning if they differ by more than 10p."
+ },
+ {
+  "id": "44.9",
+  "section": "Live trading safeguards (added 6 Nov)",
+  "intro": "Built and mock-tested only. Test for real once on the live key, starting with the smallest stakes.",
+  "title": "Betfair orders health row",
+  "mode": "Live",
+  "steps": [
+   "Open the Health panel."
+  ],
+  "expected": "Shows 'Betfair orders sync' with the last check time and whether you are armed."
+ },
+ {
+  "id": "45.1",
+  "section": "Backups and monitoring (added 6 Nov)",
+  "intro": "Server-side safety nets.",
+  "title": "Daily backup runs",
+  "mode": "Practice",
+  "steps": [
+   "After a day, open the Health panel."
+  ],
+  "expected": "A 'Daily backup' row shows a recent backup time; the server keeps 7 days plus 4 Sundays under the data folder."
+ },
+ {
+  "id": "45.2",
+  "section": "Backups and monitoring (added 6 Nov)",
+  "intro": "Server-side safety nets.",
+  "title": "Backup restores",
+  "mode": "Practice",
+  "steps": [
+   "On the server, gunzip a backup of journal.db and open it with sqlite3."
+  ],
+  "expected": "It opens and holds your orders and journal."
+ },
+ {
+  "id": "45.3",
+  "section": "Backups and monitoring (added 6 Nov)",
+  "intro": "Server-side safety nets.",
+  "title": "Disk space row",
+  "mode": "Practice",
+  "steps": [
+   "Open the Health panel."
+  ],
+  "expected": "Shows free space and the database size, and turns red below 10% free."
+ },
+ {
+  "id": "45.4",
+  "section": "Backups and monitoring (added 6 Nov)",
+  "intro": "Server-side safety nets.",
+  "title": "Restart alert",
+  "mode": "Practice",
+  "steps": [
+   "Restart the service."
+  ],
+  "expected": "An alert 'AutoBets restarted at HH:MM' appears with what was restored."
+ },
+ {
+  "id": "45.5",
+  "section": "Backups and monitoring (added 6 Nov)",
+  "intro": "Server-side safety nets.",
+  "title": "Uptime check",
+  "mode": "Either",
+  "steps": [
+   "In GitHub, Actions > uptime > Run workflow."
+  ],
+  "expected": "It passes while the server is up. If the server is stopped it fails (and GitHub emails you)."
  }
 ]
