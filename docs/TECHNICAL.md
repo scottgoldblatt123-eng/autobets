@@ -63,3 +63,6 @@ Not yet done: replaying setup scripts over the recorded price log (needs in-play
 
 ### Starter library
 `starters.py` holds `STARTERS` (id, sport, title, summary, attach, caveats, script) and `UNSUPPORTED` (title, reason). `GET /api/starters` returns them with plain-English rule text and an `added` flag (matched by script name); `POST /api/starters/{id}/add` creates the script disabled (origin "you", note "added from the starter library"; 409 if already there). New tennis conditions used by starters: `breaks_diff` (derived from games and who serves; false when the server is unknown or 12+ games), `serving`, `game_points_diff`, `game_score_is`, `break_point`, `set_games_total`, `prev_set_games_diff`; football `half_time`; green/close accept `percent`. `tests/test_starters.py` validates every starter.
+
+### Setup scripts are shared
+`_accept_setup` looks up the library script by its (match-free) name and reuses it, creating it only if missing. Price conditions can be relative (`{"type":"price","op":">=","rel":1.12,"ref":"back"}`): the threshold is `rel x row.ref_price`, where `ref_price` is stored on the Plan row at accept time and passed in `_script_view`. No `ref_price` means the condition is false.

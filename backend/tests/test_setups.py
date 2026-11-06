@@ -25,7 +25,7 @@ def test_tennis_setup_backs_the_underrated_player_after_a_break_and_script_is_va
     entry = s["rules"][0]
     assert {"type": "set_games_diff", "op": "<=", "value": -1.0} in entry["when"]
     px = next(x for x in entry["when"] if x["type"] == "price")
-    assert px["value"] > 2.24                                                                       # waits for the price to lengthen
+    assert px["rel"] > 1.0                                                                       # waits for the price to lengthen
     assert "not a prediction" in c["reason"]
 
 
@@ -69,7 +69,7 @@ def test_football_over_setup_waits_until_minute_15_and_never_enters_worse_than_t
     assert c["template"] == "football_over_wait" and c["market_id"] == "1.6" and c["selection_id"] == "O"
     s = validate(c["script"])
     when = s["rules"][0]["when"]
-    assert {"type": "minute", "op": ">=", "value": 15.0} in when and any(x["type"] == "price" and x["value"] == 2.2 for x in when)
+    assert {"type": "minute", "op": ">=", "value": 15.0} in when and any(x["type"] == "price" and x["rel"] == 1.0 for x in when)
     assert len(s["rules"]) == 1                                                                     # held to the end: no hedge rule
 
 
@@ -103,8 +103,20 @@ def test_accepting_a_setup_saves_the_script_switches_it_on_and_adds_the_plan_row
     assert not e.ex.open_orders() or all(o.request.source != "ai" for o in e.ex.open_orders())
     with pytest.raises(ValueError, match="applied"):
         e.rec_apply(rec["id"])
-    rec2, _ = e.recs.upsert_setup(mid, info, cand)                                                    # same name again gets a distinct script
-    assert e.rec_apply(rec2["id"])["script"]["name"] == "Setup: test #2"
+    n = len(e.scripts.scripts)
+    e.plan.remove(out["row"]["id"])
+    rec2, _ = e.recs.upsert_setup(mid, info, cand)                                                    # same kind of setup again reuses the library script
+    again = e.rec_apply(rec2["id"])
+    assert again["script"]["id"] == out["script"]["id"] and len(e.scripts.scripts) == n
+
+
+def test_relative_price_condition_uses_the_price_when_added_to_the_plan():
+    c = validate({"name": "x", "sport": "any", "description": "", "rules": [{"id": "r1", "kind": "entry", "when": [{"type": "price", "op": ">=", "rel": 1.12, "ref": "back"}],
+                                                                           "then": [{"type": "back", "price": "best", "stake": 10, "basis": "stake", "persistence": "CANCEL"}]}]})
+    cond = c["rules"][0]["when"][0]
+    assert check(cond, {"prices": {"back": 2.5}, "ref_price": 2.2}, set()) is True                  # 2.2 x 1.12 = 2.46
+    assert check(cond, {"prices": {"back": 2.4}, "ref_price": 2.2}, set()) is False
+    assert check(cond, {"prices": {"back": 9.0}}, set()) is False                                   # no reference price: never fires
 
 
 def test_scan_produces_setups_not_winner_picks_and_expires_them_when_the_market_leaves():

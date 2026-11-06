@@ -634,7 +634,7 @@ class Engine:
             from .ai.snapshot import same_name
             nm = info.get("runners", {}).get(row["selection_id"], "")
             pidx = next((i for i, pl in enumerate(ctx["players"]) if same_name(pl, nm)), None)
-        return {"player_idx": pidx, "entry": entry, "mins_to_start": mins, "matched": info.get("matched"), "history": list(hist), "now": now, "prices": prices,
+        return {"ref_price": row.get("ref_price"), "player_idx": pidx, "entry": entry, "mins_to_start": mins, "matched": info.get("matched"), "history": list(hist), "now": now, "prices": prices,
                 "in_play": book.in_play, "ctx": ctx, "position_loss": max(0.0, -min(out)), "clock": self._uk_clock()}
 
     def _fire(self, row: dict, rule: dict, act: dict, script: dict, book) -> None:
@@ -921,17 +921,17 @@ class Engine:
         """Accepting a trade setup saves its script to the library (switched on) and puts the market on the Plan with it. No bet is placed now:
         the script places bets itself, in play, when its conditions are met."""
         body = {**r["script"]}
-        if stake:
-            if stake < 1:
-                raise ValueError("minimum stake is £1")
-        names = {s["versions"][-1]["name"] for s in self.scripts.scripts.values()}
-        base, n = body["name"], 1
-        while body["name"] in names:
-            n += 1
-            body["name"] = f"{base} #{n}"
-        view = self.scripts.create(body, "ai", f"from recommendation {r['id']}")
-        view = self.scripts.set_enabled(view["id"], True)
+        if stake and stake < 1:
+            raise ValueError("minimum stake is £1")
+        # One reusable script per kind of setup, shared by every match: reuse it if the library already has it, create it only the first time.
+        have = next((sid for sid, sc in self.scripts.scripts.items() if sc["versions"][-1]["name"] == body["name"]), None)
+        if have:
+            view = self.scripts.set_enabled(have, True)
+        else:
+            view = self.scripts.create(body, "ai", f"from recommendation {r['id']}")
+            view = self.scripts.set_enabled(view["id"], True)
         row = self.plan_add(r["market_id"], r["selection_id"], view["id"], float(stake or r["stake"]), "ai")
+        self.plan.rows[row["id"]]["ref_price"] = r.get("price")
         r.update(status="applied", applied_at=time.time(), script_id=view["id"], plan_row=row["id"], stake=float(stake or r["stake"]))
         self.alerts.resolve_ref("rec", r["id"], "Added to the Plan")
         self._save()

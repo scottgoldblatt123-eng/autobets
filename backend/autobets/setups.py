@@ -67,7 +67,7 @@ def tennis(info: dict, book, ctx: dict | None, stake: float) -> dict | None:
         watch = [f"{names[best]} goes a game or more behind in set 1 and his price lengthens by about {TENNIS_REACT * 100:.0f}% or more",
                  "He gets back on serve (the script greens up) or the price runs 10 ticks against you (it closes out)"]
         entry = [{"type": "in_play", "value": True}, {"type": "set_number", "op": "==", "value": 1}, {"type": "set_games_diff", "op": "<=", "value": -1},
-                 {"type": "price", "op": ">=", "value": _scaled(p0, 1 + TENNIS_REACT), "ref": "back"}]
+                 {"type": "price", "op": ">=", "rel": round(1 + TENNIS_REACT, 2), "ref": "back"}]
         level = {"type": "set_games_diff", "op": ">=", "value": 0}
     else:
         # `best` is a heavy favourite, so trade the other side of the same view: the market over-rates `other`; lay him when he races ahead.
@@ -82,12 +82,12 @@ def tennis(info: dict, book, ctx: dict | None, stake: float) -> dict | None:
         watch = [f"{names[other]} goes a game or more ahead in set 1 and his price shortens by about {TENNIS_REACT * 100:.0f}% or more",
                  "The set comes back level (the script greens up) or the price runs 10 ticks against you (it closes out)"]
         entry = [{"type": "in_play", "value": True}, {"type": "set_number", "op": "==", "value": 1}, {"type": "set_games_diff", "op": ">=", "value": 1},
-                 {"type": "price", "op": "<=", "value": _scaled(p0, 1 - TENNIS_REACT), "ref": "back"}]
+                 {"type": "price", "op": "<=", "rel": round(1 - TENNIS_REACT, 2), "ref": "back"}]
         level = {"type": "set_games_diff", "op": "<=", "value": 0}
     if not (TENNIS_PRICE[0] <= p0 <= TENNIS_PRICE[1]):
         return None
     nm = names[tgt].split()[-1]
-    script = {"name": f"Setup: {'Back' if side == 'back' else 'Lay'} {nm} on the swing", "sport": "tennis",
+    script = {"name": f"Setup: {'Back' if side == 'back' else 'Lay'} the player on the swing", "sport": "tennis",
               "description": "Trade the price reaction to an early break in set 1. Exits when the set is level again, on a profit target, at the end of set 1 or on a stop.",
               "rules": [_rule("r1", "entry", entry, [{"type": side, "price": "best", "stake": stake, "basis": "stake", "persistence": "CANCEL"}]),
                         _rule("r2", "exit", [{"type": "rule_matched", "rule": "r1"}, level], [{"type": "green"}]),
@@ -136,10 +136,10 @@ def football(info: dict, ou_info: dict, ou_book, ctx: dict | None, stake: float)
     base = {"sport": "football", "stake": stake, "max_loss": stake, "market_id": ou_info["market_id"], "market_name": ou_info.get("name", "")}
     gap = round(p_over - mkt[over], 4)
     if gap >= OVER_GAP and OVER_PRICE[0] <= o_back <= OVER_PRICE[1]:
-        script = {"name": f"Setup: Back Over 2.5 after 15 min ({ev[:30]})", "sport": "football",
+        script = {"name": "Setup: Back Over 2.5 after 15 min", "sport": "football",
                   "description": "Wait out the first 15 minutes, then back Over 2.5 if there are 0 or 1 goals and the price is at least as good as before kick-off. Held to the end.",
                   "rules": [_rule("r1", "entry", [{"type": "in_play", "value": True}, {"type": "minute", "op": ">=", "value": 15}, {"type": "minute", "op": "<=", "value": 40},
-                                                  {"type": "goals_total", "op": "<=", "value": 1}, {"type": "price", "op": ">=", "value": o_back, "ref": "back"}],
+                                                  {"type": "goals_total", "op": "<=", "value": 1}, {"type": "price", "op": ">=", "rel": 1.0, "ref": "back"}],
                                   [{"type": "back", "price": "best", "stake": stake, "basis": "stake", "persistence": "CANCEL"}])]}
         return {**base, "template": "football_over_wait", "selection_id": over, "runner": ou_info["runners"][over], "side": "BACK", "price": o_back,
                 "model_p": round(p_over, 4), "market_p": round(mkt[over], 4), "edge": gap, "script": script,
@@ -149,7 +149,7 @@ def football(info: dict, ou_info: dict, ou_book, ctx: dict | None, stake: float)
                 "watch": ["Minute 15 arrives with no more than one goal and the Over price is at least " + f"{o_back:.2f}", "If a goal comes early the price shortens and the script simply never enters"]}
     p_under = 1 - p_over
     if p_under >= UNDER_MIN_P and UNDER_PRICE[0] <= u_back <= UNDER_PRICE[1]:
-        script = {"name": f"Setup: Scalp Under 2.5 ({ev[:30]})", "sport": "football",
+        script = {"name": "Setup: Scalp Under 2.5", "sport": "football",
                   "description": "While the game has 0 or 1 goals, back Under 2.5, green up 2 ticks better, and go again (10 runs). Exits for a loss at 6 ticks against; stops at 2 goals.",
                   "rules": [_rule("r1", "entry", [{"type": "in_play", "value": True}, {"type": "minute", "op": ">=", "value": 2}, {"type": "minute", "op": "<=", "value": 70},
                                                   {"type": "goals_total", "op": "<=", "value": 1}, {"type": "spread_ticks", "op": "<=", "value": 2}],

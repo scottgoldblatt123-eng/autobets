@@ -70,7 +70,7 @@ def validate_condition(c: dict) -> dict:
         raise ScriptError(f"unknown condition {c.get('type') if isinstance(c, dict) else c!r}; use one of {sorted(CONDITIONS)}")
     t = c["type"]
     for f in CONDITIONS[t]:
-        if f not in c:
+        if f not in c and not (t == "price" and f == "value" and "rel" in c):
             raise ScriptError(f"condition '{t}' needs '{f}'")
     out: dict = {"type": t}
     if "op" in CONDITIONS[t]:
@@ -78,7 +78,10 @@ def validate_condition(c: dict) -> dict:
             raise ScriptError(f"op must be one of {OPS}")
         out["op"] = c["op"]
     if t == "price":
-        out["value"] = _num(c["value"], "price", 1.01, 1000)
+        if "rel" in c:                     # relative: a multiple of the price the market had when it was put on the Plan, so one script serves any match
+            out["rel"] = _num(c["rel"], "price multiple", 0.2, 5)
+        else:
+            out["value"] = _num(c["value"], "price", 1.01, 1000)
         ref = c.get("ref", "last")
         if ref not in PRICE_REFS:
             raise ScriptError(f"price ref must be one of {PRICE_REFS}")
@@ -280,6 +283,12 @@ def check(cond: dict, view: dict, fired: set[str]) -> bool:
     t, ctx = cond["type"], view.get("ctx") or {}
     if t == "price":
         p = _price(view, cond["ref"])
+        if "rel" in cond:
+            base = view.get("ref_price")
+            if not base:
+                return False
+            from . import ticks as _tk
+            return p is not None and _cmp(p, cond["op"], _tk.nearest(max(1.01, round(base * cond["rel"], 2))))
         return p is not None and _cmp(p, cond["op"], cond["value"])
     if t == "in_play":
         return bool(view.get("in_play")) == cond["value"]
@@ -372,6 +381,7 @@ def describe(script: dict) -> list[dict]:
     """Plain-English text for each rule, for the screens and for the AI's own check of what it drafted."""
     def c_txt(c):
         t = c["type"]
+        if t == "price" and "rel" in c: return f"price ({c['ref']}) is {c['op']} {c['rel']:g}× the price when this was added to the Plan"
         if t == "price": return f"price ({c['ref']}) is {c['op']} {c['value']:g}"
         if t == "in_play": return "market is in-play" if c["value"] else "market is not yet in-play"
         if t == "set_number": return f"set number {c['op']} {c['value']:g}"
