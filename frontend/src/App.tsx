@@ -19,6 +19,7 @@ import MatchedPanel from './MatchedPanel'
 import InfoPanel from './InfoPanel'
 import TradePanel from './TradePanel'
 import Ladder from './Ladder'
+import DayPicker from './DayPicker'
 import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
@@ -92,6 +93,7 @@ export default function App() {
   useEffect(() => { if (mode !== 'live') return; const f = () => api.live().then(l => setArmed(!!l.armed)).catch(() => undefined); f(); const t = window.setInterval(f, 8000); return () => window.clearInterval(t) }, [mode])
   const [sport, setSport] = useState<'tennis' | 'football'>('tennis')
   const [markets, setMarkets] = useState<MarketInfo[]>([])
+  const [day, setDay] = useState('')
   const [ladders, setLadders] = useState<LadderRef[]>([])
   /** Every market you have open, shown or not. Up to MAX_LADDERS ladders are on screen; the rest wait behind a tab. */
   const [expanded, setExpanded] = useState<Record<string, MarketInfo[] | 'loading'>>({})
@@ -154,8 +156,8 @@ export default function App() {
 
   useEffect(() => {
     if (ready !== 'ok') return
-    api.markets(sport).then(setMarkets).catch(e => { setMarkets([]); say(e.message, 'err') })
-  }, [ready, sport, say])
+    api.markets(sport, day).then(setMarkets).catch(e => { setMarkets([]); say(e.message, 'err') })
+  }, [ready, sport, day, say])
 
   const shownIds = Array.from(new Set(ladders.map(l => l.marketId)))
   const ids = Array.from(new Set([...openList.map(m => m.market_id), ...shownIds]))
@@ -419,6 +421,7 @@ export default function App() {
           <div className="tabs">
             {(['tennis', 'football'] as const).map(s => <button key={s} className={sport === s ? 'on' : ''} onClick={() => setSport(s)}>{s === 'tennis' ? 'Tennis' : 'Football'}</button>)}
           </div>
+          <DayPicker value={day} onChange={setDay} />
           <div className="msearch">
             <input type="search" placeholder="Search players, teams, competitions…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search markets" />
             <div className="chips">

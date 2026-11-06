@@ -155,3 +155,26 @@ def test_busy_reports_what_a_restart_would_lose(client):
     assert client.get("/api/busy").json() == {"triggers": 0, "open_orders": 0}
     client.post("/api/orders", json={"market_id": MID, "selection_id": "101", "side": "BACK", "price": 50.0, "size": 5})
     assert client.get("/api/busy").json()["open_orders"] == 1
+
+
+def test_markets_date_validation_and_demo(client):
+    assert client.get("/api/markets?sport=tennis&date=banana").status_code == 400
+    assert client.get("/api/markets?sport=tennis&date=2026-02-30").status_code == 400
+    assert client.get("/api/markets?sport=tennis&date=2031-01-01").json() == []      # demo has nothing in the future
+
+
+def test_markets_on_a_future_day_uses_uk_day_windows():
+    """A UK day (BST/GMT aware) is fetched in 3-hour windows covering exactly that day, merged and sorted."""
+    class Feed:
+        calls = []
+        def list_markets(self, et, mt, max_results=0, start_from=None, start_to=None, **_):
+            Feed.calls.append((start_from, start_to))
+            return [{"market_id": f"1.{len(Feed.calls)}", "start": start_from, "event": "A v B", "competition": "C", "name": "MO", "runners": {}, "event_id": "e"}]
+        def get_books(self, ids): return []
+    e = Engine.demo(); e.mode = "practice"; e.feed = Feed()
+    out = e.markets("tennis", "2026-07-01")                                 # BST: UK midnight = 23:00Z the day before
+    assert len(Feed.calls) == 8 and Feed.calls[0][0] == "2026-06-30T23:00:00Z" and Feed.calls[-1][1] == "2026-07-01T22:59:59Z"
+    assert [m["start"] for m in out] == sorted(m["start"] for m in out)
+    Feed.calls.clear(); e.markets("tennis", "2026-12-01")                  # GMT
+    assert Feed.calls[0][0] == "2026-12-01T00:00:00Z"
+    Feed.calls.clear(); e.markets("tennis", "2026-12-01"); assert not Feed.calls   # cached per day

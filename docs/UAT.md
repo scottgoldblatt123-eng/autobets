@@ -2456,7 +2456,35 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.5 Selection survives tab and search changes  \[Either\]
+### 39.5 Pick a future day  \[Either\]
+
+Steps:
+1. On Home, Plan or Manual Trading, click Tomorrow in the day strip above the search box.
+2. Then use the calendar box to choose a date a week or more ahead.
+
+**Expected:** The list shows only matches scheduled on that UK day, grouped by competition and sorted by start time. Past dates cannot be chosen. Football and Tennis tabs both follow the day.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.6 Next up and Today  \[Either\]
+
+Steps:
+1. Click Next up, then Today.
+
+**Expected:** Next up is the soonest markets whatever the day; Today is just today's. In-play, Next hour and search still filter the day shown.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.7 Future markets can be added to the Plan  \[Either\]
+
+Steps:
+1. Choose Tomorrow, tick a few matches, Add to Plan.
+
+**Expected:** They appear on the Plan as Watching with their start time. Scripts attached to them wait until the market is live.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.8 Selection survives tab and search changes  \[Either\]
 
 Steps:
 1. Tick a tennis market, switch to Football, tick one, search, then switch back.
@@ -2465,7 +2493,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.6 Bulk add with a script  \[Either\]
+### 39.9 Bulk add with a script  \[Either\]
 
 Steps:
 1. Tick several markets.
@@ -2475,7 +2503,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.7 Open a ladder from the list  \[Either\]
+### 39.10 Open a ladder from the list  \[Either\]
 
 Steps:
 1. Click the ladder icon on a market row on Home or Plan.
@@ -2484,7 +2512,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.8 Scripts > Add to Plan uses the same list  \[Either\]
+### 39.11 Scripts > Add to Plan uses the same list  \[Either\]
 
 Steps:
 1. On Scripts, click Add to Plan.
@@ -2493,7 +2521,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.9 Home AI panel  \[Practice\]
+### 39.12 Home AI panel  \[Practice\]
 
 Steps:
 1. Ask the docked Copilot about your Plan markets.
@@ -2502,7 +2530,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.10 Narrow screens  \[Either\]
+### 39.13 Narrow screens  \[Either\]
 
 Steps:
 1. Open Home on a phone or narrow window.

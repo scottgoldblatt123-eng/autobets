@@ -96,8 +96,10 @@ class BetfairAdapter(ExchangeAdapter):
     _PROJ = ["EVENT", "COMPETITION", "MARKET_START_TIME", "RUNNER_DESCRIPTION", "MARKET_DESCRIPTION"]
 
     def list_markets(self, event_type_id: str, market_type: str = "MATCH_ODDS", max_results: int = 50,
-                     in_play_only: bool = False) -> list[dict]:
+                     in_play_only: bool = False, start_from: str | None = None, start_to: str | None = None) -> list[dict]:
         flt = {"eventTypeIds": [event_type_id], "marketTypeCodes": [market_type]}
+        if start_from or start_to:                       # ISO UTC times; Betfair filters on scheduled start
+            flt["marketStartTime"] = {k: v for k, v in (("from", start_from), ("to", start_to)) if v}
         if in_play_only:
             flt["inPlayOnly"] = True
         res = self._call("listMarketCatalogue", {"filter": flt, "maxResults": str(max_results),

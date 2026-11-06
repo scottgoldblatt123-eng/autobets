@@ -9,6 +9,7 @@ import threading
 import datetime as dt
 import re
 import time
+from zoneinfo import ZoneInfo
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 
@@ -114,6 +115,9 @@ def is_placeholder(m: dict) -> bool:
     return bool(sides) and (all(_PLACEHOLDER.search(x) for x in sides) or bool(_PLACEHOLDER.search(m.get("competition", "") or "")) and any(_PLACEHOLDER.search(x) for x in sides))
 
 
+UK = ZoneInfo("Europe/London")
+
+
 class Engine:
     def __init__(self, feed, mode: str, journal_path: str = ":memory:", prices_db: str = "", state_path: str = "", exchange=None) -> None:
         self.feed, self.mode = _TrackedFeed(feed, self), mode
@@ -216,12 +220,18 @@ class Engine:
 
     # ---- discovery ------------------------------------------------------
     @locked
-    def markets(self, sport: str) -> list[dict]:
-        hit = self._markets_cache.get(sport)
+    def markets(self, sport: str, day: str | None = None) -> list[dict]:
+        """Match-odds markets. day=None: the next to start. day='YYYY-MM-DD': every market scheduled on that UK calendar day."""
+        if day:
+            dt.datetime.strptime(day, "%Y-%m-%d")                      # ValueError for a non-date (the API turns it into a 400)
+        key = f"{sport}|{day or ''}"
+        hit = self._markets_cache.get(key)
         if hit and time.time() - hit[0] < 30:
             return hit[1]
         if self.mode == "demo":
-            res = self.feed.list_markets(sport)
+            res = self.feed.list_markets(sport) if not day or day == dt.datetime.now(UK).strftime("%Y-%m-%d") else []
+        elif day:
+            res = self._markets_on(sport, day)
         else:
             res = self.feed.list_markets({"tennis": "2", "football": "1"}[sport], "MATCH_ODDS", max_results=100)
             res = [m for m in res if not is_placeholder(m)]
@@ -236,9 +246,23 @@ class Engine:
                 pass
         for m in res:
             self._info[m["market_id"]] = m
-        self._markets_cache[sport] = (time.time(), res)
+        self._markets_cache[key] = (time.time(), res)
         return res
 
+    def _markets_on(self, sport: str, day: str) -> list[dict]:
+        """One UK calendar day, fetched in 3-hour windows so Betfair's 100-result cap cannot cut a busy day short."""
+        d = dt.datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=UK)
+        start = d.astimezone(dt.timezone.utc)
+        end = (dt.datetime.strptime(day, "%Y-%m-%d") + dt.timedelta(days=1)).replace(tzinfo=UK).astimezone(dt.timezone.utc)
+        seen: dict[str, dict] = {}
+        t = start
+        while t < end:
+            nxt = min(t + dt.timedelta(hours=3), end)
+            for m in self.feed.list_markets({"tennis": "2", "football": "1"}[sport], "MATCH_ODDS", max_results=100,
+                                            start_from=t.strftime("%Y-%m-%dT%H:%M:%SZ"), start_to=(nxt - dt.timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ")):
+                seen[m["market_id"]] = m
+            t = nxt
+        return sorted(seen.values(), key=lambda m: m.get("start") or "")
     @locked
     def event_markets(self, event_id: str) -> list[dict]:
         hit = self._event_cache.get(event_id)

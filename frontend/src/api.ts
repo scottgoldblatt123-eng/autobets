@@ -147,7 +147,7 @@ export const api = {
   pricelogStatus: () => call<Record<string, unknown>>('/api/pricelog/status'),
   tennisStatus: () => call<Record<string, unknown>>('/api/tennis/status'),
   matchDetails: (marketId: string) => call<MatchDetails>(`/api/match_details?market_id=${encodeURIComponent(marketId)}`),
-  markets: (sport: string) => call<MarketInfo[]>(`/api/markets?sport=${sport}`),
+  markets: (sport: string, date = '') => call<MarketInfo[]>(`/api/markets?sport=${sport}${date ? `&date=${date}` : ''}`),
   state: (ids: string[], shortS = 60, longS = 300) => call<State>(`/api/state?ids=${ids.join(',')}&short_s=${shortS}&long_s=${longS}`),
   place: (b: { market_id: string; selection_id: string; side: Side; price: number; size: number; persistence?: string; fok_s?: number; offset?: number; stop?: number }) =>
     call<{ order: Order; warnings: string[] }>('/api/orders', { method: 'POST', body: JSON.stringify(b) }),

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import re
 import time
 import threading
 from pathlib import Path
@@ -522,10 +523,15 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         return engine.event_markets(event_id)
 
     @app.get("/api/markets")
-    def markets(sport: str = "tennis", _=Depends(auth)):
+    def markets(sport: str = "tennis", date: str = "", _=Depends(auth)):
         if sport not in ("tennis", "football"):
             raise HTTPException(400, "sport must be tennis or football")
-        return engine.markets(sport)
+        if date and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            raise HTTPException(400, "date must be YYYY-MM-DD")
+        try:
+            return engine.markets(sport, date or None)
+        except ValueError:
+            raise HTTPException(400, "date must be a real calendar date")
 
     @app.get("/api/state")
     def state(ids: str = "", short_s: int = 60, long_s: int = 300, _=Depends(auth)):

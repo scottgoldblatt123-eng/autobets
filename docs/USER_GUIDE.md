@@ -31,3 +31,6 @@ The same app works on smaller screens. Use landscape for ladders.
 
 ## Not yet
 Real money orders, email/push alerts, auto-apply for recommendations, Full AI mode, horse racing.
+
+### Picking markets on a future day
+Every market list (Home, Plan, Manual Trading and the Add to Plan picker) has a day strip: Next up, Today, Tomorrow, the following days, and a calendar box for any later date. Pick a day to list all match-odds markets scheduled on that UK calendar day, then tick and add them to the Plan as usual.

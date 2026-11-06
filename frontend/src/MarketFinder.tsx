@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type MarketInfo } from './api'
 import { groupMarkets } from './markets'
+import DayPicker from './DayPicker'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
 interface Props {
@@ -18,15 +19,15 @@ interface Props {
 /** The market list used outside Manual Trading: same search, filters, grouping and "all markets on this event" as the ladder screen,
  *  plus tick boxes (also per competition) so many markets can be added to the Plan at once. Selection survives tab and search changes. */
 export default function MarketFinder({ say, mode, onPick, onAddToPlan, onOpenLadder, planned, clearKey }: Props) {
-  const [sport, setSport] = useState<'tennis' | 'football'>('tennis'), [markets, setMarkets] = useState<MarketInfo[]>([]), [loading, setLoading] = useState(true)
+  const [sport, setSport] = useState<'tennis' | 'football'>('tennis'), [markets, setMarkets] = useState<MarketInfo[]>([]), [loading, setLoading] = useState(true), [day, setDay] = useState('')
   const [q, setQ] = useState(''), [fIn, setFIn] = useState(false), [fSoon, setFSoon] = useState(false), [byName, setByName] = useState(false)
   const [folded, setFolded] = useState<Record<string, boolean>>({}), [expanded, setExpanded] = useState<Record<string, MarketInfo[] | 'loading'>>({})
   const [sel, setSel] = useState<Map<string, MarketInfo>>(new Map())
   useEffect(() => {
     setLoading(true); setMarkets([])
-    const go = () => api.markets(sport).then(m => { setMarkets(m); setLoading(false) }).catch(e => { setLoading(false); say((e as Error).message, 'err') })
+    const go = () => api.markets(sport, day).then(m => { setMarkets(m); setLoading(false) }).catch(e => { setLoading(false); say((e as Error).message, 'err') })
     void go(); const t = window.setInterval(() => void go(), 60000); return () => window.clearInterval(t)
-  }, [sport, say])
+  }, [sport, day, say])
   useEffect(() => { setSel(new Map()) }, [clearKey])
   const toggleEvent = (eventId: string) => {
     if (expanded[eventId]) return setExpanded(o => { const n = { ...o }; delete n[eventId]; return n })
@@ -56,6 +57,7 @@ export default function MarketFinder({ say, mode, onPick, onAddToPlan, onOpenLad
   return (
     <aside className="finderpanel">
       <div className="tabs">{(['tennis', 'football'] as const).map(s => <button key={s} className={sport === s ? 'on' : ''} onClick={() => setSport(s)}>{s === 'tennis' ? 'Tennis' : 'Football'}</button>)}</div>
+      <DayPicker value={day} onChange={setDay} />
       <div className="msearch">
         <input type="search" placeholder="Search players, teams, competitions…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search markets" />
         <div className="chips">

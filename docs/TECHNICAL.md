@@ -50,3 +50,6 @@ settings (GET/PUT), automation/stop, pnl, scripts (CRUD, enable, clone, build), 
 
 ## Known limits
 Queue position and own-order market impact are not simulated (practice flatters fast trading); football red cards are not modelled; scripts are edited as JSON (no visual builder); email/push alerts not set up; real orders unwired; backtests need recorded results to accumulate.
+
+### Market listing by day
+`GET /api/markets?sport=&date=YYYY-MM-DD` lists a UK calendar day. `Engine._markets_on` splits the day into 3-hour `marketStartTime` windows (Betfair caps catalogue results at ~100), merges and sorts them; cached 30 s per sport+day. No `date` keeps the "next to start" list. Demo mode returns markets for today only.
