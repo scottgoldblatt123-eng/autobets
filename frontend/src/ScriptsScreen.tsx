@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type Script, type ScriptRuleText } from './api'
+import { api, type Rec, type Script, type ScriptRuleText } from './api'
 import MarketPicker from './MarketPicker'
 import { markScriptUsed } from './ScriptSelect'
 
@@ -30,6 +30,9 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
   const load = useCallback(() => api.scripts().then(l => { setList(l); setSel(s => (l.some(x => x.id === s) ? s : l[0]?.id ?? '')) }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load() }, [load])
   useEffect(() => { const f = (e: Event) => { void load().then(() => { const id = (e as CustomEvent<string>).detail; if (id) setSel(id) }) }; window.addEventListener('autobets:scripts-changed', f); return () => window.removeEventListener('autobets:scripts-changed', f) }, [load])
+  const [props, setProps] = useState<Rec[]>([])
+  const loadProps = useCallback(() => api.recs('script').then(r => setProps(r.items.filter(x => x.proposal && x.status === 'pending'))).catch(() => undefined), [])
+  useEffect(() => { void loadProps() }, [loadProps])
   const cur = list.find(s => s.id === sel)
   const [lf, setLf] = useState('all')
   const shown = list.filter(s => (!q || (s.name + ' ' + s.description).toLowerCase().includes(q.toLowerCase())) && (lf === 'all' || (lf === 'on' ? s.enabled : lf === 'off' ? !s.enabled : lf === 'ai' ? s.origin === 'ai' : s.sport === lf || s.sport === 'any')))
@@ -42,6 +45,15 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
         <button onClick={() => setImporting('')}>Import</button>
         <button onClick={() => setEditing(JSON.stringify(SCALP, null, 2))}>Scalp example</button>
         <button className="primary" onClick={() => setEditing(JSON.stringify(TEMPLATE, null, 2))}>New script</button></div>
+      {props.length > 0 && <div className="card" style={{ padding: '8px 12px' }}>
+        <div className="row"><b>Recommended scripts</b><span className="muted small">New ideas from Claude. Discuss them in the panel on the right, then approve to add one to your library (switched off).</span></div>
+        {props.map(r => <div key={r.id} className="row" style={{ gap: 10, padding: '6px 0', borderTop: '1px solid var(--border)', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0 }}><span className="src ai">New</span> <b>{r.title}</b><div className="small muted">{r.reason}</div>{r.text?.length ? <RuleCards text={r.text} fold headline={r.headline} /> : null}</div>
+          <button className="sm" onClick={() => window.dispatchEvent(new CustomEvent('autobets:seed', { detail: `Review this proposed script: "${r.title}". ${r.reason} Its rules in short: ${r.headline ?? ''}. Is the hypothesis sound, how would it lose, and what would you change?` }))}>Discuss</button>
+          <button className="sm primary" onClick={async () => { try { const x = await api.recApply(r.id); say(`Added '${x.script?.name ?? ''}' to your library, switched off.`); await load(); void loadProps(); window.dispatchEvent(new CustomEvent('autobets:scripts-changed')) } catch (e) { say((e as Error).message, 'err') } }}>Approve</button>
+          <button className="sm" onClick={() => api.recDismiss(r.id, 'not interested').then(loadProps)}>Dismiss</button>
+        </div>)}
+      </div>}
       {err && <div className="loss small">{err}</div>}
       <div className="split">
         <aside className="card library"><div className="cap">Library ({shown.length}{shown.length !== list.length ? ` of ${list.length}` : ''})</div>

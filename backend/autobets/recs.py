@@ -13,7 +13,7 @@ from . import setups as _setups
 from .ai.snapshot import _model_odds
 
 EDGE_MIN = 0.04            # probability points between model and market before a trade is suggested
-MAX_PENDING = 8
+MAX_PENDING = 12                     # per sport, so a busy football list cannot crowd tennis out
 EVIDENCE_NEEDED = 300
 SPREAD_MAX_TICKS = 6
 PRICE_MAX = 8.0            # long shots are where model noise is largest; not suggested
@@ -85,6 +85,19 @@ class Recs:
              "entry_price": cand["price"], "last_back": cand["back"], "last_lay": cand["lay"], "clv": None, "dismiss_reason": ""}
         self.items[rid] = r
         return r, True
+
+    def add_proposal(self, idea: dict) -> dict | None:
+        """A new-script proposal from the AI. One per title: an idea already pending, saved or dismissed is not proposed again."""
+        if any(r["kind"] == "script" and r["title"].lower() == idea["title"].lower() for r in self.items.values()):
+            return None
+        rid = f"c{self._next}"
+        self._next += 1
+        sc = idea["script"]
+        r = {"id": rid, "kind": "script", "proposal": True, "market_id": "", "event": "", "market_name": "", "start": None, "status": "pending", "created": time.time(), "seen": time.time(),
+             "confidence": "Low", "clv": None, "dismiss_reason": "", "sport": sc.get("sport", "any"), "edge": 0.0, "title": idea["title"], "side": "", "runner": "", "price": 0, "model_p": 0, "market_p": 0,
+             "reason": idea["why"] + (f" Risk: {idea['risk']}" if idea.get("risk") else "") + " Not backtested: a hypothesis to test in practice mode.", "script": sc, "script_id": None}
+        self.items[rid] = r
+        return r
 
     def upsert_setup(self, market_id: str, info: dict, cand: dict) -> tuple[dict, bool]:
         """One pending setup per market and template. A refresh keeps the id (and what the user is looking at) but updates the live numbers."""
@@ -171,9 +184,10 @@ class Recs:
         return created
 
     def _pending_cap(self) -> None:
-        pend = sorted((r for r in list(self.items.values()) if r["status"] == "pending" and "edge" in r), key=lambda r: -r["edge"])
-        for r in pend[MAX_PENDING:]:
-            r["status"] = "expired"
+        for sport in ("tennis", "football"):
+            pend = sorted((r for r in list(self.items.values()) if r["status"] == "pending" and r["kind"] in ("trade", "setup") and r.get("sport") == sport), key=lambda r: -r["edge"])
+            for r in pend[MAX_PENDING:]:
+                r["status"] = "expired"
 
     def measure_clv(self, engine) -> int:
         """Record the closing price for recommendations whose market has gone in play: did the market move our way?"""
@@ -226,4 +240,4 @@ class Recs:
 
     def list(self, kind: str = "all", status: str = "pending") -> list[dict]:
         rows = [r for r in list(self.items.values()) if (status == "all" or r["status"] == status) and (kind == "all" or r["kind"] == kind.rstrip("s"))]
-        return sorted(rows, key=lambda r: -r["edge"] if r["kind"] in ("trade", "setup") else 0)
+        return sorted(rows, key=lambda r: (r["kind"] == "script", -r["edge"] if r["kind"] in ("trade", "setup") else 0))

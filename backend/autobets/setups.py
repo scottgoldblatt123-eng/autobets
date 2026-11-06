@@ -9,7 +9,7 @@ from __future__ import annotations
 from . import ticks
 from .ai.snapshot import _model_odds
 
-TENNIS_GAP = 0.02            # model vs market win probability: enough to lean one way, not enough to bet the result
+TENNIS_GAP = 0.015           # model vs market win probability: enough to lean one way, not enough to bet the result
 TENNIS_PRICE = (1.25, 7.0)   # volatility lives here: a 1.05 favourite barely moves, a 20.0 outsider is mostly noise
 TENNIS_REACT = 0.12          # the price must already have moved this much (12%) from its pre-match level before we trade the swing
 OVER_GAP = 0.04              # model's Over 2.5 probability above the market's by this much
@@ -52,12 +52,13 @@ def tennis(info: dict, book, ctx: dict | None, stake: float) -> dict | None:
     gap = {sid: round(1.0 / fair[sid] - mkt[sid], 4) for sid in fair}
     best = max(gap, key=gap.get)                                  # the player the model rates higher than the market does
     other = next(s for s in gap if s != best)
-    if gap[best] < TENNIS_GAP:
-        return None
     names = info["runners"]
+    lean = gap[best] >= TENNIS_GAP
     sel = book.selections[best]
     back = sel.backs[0].price
-    if back >= TENNIS_PRICE[0]:
+    if not lean:                                   # no view on the winner: still a trade on the price reaction to an early break (fade the outsider's lead)
+        other = max(gap, key=lambda k: book.selections[k].backs[0].price)
+    if lean and back >= TENNIS_PRICE[0]:
         # The market under-rates `best`: if he goes behind, the price over-reacts. Back him after the swing, leave when it is back on serve.
         tgt, side, p0 = best, "back", back
         title = f"Back {names[best]} if he is broken · {info['event']}"
@@ -71,12 +72,13 @@ def tennis(info: dict, book, ctx: dict | None, stake: float) -> dict | None:
     else:
         # `best` is a heavy favourite, so trade the other side of the same view: the market over-rates `other`; lay him when he races ahead.
         s2 = book.selections[other]
-        if not s2.backs or s2.backs[0].price < TENNIS_PRICE[0] or s2.backs[0].price > TENNIS_PRICE[1]:
+        if not s2.backs or s2.backs[0].price < TENNIS_PRICE[0] or s2.backs[0].price > (TENNIS_PRICE[1] if lean else 5.0):
             return None
         tgt, side, p0 = other, "lay", s2.backs[0].price
         title = f"Lay {names[other]} if he gets ahead · {info['event']}"
-        why = (f"The model gives {names[other]} a {1 / fair[other] * 100:.0f}% chance and the market {mkt[other] * 100:.0f}%. If he breaks early in set 1 the market "
-               f"tends to shorten him more than one break justifies. The script waits for that, lays him, and hedges when the set is level again or after a profit target.")
+        why = ((f"The model gives {names[other]} a {1 / fair[other] * 100:.0f}% chance and the market {mkt[other] * 100:.0f}%. " if lean else
+                f"The model and the market agree on {names[other]} ({mkt[other] * 100:.0f}%), so this is not a view on the winner. ") +
+               f"If he breaks early in set 1 the market tends to shorten him more than one break justifies. The script waits for that, lays him, and hedges when the set is level again or after a profit target.")
         watch = [f"{names[other]} goes a game or more ahead in set 1 and his price shortens by about {TENNIS_REACT * 100:.0f}% or more",
                  "The set comes back level (the script greens up) or the price runs 10 ticks against you (it closes out)"]
         entry = [{"type": "in_play", "value": True}, {"type": "set_number", "op": "==", "value": 1}, {"type": "set_games_diff", "op": ">=", "value": 1},
@@ -93,8 +95,8 @@ def tennis(info: dict, book, ctx: dict | None, stake: float) -> dict | None:
                         _rule("r4", "exit", [{"type": "rule_matched", "rule": "r1"}, {"type": "set_number", "op": ">=", "value": 2}], [{"type": "green"}]),
                         _rule("r5", "safety", [{"type": "ticks_from_entry", "op": "<=", "value": -10}], [{"type": "close"}, {"type": "stop"}])]}
     liab = stake if side == "back" else round(stake * (p0 - 1), 2)
-    return {"template": "tennis_swing_" + side, "sport": "tennis", "selection_id": tgt, "runner": names[tgt], "side": side.upper(), "price": p0,
-            "model_p": round(1 / fair[tgt], 4), "market_p": round(mkt[tgt], 4), "edge": abs(gap[best]), "title": title, "reason": why + " " + CAVEAT,
+    return {"template": ("tennis_swing_" if lean else "tennis_fade_") + side, "sport": "tennis", "selection_id": tgt, "runner": names[tgt], "side": side.upper(), "price": p0,
+            "model_p": round(1 / fair[tgt], 4), "market_p": round(mkt[tgt], 4), "edge": abs(gap[best]) if lean else 0.005, "title": title, "reason": why + " " + CAVEAT,
             "watch": watch, "script": script, "stake": stake, "max_loss": liab}
 
 

@@ -284,9 +284,22 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     def health(_=Depends(auth)):
         return _health()
 
+    def _propose_scripts(n: int = 3) -> dict:
+        from ..ai import scriptideas
+        out = scriptideas.propose(copilot.claude, ai_usage, engine.script_library(), engine.setup_results(), n)
+        return {"created": engine.add_proposals(out["ideas"]), "asked": n, "cost_gbp": out["cost_gbp"]}
+
+    @app.post("/api/recs/propose-scripts")
+    def recs_propose(_=Depends(auth)):
+        try:
+            return _propose_scripts()
+        except AiError as e:
+            raise HTTPException(502, str(e))
+
     def _monitor() -> None:
         """Background upkeep: raise or clear health alerts, and look for recommendation ideas."""
         n = 0
+        last_prop = [0.0]
         while True:
             time.sleep(60)
             n += 1
@@ -298,6 +311,9 @@ def create_app(engine: Engine | None = None) -> FastAPI:
                         engine.alerts.resolve("health:" + i["key"], "Recovered")
                 if n % 2 == 0:
                     engine.rec_scan()
+                if copilot.claude.enabled and time.time() - last_prop[0] > 86400 and not any(r["kind"] == "script" and time.time() - r["created"] < 72000 for r in engine.recs.items.values()):
+                    last_prop[0] = time.time()                                     # at most one proposal run a day, never in a loop
+                    _propose_scripts()
             except Exception:       # noqa: BLE001
                 _applog.exception("monitor pass failed")
     if engine.mode != "demo":

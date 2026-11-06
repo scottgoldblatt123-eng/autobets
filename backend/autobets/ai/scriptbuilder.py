@@ -26,6 +26,8 @@ Conditions ({", ".join(CONDITIONS)}):
  {{"type":"spread_ticks","op":"<=","value":2}}  ticks between best back and best lay on the runner (use to avoid wide, illiquid books)
  {{"type":"market_matched","op":">=","value":50000}}  £ matched on the whole market so far
  {{"type":"price_move","op":"<=","value":-3,"seconds":60}}  ticks the runner's price moved in the last N seconds (+ drifted out, - shortened)
+ {{"type":"set_games_diff","op":"<=","value":-1}} (tennis) games won by the runner the script is on, minus the opponent's, in the current set (-1 = a game behind, e.g. just broken; +1 = a game ahead)
+ {{"type":"sets_diff","op":">=","value":1}} (tennis) sets won by this runner minus the opponent's
  {{"type":"ticks_from_entry","op":">=","value":2}}  ticks of profit available to exit versus where THIS script was matched (negative value = against you). Use it for "take N ticks" and "stop at N ticks against". An entry at the best price and an exit at ticks_from_entry >= 2 with action green is a 2-tick scalp.
  op is one of >=, <=, ==, >, <.
 Actions: {{"type":"lay"|"back","price":2.2 or "best","stake":10,"basis":"stake"|"liability","persistence":"CANCEL"|"KEEP"|"TAKE_SP"}}, {{"type":"green"}}, {{"type":"close"}}, {{"type":"stop"}}.

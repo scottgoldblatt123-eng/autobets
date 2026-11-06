@@ -13,7 +13,7 @@ interface HomeData {
 const money = (v: number | null | undefined, plus = true) => (v == null ? '–' : (v < 0 ? '-' : plus && v > 0 ? '+' : '') + '£' + Math.abs(v).toFixed(2))
 const cls = (v: number | null | undefined) => (v == null || v === 0 ? '' : v > 0 ? 'gain' : 'loss')
 
-/** Home: how things stand at a glance. Ladders and the order ticket live in Manual Trading. */
+/** Home: how things stand at a glance. Ladders and the order ticket live in Manual. */
 export default function HomeScreen({ say, go, openMarket }: { say: Say; go: (s: 'recs' | 'alerts' | 'plan' | 'scripts' | 'manual') => void; openMarket: (marketId: string, view?: 'ladder' | 'grid') => void }) {
   const [d, setD] = useState<HomeData | null>(null), [err, setErr] = useState('')
   const load = useCallback(() => api.home().then(x => { setD(x as unknown as HomeData); setErr('') }).catch(e => setErr((e as Error).message)), [])
@@ -38,7 +38,7 @@ export default function HomeScreen({ say, go, openMarket }: { say: Say; go: (s: 
           <tbody>{d?.overview.map((o, i) => <tr key={o.market_id + i}><td><b>{o.event}</b><div className="muted small">{o.market}</div></td><td>{o.strategy}<div className="muted small">{o.rules || ''}</div></td>
             <td><span className={'src' + (o.by === 'ai' ? ' ai' : '')}>{o.by === 'ai' ? 'AI' : 'You'}</span></td><td>{o.state}</td><td className={cls(o.pnl)}>{money(o.pnl)}</td><td>{o.exposure == null ? '–' : '£' + o.exposure.toFixed(2)}</td><td>£{o.matched.toFixed(2)}</td>
             <td style={{ whiteSpace: 'nowrap' }}><button className="sm" onClick={() => openMarket(o.market_id, 'grid')}>Grid</button> <button className="sm" onClick={() => openMarket(o.market_id)}>Ladder</button></td></tr>)}
-            {!d?.overview.length && <tr><td colSpan={8} className="muted pad">Nothing planned and no open positions. Add a market to the Plan, or open one in Manual Trading.</td></tr>}</tbody></table></div>
+            {!d?.overview.length && <tr><td colSpan={8} className="muted pad">Nothing planned and no open positions. Add a market to the Plan, or open one in Manual.</td></tr>}</tbody></table></div>
       <div className="homecols">
         <div className="card tcard"><div className="row"><h3>Open orders</h3><span className="spacer" /></div>
           <table className="tbl"><thead><tr><th>Market</th><th>Side</th><th>Price</th><th>Waiting</th><th>By</th><th /></tr></thead>

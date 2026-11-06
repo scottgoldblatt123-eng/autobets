@@ -7,7 +7,7 @@ AutoBets runs in **Practice mode**: real (delayed) Betfair prices, simulated mon
 - **Recommendations**: ideas where the model and the market disagree. Apply or Dismiss. They are guidance, not tips; confidence is never High.
 - **Plan**: which scripts are armed on which markets, with status and bets taken.
 - **Scripts**: your trading rules. Create from a template, paste JSON, or describe it to Claude (the Copilot panel beside Scripts, Plan and Home, in Build a script mode). Enable, clone, view history, Add to Plan.
-- **Manual Trading**: the ladders, Bet Angel style. Open a market from the left list (tennis, football). Click blue to back, pink to lay. Stops, auto-greens, Dutching and Green up are on each market.
+- **Manual**: the ladders, Bet Angel style. Open a market from the left list (tennis, football). Click blue to back, pink to lay. Stops, auto-greens, Dutching and Green up are on each market.
 - **Analyse**: Performance, Strategies (script vs manual), Models, Backtesting, AI learning.
 - **Alerts**: what the system flagged. **Settings**: all configuration.
 
@@ -33,7 +33,7 @@ The same app works on smaller screens. Use landscape for ladders.
 Real money orders, email/push alerts, auto-apply for recommendations, Full AI mode, horse racing.
 
 ### Picking markets on a future day
-Every market list (Home, Plan, Manual Trading and the Add to Plan picker) has a day strip: Next up, Today, Tomorrow, the following days, and a calendar box for any later date. Pick a day to list all match-odds markets scheduled on that UK calendar day, then tick and add them to the Plan as usual.
+Every market list (Home, Plan, Manual and the Add to Plan picker) has a day strip: Next up, Today, Tomorrow, the following days, and a calendar box for any later date. Pick a day to list all match-odds markets scheduled on that UK calendar day, then tick and add them to the Plan as usual.
 
 ### Recommendations are trade setups
 Betfair's prices for who wins are better than any model we can build, so AutoBets does not suggest winners. It looks for games where the model and the market see the *shape* of the game differently and offers a plan to trade it, with a ready-made script:
@@ -43,7 +43,10 @@ Betfair's prices for who wins are better than any model we can build, so AutoBet
 Add to Plan saves the script (switched on) and puts the market on your Plan. Nothing is bet until it is in play and the rules are met. Use Discuss with Claude to challenge a setup or change its rules first.
 
 ### Betting grid
-Every open market in Manual Trading has a Ladders / Grid switch. The grid is the standard Betfair view: a row per runner with three back and three lay prices, last traded price and your position. Click a price to bet at it with the toolbar stake (same confirm and safety rules as the ladder). Open it with the grid button beside any market in a list, or the Grid link on Home and Plan.
+Every open market in Manual has a Ladders / Grid switch. The grid is the standard Betfair view: a row per runner with three back and three lay prices, last traded price and your position. Click a price to bet at it with the toolbar stake (same confirm and safety rules as the ladder). Open it with the grid button beside any market in a list, or the Grid link on Home and Plan.
 
 ### Bet slip (your own price)
 One click on a grid price bets at that price with the toolbar stake. To choose the price yourself, right-click a price (or press Bet... on the runner). The bet slip lets you pick Back or Lay, a price (typed or by tick), the stake (a lay can be sized by stake or liability) and what happens to any unmatched part: cancel when the market turns in play, keep in play, or take the Starting Price at the off. "Cancel after (s)" is fill-or-kill: whatever is unmatched after that many seconds is cancelled. A price better than the market waits in the queue until the market comes to it; a price already on offer matches immediately at the best price available.
+
+### New script proposals and the sport filter
+Recommendations has Football / Tennis / All sports chips. **Propose new scripts** asks Claude for up to three scripts that differ from your library, each with a hypothesis about how the market over- or under-reacts, the risk, and the rules. The server also asks about once a day. Proposals appear on Recommendations (New scripts) and in a Recommended scripts strip at the top of Scripts. Discuss opens the idea in the Copilot panel; Save to Scripts / Approve adds it to your library switched off. Proposals are not backtested; test them in practice mode.

@@ -82,7 +82,7 @@ export interface Rec {
   side: 'BACK' | 'LAY'; price: number; model_p: number; market_p: number; edge: number; stake: number; max_loss: number; confidence: string; title: string
   reason: string; status: string; created: number; clv: number | null; sport: string
   /** Trade setups only */
-  template?: string; watch?: string[]; text?: ScriptRuleText[]; headline?: string; script_id?: string | null; plan_row?: string | null; result?: number | null
+  proposal?: boolean; template?: string; watch?: string[]; text?: ScriptRuleText[]; headline?: string; script_id?: string | null; plan_row?: string | null; result?: number | null
 }
 export interface RecStats { pending: number; applied: number; acceptance: number | null; avg_edge_applied: number | null; evidence: number; evidence_needed: number; avg_clv_pts: number | null; auto_apply_unlocked: boolean; setup_results?: { n: number; net: number }; counts: { all: number; setups: number; trades: number; scripts: number; models: number } }
 export interface AlertRow { id: string; t: number; type: string; text: string; action: string; needs_action: boolean; ref: { kind?: string; id?: string }; read: boolean; active: boolean }
@@ -116,6 +116,7 @@ export const api = {
   recs: (kind = 'all') => call<{ items: Rec[]; stats: RecStats }>(`/api/recs?kind=${kind}`),
   recApply: (id: string, b: { price?: number; stake?: number } = {}) => call<{ rec: Rec; order: Order | null; script?: { name: string }; warnings: string[] }>(`/api/recs/${id}/apply`, { method: 'POST', body: JSON.stringify(b) }),
   recDismiss: (id: string, reason: string) => call<Rec>(`/api/recs/${id}/dismiss`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  proposeScripts: () => call<{ created: number; asked: number; cost_gbp: number }>('/api/recs/propose-scripts', { method: 'POST' }),
   recScan: () => call<{ created: number }>('/api/recs/scan', { method: 'POST' }),
   alerts: (chip = 'all', days = 30) => call<{ items: AlertRow[]; counts: { needs_action: number; unread: number; recs: number } }>(`/api/alerts?chip=${chip}&days=${days}`),
   alertsRead: (id?: string) => call<{ marked: number }>('/api/alerts/read', { method: 'POST', body: JSON.stringify(id ? { id } : {}) }),

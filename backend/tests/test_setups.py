@@ -38,7 +38,8 @@ def test_tennis_setup_lays_the_overrated_player_when_the_underrated_one_is_a_hea
 
 
 def test_tennis_setup_needs_a_real_gap_and_a_model():
-    assert setups.tennis(INFO, mk({"A": (2.0, 2.02), "B": (2.0, 2.02)}), ctx(0.505), 10) is None
+    c = setups.tennis(INFO, mk({"A": (2.0, 2.02), "B": (2.04, 2.06)}), ctx(0.50), 10)         # no view on the winner: fade an early lead by the outsider
+    assert c["template"] == "tennis_fade_lay" and c["selection_id"] == "B" and c["edge"] < 0.01 and "not a view on the winner" in c["reason"]
     assert setups.tennis(INFO, mk({"A": (2.0, 2.02), "B": (2.0, 2.02)}), None, 10) is None
 
 
@@ -134,3 +135,56 @@ def test_scan_produces_setups_not_winner_picks_and_expires_them_when_the_market_
     assert next(x for x in made if x["template"] == "football_under_scalp")["market_id"] == "1.6"       # lives on the goals market, not Match Odds
     assert r.scan(Eng(), 10) == []                                                                    # a second pass refreshes, it does not duplicate
     assert r.stats()["counts"]["setups"] == 2
+
+
+IDEAS = """Here you go.
+IDEA: Lay the set-1 winner after a tennis break
+WHY: Early breaks are priced as if the set is decided. Unproven: needs testing.
+RISK: A runaway set keeps shortening the price.
+```script
+{"name": "Fade set 1 leader", "sport": "tennis", "description": "d", "rules": [
+ {"id": "r1", "kind": "entry", "when": [{"type": "in_play", "value": true}, {"type": "set_games_diff", "op": ">=", "value": 2}], "then": [{"type": "lay", "price": "best", "stake": 10, "basis": "stake", "persistence": "CANCEL"}]},
+ {"id": "r2", "kind": "safety", "when": [{"type": "ticks_from_entry", "op": "<=", "value": -8}], "then": [{"type": "close"}, {"type": "stop"}]}]}
+```
+IDEA: Broken idea
+WHY: uses a condition that does not exist
+RISK: n/a
+```script
+{"name": "Bad", "sport": "tennis", "description": "d", "rules": [{"id": "r1", "kind": "entry", "when": [{"type": "vibes", "value": 1}], "then": [{"type": "back", "price": "best", "stake": 10}]}]}
+```
+"""
+
+
+def test_script_proposals_parse_skip_invalid_and_never_enable_anything():
+    from autobets.ai import scriptideas
+    ideas = scriptideas.parse(IDEAS)
+    assert [i["title"] for i in ideas] == ["Lay the set-1 winner after a tennis break"] and ideas[0]["headline"]
+    e = Engine.demo()
+    assert e.add_proposals(ideas) == 1 and e.add_proposals(ideas) == 0                                  # the same idea is not proposed twice
+    rec = e.recs.list("script")[0]
+    assert rec["proposal"] and rec["kind"] == "script" and "Not backtested" in rec["reason"]
+    out = e.rec_apply(rec["id"])
+    assert out["script"]["enabled"] is False and out["row"] is None and out["order"] is None          # saved to the library, switched off
+    assert e.recs.list("script", "pending") == []
+
+
+def test_proposal_needs_a_key_and_respects_the_spend_cap():
+    from autobets.ai import scriptideas
+    from autobets.ai.claude import AiError
+
+    class NoKey: enabled = False
+    class U:
+        cap = 1; 
+        def allowed(self): return True
+    with pytest.raises(AiError, match="ANTHROPIC_API_KEY"):
+        scriptideas.propose(NoKey(), U(), [], [])
+
+    class Key:
+        enabled = True
+        def message(self, system, msgs, max_tokens=0): 
+            assert "set_games_diff" in system and "Existing library" in msgs[0]["content"]
+            return {"text": IDEAS, "model": "m", "input_tokens": 1, "output_tokens": 1}
+    class U2(U):
+        def record(self, *a): return 0.01
+    out = scriptideas.propose(Key(), U2(), [{"name": "x", "sport": "any", "headline": "h"}], ["t: 1 accepted"], 3)
+    assert len(out["ideas"]) == 1 and out["cost_gbp"] == 0.01

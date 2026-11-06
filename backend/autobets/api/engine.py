@@ -716,7 +716,7 @@ class Engine:
             self.alerts.add("warning", "Could not check your Betfair orders at start-up", r["error"][:160], False)
         elif r["adopted"] or r["closed"]:
             self.alerts.add("warning", f"Start-up check: {len(r['adopted'])} Betfair order(s) were not in AutoBets and are now shown; {len(r['closed'])} saved order(s) no longer exist on Betfair",
-                            "Review Manual Trading > open orders", False)
+                            "Review Manual > open orders", False)
         self._log(f"Start-up check against Betfair: {r}", "info")
         return r
 
@@ -876,6 +876,8 @@ class Engine:
             raise ValueError(f"this recommendation is {r['status']}")
         if r["kind"] == "setup":
             return self._accept_setup(r, stake)
+        if r["kind"] == "script":
+            return self._accept_proposal(r)
         if r["kind"] != "trade":
             raise ValueError("this recommendation cannot be applied")
         book = self.feed.get_books([r["market_id"]], depth=False)[0]
@@ -899,6 +901,19 @@ class Engine:
         except ValueError:
             pass
         return {"rec": r, "order": res["order"], "warnings": res["warnings"]}
+
+    def _accept_proposal(self, r: dict) -> dict:
+        """Approving an AI script proposal saves it to the library, switched OFF. Putting it to work (Plan) stays your decision."""
+        body = {**r["script"]}
+        names = {s["versions"][-1]["name"] for s in self.scripts.scripts.values()}
+        base, n = body["name"], 1
+        while body["name"] in names:
+            n += 1
+            body["name"] = f"{base} #{n}"
+        view = self.scripts.create(body, "ai", f"AI proposal {r['id']}")
+        r.update(status="applied", applied_at=time.time(), script_id=view["id"])
+        self._save()
+        return {"rec": r, "script": view, "row": None, "order": None, "warnings": []}
 
     def _accept_setup(self, r: dict, stake: float | None) -> dict:
         """Accepting a trade setup saves its script to the library (switched on) and puts the market on the Plan with it. No bet is placed now:
@@ -930,6 +945,25 @@ class Engine:
             self.alerts.resolve_ref("rec", rid, "Dismissed")
         return r
 
+    def script_library(self) -> list[dict]:
+        from ..scripts import headline
+        return [{"name": v["name"], "sport": v.get("sport", "any"), "headline": headline(v)} for v in (s["versions"][-1] for s in self.scripts.scripts.values())]
+
+    def setup_results(self) -> list[str]:
+        out: dict[str, list] = {}
+        for r in self.recs.items.values():
+            if r["kind"] == "setup" and r["status"] == "applied":
+                out.setdefault(r["template"], []).append(r.get("result"))
+        return [f"{t}: {len(v)} accepted, {sum(1 for x in v if x is not None)} settled, net £{sum(x for x in v if x is not None):.2f}" for t, v in out.items()]
+
+    def add_proposals(self, ideas: list[dict]) -> int:
+        with self.lock:
+            made = [r for r in (self.recs.add_proposal(i) for i in ideas) if r]
+            for r in made:
+                self.alerts.add("recommendation", f"New script proposal: {r['title']}", "Waiting for your decision", True, {"kind": "rec", "id": r["id"]})
+            self._save()
+        return len(made)
+
     def rec_scan(self) -> int:
         """Look for ideas. The slow part (price requests) runs without holding the trading lock; only the bookkeeping takes it."""
         stake = min(10.0, self.settings.ai_max_stake)
@@ -941,7 +975,7 @@ class Engine:
                 if r["kind"] == "setup" and r["status"] == "applied" and r.get("result") is None and r["market_id"] in booked:
                     r["result"] = booked[r["market_id"]]
             for r in created:
-                self.alerts.add("recommendation", f"New idea: {r['title']} (edge {r['edge'] * 100:+.1f} pts)", "Waiting for your decision", True, {"kind": "rec", "id": r["id"]})
+                self.alerts.add("recommendation", f"New trade setup: {r['title']}", "Waiting for your decision", True, {"kind": "rec", "id": r["id"]})
             self._save()
         return len(created)
 
