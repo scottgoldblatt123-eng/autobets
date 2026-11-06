@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: AutoBets answers
         run: |
-          URL="https://159-65-20-243.sslip.io/api/mode"
+          URL="https://159-65-20-243.sslip.io/api/ping"
           for try in 1 2 3; do
             if body=$(curl -fsS --max-time 20 "$URL") && echo "$body" | grep -q '"mode"'; then echo "up: $body"; exit 0; fi
             sleep 20
