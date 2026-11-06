@@ -44,3 +44,6 @@ Add to Plan saves the script (switched on) and puts the market on your Plan. Not
 
 ### Betting grid
 Every open market in Manual Trading has a Ladders / Grid switch. The grid is the standard Betfair view: a row per runner with three back and three lay prices, last traded price and your position. Click a price to bet at it with the toolbar stake (same confirm and safety rules as the ladder). Open it with the grid button beside any market in a list, or the Grid link on Home and Plan.
+
+### Bet slip (your own price)
+One click on a grid price bets at that price with the toolbar stake. To choose the price yourself, right-click a price (or press Bet... on the runner). The bet slip lets you pick Back or Lay, a price (typed or by tick), the stake (a lay can be sized by stake or liability) and what happens to any unmatched part: cancel when the market turns in play, keep in play, or take the Starting Price at the off. "Cancel after (s)" is fill-or-kill: whatever is unmatched after that many seconds is cancelled. A price better than the market waits in the queue until the market comes to it; a price already on offer matches immediately at the best price available.

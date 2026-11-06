@@ -21,12 +21,13 @@ import TradePanel from './TradePanel'
 import Ladder from './Ladder'
 import DayPicker from './DayPicker'
 import MarketGrid from './MarketGrid'
+import BetTicket from './BetTicket'
 import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
 interface LadderRef { marketId: string; selectionId: string }
 interface Settings { autoCentre: boolean; rows: number; presets: number[]; stakeIdx: number; layBasis: 'stake' | 'liability'; confirmAbove: number; stakeText: string; womLevels: number; showChart: boolean; showTotal: boolean; theme: 'dark' | 'light'; pnlSide: 'left' | 'right'; pnlBasis: 'runner' | 'market'; reverse: boolean; persistence: 'KEEP' | 'CANCEL' | 'TAKE_SP'; fokS: number; offsetTicks: number; stopTicks: number; stakeMode: 'fixed' | 'pct'; bank: number; sepLay: boolean; layText: string; clickMode: 'single' | 'double'; keys: Record<string, string>; shortS: number; longS: number }
-interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string; entry?: boolean }
+interface Pending { marketId: string; selectionId: string; side: Side; price: number; size: number; runner: string; entry?: boolean; persistence?: 'KEEP' | 'CANCEL' | 'TAKE_SP'; fokS?: number }
 
 const KEYS: Record<string, string> = { stakeBox: 's', cancelBack: 'z', cancelLay: 'x', closeRunner: 'c', hardClose: 'g', reverse: 'r', recentre: 'Enter' }
 const DEFAULTS: Settings = { autoCentre: false, rows: 25, presets: [2, 5, 10, 20], stakeIdx: 1, layBasis: 'stake', confirmAbove: 50, stakeText: '', womLevels: 3, showChart: true, showTotal: false, theme: 'light', pnlSide: 'left', pnlBasis: 'runner', reverse: false, persistence: 'CANCEL', fokS: 0, offsetTicks: 0, stopTicks: 0, stakeMode: 'fixed', bank: 1000, sepLay: false, layText: '', clickMode: 'single', keys: KEYS, shortS: 60, longS: 300 }
@@ -96,6 +97,7 @@ export default function App() {
   const [markets, setMarkets] = useState<MarketInfo[]>([])
   const [day, setDay] = useState('')
   const [ladders, setLadders] = useState<LadderRef[]>([])
+  const [slip, setSlip] = useState<{ marketId: string; selectionId: string; side: Side; price: number } | null>(null)
   const [views, setViews] = useState<Record<string, 'ladder' | 'grid'>>({})        // per open market: its ladders, or the Betfair-style grid
   /** Every market you have open, shown or not. Up to MAX_LADDERS ladders are on screen; the rest wait behind a tab. */
   const [expanded, setExpanded] = useState<Record<string, MarketInfo[] | 'loading'>>({})
@@ -204,7 +206,7 @@ export default function App() {
 
   const submit = useCallback(async (p: Pending) => {
     try {
-      const r = await api.place({ market_id: p.marketId, selection_id: p.selectionId, side: p.side, price: p.price, size: p.size, persistence: settings.persistence, fok_s: settings.fokS || undefined,
+      const r = await api.place({ market_id: p.marketId, selection_id: p.selectionId, side: p.side, price: p.price, size: p.size, persistence: p.persistence ?? settings.persistence, fok_s: (p.fokS ?? settings.fokS) || undefined,
         offset: p.entry && settings.offsetTicks ? settings.offsetTicks : undefined, stop: p.entry && settings.stopTicks ? settings.stopTicks : undefined })
       const o = r.order
       const text = `${p.runner}: ${p.side} £${p.size.toFixed(2)} @ ${p.price.toFixed(2)} — ${o.status === 'MATCHED' ? 'matched' : o.status === 'PARTIAL' ? `part matched £${o.matched.toFixed(2)}` : o.status === 'UNMATCHED' ? 'waiting (unmatched)' : o.status.toLowerCase()}`
@@ -545,7 +547,7 @@ export default function App() {
                 <div key={id} className="mblock" style={{ flex: `${group.length} 1 ${group.length * 290}px` }}>
                   {m ? <MarketHeader marketId={id} market={m} ctx={ctxs[id]} openOrders={orders.length} triggers={(state?.market_triggers ?? []).filter(t => t.market_id === id)} onGreen={(h, pct) => greenMarket(id, h, pct)} onAuto={lv => autoGreen(id, lv)} onDelAuto={delAuto} onClose={() => closeMarket(id)} /> : <div className="mhead muted">Loading…</div>}
                   <div className="viewsw" role="group" aria-label="Market view"><button className={(views[id] ?? 'ladder') === 'ladder' ? 'on' : ''} onClick={() => setViews(v => ({ ...v, [id]: 'ladder' }))}>Ladders</button><button className={views[id] === 'grid' ? 'on' : ''} onClick={() => setViews(v => ({ ...v, [id]: 'grid' }))}>Grid</button></div>
-                  {views[id] === 'grid' && m ? <MarketGrid market={m} orders={orders} onClick={(sid, side, price) => click({ marketId: id, selectionId: sid }, side, price)}
+                  {views[id] === 'grid' && m ? <MarketGrid market={m} orders={orders} onSlip={(sid, side, price) => setSlip({ marketId: id, selectionId: sid, side, price })} onClick={(sid, side, price) => click({ marketId: id, selectionId: sid }, side, price)}
                     onLadder={sid => { setViews(v => ({ ...v, [id]: 'ladder' })); setLadders(cur => { if (cur.some(x => x.marketId === id && x.selectionId === sid)) return cur; const i = cur.findIndex(x => x.marketId === id); if (i < 0) return cur; const out = [...cur]; out[i] = { marketId: id, selectionId: sid }; return out }) }} /> :
                   <div className="ladders" style={{ gridTemplateColumns: `repeat(${group.length}, minmax(0, 1fr))` }}>
                     {group.map(l => {
@@ -566,6 +568,8 @@ export default function App() {
                       )
                     })}
                   </div>}
+                  {slip && slip.marketId === id && m && <BetTicket market={m} selectionId={slip.selectionId} side={slip.side} price={slip.price} defaultStake={stake} layBasis={settings.layBasis} persistence={settings.persistence}
+                    onClose={() => setSlip(null)} onPlace={b => { const size = orderSize(b.side, b.price, b.stake, b.layBasis); if (size < 1) return say('Minimum stake is £1', 'err'); setSlip(null); void submit({ marketId: id, selectionId: b.selectionId, side: b.side, price: b.price, size, runner: m.runners[b.selectionId] ?? b.selectionId, persistence: b.persistence, fokS: b.fokS }) }} />}
                 </div>
               )
             })}
