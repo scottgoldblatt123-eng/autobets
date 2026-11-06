@@ -11,6 +11,7 @@ interface Props {
   onPick?: (m: MarketInfo) => void
   onAddToPlan?: (ms: MarketInfo[]) => void
   onOpenLadder?: (m: MarketInfo) => void
+  onOpenGrid?: (m: MarketInfo) => void
   planned?: Set<string>
   /** Change this number to clear the tick boxes (after a bulk add). */
   clearKey?: number
@@ -18,7 +19,7 @@ interface Props {
 
 /** The market list used outside Manual Trading: same search, filters, grouping and "all markets on this event" as the ladder screen,
  *  plus tick boxes (also per competition) so many markets can be added to the Plan at once. Selection survives tab and search changes. */
-export default function MarketFinder({ say, mode, onPick, onAddToPlan, onOpenLadder, planned, clearKey }: Props) {
+export default function MarketFinder({ say, mode, onPick, onAddToPlan, onOpenLadder, onOpenGrid, planned, clearKey }: Props) {
   const [sport, setSport] = useState<'tennis' | 'football'>('tennis'), [markets, setMarkets] = useState<MarketInfo[]>([]), [loading, setLoading] = useState(true), [day, setDay] = useState('')
   const [q, setQ] = useState(''), [fIn, setFIn] = useState(false), [fSoon, setFSoon] = useState(false), [byName, setByName] = useState(false)
   const [folded, setFolded] = useState<Record<string, boolean>>({}), [expanded, setExpanded] = useState<Record<string, MarketInfo[] | 'loading'>>({})
@@ -51,6 +52,7 @@ export default function MarketFinder({ say, mode, onPick, onAddToPlan, onOpenLad
       {mode === 'select' && <label className="mcheck" title="Select for Plan"><input type="checkbox" checked={on} onChange={e => tick([m], e.target.checked)} aria-label={`Select ${m.event} ${m.name}`} /></label>}
       <button className={cls + (on ? ' open' : '')} onClick={() => (mode === 'pick' ? onPick?.(m) : tick([m], !on))}>
         <span>{m.in_play && <b className="livedot" title="In play" />}{m.event}{inPlan && <em className="inplan">in Plan</em>}</span><small className="muted">{sub}</small></button>
+      {mode === 'select' && onOpenGrid && <button className="mexp" title="Open the betting grid" onClick={() => onOpenGrid(m)}>⊞</button>}
       {mode === 'select' && onOpenLadder && <button className="mexp" title="Open the ladder" onClick={() => onOpenLadder(m)}>▦</button>}
     </div>
   }

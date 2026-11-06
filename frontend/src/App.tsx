@@ -20,6 +20,7 @@ import InfoPanel from './InfoPanel'
 import TradePanel from './TradePanel'
 import Ladder from './Ladder'
 import DayPicker from './DayPicker'
+import MarketGrid from './MarketGrid'
 import { hedge, money, orderSize, parseStake, type Side } from './maths'
 import { move } from './ticks'
 
@@ -95,6 +96,7 @@ export default function App() {
   const [markets, setMarkets] = useState<MarketInfo[]>([])
   const [day, setDay] = useState('')
   const [ladders, setLadders] = useState<LadderRef[]>([])
+  const [views, setViews] = useState<Record<string, 'ladder' | 'grid'>>({})        // per open market: its ladders, or the Betfair-style grid
   /** Every market you have open, shown or not. Up to MAX_LADDERS ladders are on screen; the rest wait behind a tab. */
   const [expanded, setExpanded] = useState<Record<string, MarketInfo[] | 'loading'>>({})
   const [picker, setPicker] = useState<{ m: MarketInfo; sel: string[] } | null>(null)
@@ -310,14 +312,16 @@ export default function App() {
     setExpanded(o => ({ ...o, [eventId]: 'loading' }))
     api.eventMarkets(eventId).then(ms => setExpanded(o => ({ ...o, [eventId]: ms }))).catch(e => { say(e.message, 'err'); setExpanded(o => { const n = { ...o }; delete n[eventId]; return n }) })
   }
-  const openById = async (id: string) => {
+  const openById = async (id: string, view: 'ladder' | 'grid' = 'ladder') => {
     try {
+      setViews(v => ({ ...v, [id]: view }))
       const st = await api.state([id]); const m = st.markets[id]
       if (!m) throw new Error('market not available')
-      openMarket({ market_id: id, name: m.name, event: m.event, competition: m.competition, start: m.start, runners: m.runners, in_play: m.in_play }); setScreen('manual')
+      openMarket({ market_id: id, name: m.name, event: m.event, competition: m.competition, start: m.start, runners: m.runners, in_play: m.in_play }, view); setScreen('manual')
     } catch (e) { say((e as Error).message, 'err') }
   }
-  const openMarket = (m: MarketInfo) => {
+  const openMarket = (m: MarketInfo, view: 'ladder' | 'grid' = 'ladder') => {
+    setViews(v => ({ ...v, [m.market_id]: view }))
     if (!m.shown && Object.keys(m.runners).length > MAX_LADDERS) { setPicker({ m, sel: Object.keys(m.runners).slice(0, 2) }); return }       // e.g. correct score: choose which runners get a ladder
     setOpenList(cur => (cur.some(x => x.market_id === m.market_id) ? cur : [...cur, m]))
     if (ladders.some(l => l.marketId === m.market_id)) return say('That market is already open', 'warn')
@@ -409,7 +413,7 @@ export default function App() {
       </nav>
       {(screen === 'home' || screen === 'plan') && <Workbench say={say} withCopilot openIds={ids} onOpenLadder={openById}>
         {screen === 'home' && <HomeScreen say={say} go={s => setScreen(s)} openMarket={openById} />}
-        {screen === 'plan' && <PlanScreen say={say} />}
+        {screen === 'plan' && <PlanScreen say={say} openMarket={openById} />}
       </Workbench>}
       {screen === 'recs' && <div className="body workbench"><div className="wbmain"><RecsScreen say={say} onPlan={() => setScreen('plan')} onDiscuss={r => { setDiscuss({ marketId: r.market_id, text: r.kind === 'setup' ? `Walk me through this setup: ${r.title}. Why does the model see a trading opportunity, what would make it a bad trade, and would you change any of its rules?` : `Why does the model like ${r.side === 'BACK' ? 'backing' : 'laying'} ${r.runner} in ${r.event}? What would make this wrong?` }); }} /></div><div className="wbright"><Copilot docked marketIds={discuss ? [discuss.marketId] : ids} seed={discuss?.text} /></div></div>}
       {screen === 'settings' && <SettingsScreen theme={theme} onTheme={() => setSettings(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }))} onLadderSettings={() => setShowSettings(true)} />}
@@ -455,6 +459,7 @@ export default function App() {
                           <span>{m.in_play && <b className="livedot" title="In play" />}{m.event}</span>
                           <small className="muted">{m.name}{m.start ? ' · ' + new Date(m.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</small>
                         </button>
+                        <button className="mexp" title="Open the betting grid" onClick={() => openMarket(m, 'grid')}>⊞</button>
                         <button className="mexp" title="Add this market to your Plan (watch it, or attach a script)" onClick={() => setAttach({ id: m.market_id, title: m.event })}>▤</button>
                         {m.event_id && <button className="mexp" title="All markets on this event: half time, goal lines, correct score…" onClick={() => toggleEvent(m.event_id!)}>{expanded[m.event_id] ? '▾' : '＋'}</button>}
                       </div>
@@ -539,6 +544,9 @@ export default function App() {
               return (
                 <div key={id} className="mblock" style={{ flex: `${group.length} 1 ${group.length * 290}px` }}>
                   {m ? <MarketHeader marketId={id} market={m} ctx={ctxs[id]} openOrders={orders.length} triggers={(state?.market_triggers ?? []).filter(t => t.market_id === id)} onGreen={(h, pct) => greenMarket(id, h, pct)} onAuto={lv => autoGreen(id, lv)} onDelAuto={delAuto} onClose={() => closeMarket(id)} /> : <div className="mhead muted">Loading…</div>}
+                  <div className="viewsw" role="group" aria-label="Market view"><button className={(views[id] ?? 'ladder') === 'ladder' ? 'on' : ''} onClick={() => setViews(v => ({ ...v, [id]: 'ladder' }))}>Ladders</button><button className={views[id] === 'grid' ? 'on' : ''} onClick={() => setViews(v => ({ ...v, [id]: 'grid' }))}>Grid</button></div>
+                  {views[id] === 'grid' && m ? <MarketGrid market={m} orders={orders} onClick={(sid, side, price) => click({ marketId: id, selectionId: sid }, side, price)}
+                    onLadder={sid => { setViews(v => ({ ...v, [id]: 'ladder' })); setLadders(cur => { if (cur.some(x => x.marketId === id && x.selectionId === sid)) return cur; const i = cur.findIndex(x => x.marketId === id); if (i < 0) return cur; const out = [...cur]; out[i] = { marketId: id, selectionId: sid }; return out }) }} /> :
                   <div className="ladders" style={{ gridTemplateColumns: `repeat(${group.length}, minmax(0, 1fr))` }}>
                     {group.map(l => {
                       const k = keyOf(l)
@@ -557,7 +565,7 @@ export default function App() {
                           runners={m.runners} openIds={group.map(g => g.selectionId)} onSwitch={to => switchRunner(l, to)} />
                       )
                     })}
-                  </div>
+                  </div>}
                 </div>
               )
             })}

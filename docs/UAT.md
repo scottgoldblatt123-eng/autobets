@@ -2456,7 +2456,43 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.5 Recommendations are trade setups, not winners  \[Either\]
+### 39.5 Open the betting grid from a market list  \[Either\]
+
+Steps:
+1. On Home, Plan or Manual Trading, click the grid button (a small square of four) next to a market in the list on the left.
+
+**Expected:** Manual Trading opens with that market in Grid view: one row per runner, three back (blue) and three lay (pink) prices with sizes, last traded price, and the position if that runner wins.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.6 Bet from the grid  \[Practice\]
+
+Steps:
+1. Click a blue price, then a pink price. Try double-click click mode and a stake over the confirm limit.
+
+**Expected:** The stake box in the toolbar is used. Back or lay is placed at the price you clicked, with the same confirm, minimum stake and suspended-market rules as the ladder. Your own unmatched orders are outlined.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.7 Switch between Ladders and Grid  \[Either\]
+
+Steps:
+1. On an open market click Ladders, then Grid. In Grid click the small ladder button on a runner.
+
+**Expected:** The switch is remembered per market. The runner's ladder opens in place of the first one. Positions and orders are the same in both views.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.8 Grid and ladder buttons everywhere  \[Either\]
+
+Steps:
+1. Look at the Home open-positions table, the Plan table's market line, and the market lists.
+
+**Expected:** Each has both a Grid and a Ladder button that open Manual Trading in the chosen view.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.9 Recommendations are trade setups, not winners  \[Either\]
 
 Steps:
 1. Open Recommendations and click Scan now with upcoming tennis and football listed.
@@ -2465,7 +2501,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.6 Add a setup to the Plan  \[Either\]
+### 39.10 Add a setup to the Plan  \[Either\]
 
 Steps:
 1. Click Add to Plan on a setup, leave the stake, confirm.
@@ -2474,7 +2510,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.7 Setup script fires in play  \[Practice\]
+### 39.11 Setup script fires in play  \[Practice\]
 
 Steps:
 1. Add a football Under 2.5 scalp or tennis swing setup for a match that is live.
@@ -2484,7 +2520,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.8 Dismiss and reappear  \[Either\]
+### 39.12 Dismiss and reappear  \[Either\]
 
 Steps:
 1. Dismiss a setup with a reason, then scan again.
@@ -2493,7 +2529,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.9 Setup results  \[Either\]
+### 39.13 Setup results  \[Either\]
 
 Steps:
 1. After an accepted setup's match has settled, open Recommendations.
@@ -2502,7 +2538,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.10 Discuss a recommendation in the side panel  \[Either\]
+### 39.14 Discuss a recommendation in the side panel  \[Either\]
 
 Steps:
 1. Open Recommendations, click Discuss on an idea.
@@ -2511,7 +2547,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.11 Pick a future day  \[Either\]
+### 39.15 Pick a future day  \[Either\]
 
 Steps:
 1. On Home, Plan or Manual Trading, click Tomorrow in the day strip above the search box.
@@ -2521,7 +2557,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.12 Next up and Today  \[Either\]
+### 39.16 Next up and Today  \[Either\]
 
 Steps:
 1. Click Next up, then Today.
@@ -2530,7 +2566,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.13 Future markets can be added to the Plan  \[Either\]
+### 39.17 Future markets can be added to the Plan  \[Either\]
 
 Steps:
 1. Choose Tomorrow, tick a few matches, Add to Plan.
@@ -2539,7 +2575,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.14 Selection survives tab and search changes  \[Either\]
+### 39.18 Selection survives tab and search changes  \[Either\]
 
 Steps:
 1. Tick a tennis market, switch to Football, tick one, search, then switch back.
@@ -2548,7 +2584,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.15 Bulk add with a script  \[Either\]
+### 39.19 Bulk add with a script  \[Either\]
 
 Steps:
 1. Tick several markets.
@@ -2558,7 +2594,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.16 Open a ladder from the list  \[Either\]
+### 39.20 Open a ladder from the list  \[Either\]
 
 Steps:
 1. Click the ladder icon on a market row on Home or Plan.
@@ -2567,7 +2603,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.17 Scripts > Add to Plan uses the same list  \[Either\]
+### 39.21 Scripts > Add to Plan uses the same list  \[Either\]
 
 Steps:
 1. On Scripts, click Add to Plan.
@@ -2576,7 +2612,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.18 Home AI panel  \[Practice\]
+### 39.22 Home AI panel  \[Practice\]
 
 Steps:
 1. Ask the docked Copilot about your Plan markets.
@@ -2585,7 +2621,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.19 Narrow screens  \[Either\]
+### 39.23 Narrow screens  \[Either\]
 
 Steps:
 1. Open Home on a phone or narrow window.

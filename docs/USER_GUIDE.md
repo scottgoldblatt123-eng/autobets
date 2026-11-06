@@ -41,3 +41,6 @@ Betfair's prices for who wins are better than any model we can build, so AutoBet
 - **Football, back Over 2.5 after 15 minutes:** the model is more confident of goals than the market. The script waits until minute 15 with 0 or 1 goals and a price at least as good as before kick-off, and holds to the end.
 - **Football, scalp Under 2.5:** the model and market both expect a low-scoring game with Under near evens. The script scalps 2 ticks at a time, up to 10 runs, closes a run that goes 6 ticks against and tries again, and stops at 2 goals.
 Add to Plan saves the script (switched on) and puts the market on your Plan. Nothing is bet until it is in play and the rules are met. Use Discuss with Claude to challenge a setup or change its rules first.
+
+### Betting grid
+Every open market in Manual Trading has a Ladders / Grid switch. The grid is the standard Betfair view: a row per runner with three back and three lay prices, last traded price and your position. Click a price to bet at it with the toolbar stake (same confirm and safety rules as the ladder). Open it with the grid button beside any market in a list, or the Grid link on Home and Plan.

@@ -2803,6 +2803,50 @@
   "id": "39.5",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Open the betting grid from a market list",
+  "mode": "Either",
+  "steps": [
+   "On Home, Plan or Manual Trading, click the grid button (a small square of four) next to a market in the list on the left."
+  ],
+  "expected": "Manual Trading opens with that market in Grid view: one row per runner, three back (blue) and three lay (pink) prices with sizes, last traded price, and the position if that runner wins."
+ },
+ {
+  "id": "39.6",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Bet from the grid",
+  "mode": "Practice",
+  "steps": [
+   "Click a blue price, then a pink price. Try double-click click mode and a stake over the confirm limit."
+  ],
+  "expected": "The stake box in the toolbar is used. Back or lay is placed at the price you clicked, with the same confirm, minimum stake and suspended-market rules as the ladder. Your own unmatched orders are outlined."
+ },
+ {
+  "id": "39.7",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Switch between Ladders and Grid",
+  "mode": "Either",
+  "steps": [
+   "On an open market click Ladders, then Grid. In Grid click the small ladder button on a runner."
+  ],
+  "expected": "The switch is remembered per market. The runner's ladder opens in place of the first one. Positions and orders are the same in both views."
+ },
+ {
+  "id": "39.8",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Grid and ladder buttons everywhere",
+  "mode": "Either",
+  "steps": [
+   "Look at the Home open-positions table, the Plan table's market line, and the market lists."
+  ],
+  "expected": "Each has both a Grid and a Ladder button that open Manual Trading in the chosen view."
+ },
+ {
+  "id": "39.9",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Recommendations are trade setups, not winners",
   "mode": "Either",
   "steps": [
@@ -2811,7 +2855,7 @@
   "expected": "Any cards are 'Trade setup' cards: a plan for how to trade the game (for example back a player if he is broken, back Over 2.5 after 15 minutes, scalp Under 2.5). None says who will win. Each shows the model's and the market's probability, what has to happen, and the script's rules (expand them)."
  },
  {
-  "id": "39.6",
+  "id": "39.10",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Add a setup to the Plan",
@@ -2822,7 +2866,7 @@
   "expected": "A message says it was added. The script appears in the Scripts library (switched on, origin AI) and the market is on the Plan, Armed, on the right runner. No bet is placed until the game is in play and the rules are met."
  },
  {
-  "id": "39.7",
+  "id": "39.11",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Setup script fires in play",
@@ -2834,7 +2878,7 @@
   "expected": "A tennis swing bets only after the player is a game or more behind in set 1 and the price has lengthened; it greens up when the set is level, on 8 ticks profit, at the end of set 1, or closes at 10 ticks against. The Under scalp repeats up to 10 times and stops at 2 goals."
  },
  {
-  "id": "39.8",
+  "id": "39.12",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Dismiss and reappear",
@@ -2845,7 +2889,7 @@
   "expected": "It disappears, the reason is kept, and it does not return while the game and prices are unchanged."
  },
  {
-  "id": "39.9",
+  "id": "39.13",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Setup results",
@@ -2856,7 +2900,7 @@
   "expected": "A line shows how many accepted setups have settled and their net result (the whole-market result)."
  },
  {
-  "id": "39.10",
+  "id": "39.14",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Discuss a recommendation in the side panel",
@@ -2867,7 +2911,7 @@
   "expected": "The AI panel is open on the right of the Recommendations screen with a question about that idea already typed in the box. Clicking Discuss on another idea replaces the text."
  },
  {
-  "id": "39.11",
+  "id": "39.15",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Pick a future day",
@@ -2879,7 +2923,7 @@
   "expected": "The list shows only matches scheduled on that UK day, grouped by competition and sorted by start time. Past dates cannot be chosen. Football and Tennis tabs both follow the day."
  },
  {
-  "id": "39.12",
+  "id": "39.16",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Next up and Today",
@@ -2890,7 +2934,7 @@
   "expected": "Next up is the soonest markets whatever the day; Today is just today's. In-play, Next hour and search still filter the day shown."
  },
  {
-  "id": "39.13",
+  "id": "39.17",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Future markets can be added to the Plan",
@@ -2901,7 +2945,7 @@
   "expected": "They appear on the Plan as Watching with their start time. Scripts attached to them wait until the market is live."
  },
  {
-  "id": "39.14",
+  "id": "39.18",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Selection survives tab and search changes",
@@ -2912,7 +2956,7 @@
   "expected": "The selected count still includes both."
  },
  {
-  "id": "39.15",
+  "id": "39.19",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Bulk add with a script",
@@ -2924,7 +2968,7 @@
   "expected": "Each market gets a Plan row with the favourite (shortest back price) as its runner. Markets where the rule cannot apply (e.g. Draw on tennis) are skipped and listed."
  },
  {
-  "id": "39.16",
+  "id": "39.20",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Open a ladder from the list",
@@ -2935,7 +2979,7 @@
   "expected": "Manual Trading opens with that market's ladders."
  },
  {
-  "id": "39.17",
+  "id": "39.21",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Scripts > Add to Plan uses the same list",
@@ -2946,7 +2990,7 @@
   "expected": "The picker shows the full list including all-markets-on-event; choosing a market then asks which runner."
  },
  {
-  "id": "39.18",
+  "id": "39.22",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Home AI panel",
@@ -2957,7 +3001,7 @@
   "expected": "It answers about the markets in your Plan and any open ladders. It cannot place bets in Advisor mode."
  },
  {
-  "id": "39.19",
+  "id": "39.23",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Narrow screens",
