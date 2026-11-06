@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Rec, type Script, type ScriptRuleText } from './api'
 import MarketPicker from './MarketPicker'
+import ScriptEditor from './ScriptEditor'
 import { markScriptUsed } from './ScriptSelect'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
@@ -26,7 +27,7 @@ export function RuleCards({ text, fold, headline, startOpen }: { text: ScriptRul
 /** Scripts: build with Claude or by hand, review in plain English, clone, version, enable, and put on the Plan. */
 export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () => void }) {
   const [list, setList] = useState<Script[]>([]), [sel, setSel] = useState<string>(''), [q, setQ] = useState('')
-  const [editing, setEditing] = useState<string | null>(null), [err, setErr] = useState(''), [hist, setHist] = useState(false), [pick, setPick] = useState(false), [importing, setImporting] = useState<string | null>(null)
+  const [editor, setEditor] = useState<{ script: Script | null; initial?: Record<string, unknown> } | null>(null), [err, setErr] = useState(''), [hist, setHist] = useState(false), [pick, setPick] = useState(false), [importing, setImporting] = useState<string | null>(null)
   const load = useCallback(() => api.scripts().then(l => { setList(l); setSel(s => (l.some(x => x.id === s) ? s : l[0]?.id ?? '')) }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load() }, [load])
   useEffect(() => { const f = (e: Event) => { void load().then(() => { const id = (e as CustomEvent<string>).detail; if (id) setSel(id) }) }; window.addEventListener('autobets:scripts-changed', f); return () => window.removeEventListener('autobets:scripts-changed', f) }, [load])
@@ -37,14 +38,13 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
   const [lf, setLf] = useState('all')
   const shown = list.filter(s => (!q || (s.name + ' ' + s.description).toLowerCase().includes(q.toLowerCase())) && (lf === 'all' || (lf === 'on' ? s.enabled : lf === 'off' ? !s.enabled : lf === 'ai' ? s.origin === 'ai' : s.sport === lf || s.sport === 'any')))
   const guard = async (f: () => Promise<unknown>, ok?: string) => { setErr(''); try { await f(); if (ok) say(ok); await load() } catch (e) { setErr((e as Error).message) } }
-  const full = (s: Script) => JSON.stringify({ name: s.name, sport: s.sport, description: s.description, rules: s.rules }, null, 2)
   return (
     <div className="screen">
       <div className="row"><h1>Scripts</h1><span className="muted">Create, edit, clone and apply automation scripts</span><span className="spacer" />
         <input type="search" placeholder="Search scripts…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search scripts" />
         <button onClick={() => setImporting('')}>Import</button>
-        <button onClick={() => setEditing(JSON.stringify(SCALP, null, 2))}>Scalp example</button>
-        <button className="primary" onClick={() => setEditing(JSON.stringify(TEMPLATE, null, 2))}>New script</button></div>
+        <button onClick={() => setEditor({ script: null, initial: SCALP as unknown as Record<string, unknown> })}>Scalp example</button>
+        <button className="primary" onClick={() => setEditor({ script: null, initial: TEMPLATE as unknown as Record<string, unknown> })}>New script</button></div>
       {props.length > 0 && <div className="card" style={{ padding: '8px 12px' }}>
         <div className="row"><b>Recommended scripts</b><span className="muted small">New ideas from Claude. Discuss them in the panel on the right, then approve to add one to your library (switched off).</span></div>
         {props.map(r => <div key={r.id} className="row" style={{ gap: 10, padding: '6px 0', borderTop: '1px solid var(--border)', alignItems: 'flex-start' }}>
@@ -66,7 +66,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
             <div className="card"><div className="row"><h2>{cur.name}</h2><span className={'src' + (cur.origin === 'ai' ? ' ai' : '')}>{cur.origin === 'ai' ? 'AI built' : 'Yours'}</span><span className="muted small">v{cur.version} · {cur.enabled ? 'on' : 'off, not applied'}</span><span className="spacer" />
               <button className="primary" onClick={() => setPick(true)} title="Pick a market and the runner it acts on. Nothing is placed until its conditions are met and the script is on. Practice mode: no real money.">Add to Plan…</button>
               <label className="sw"><input type="checkbox" checked={cur.enabled} onChange={e => guard(() => api.enableScript(cur.id, e.target.checked), e.target.checked ? 'Script on. It acts only on markets in your Plan.' : 'Script off.')} /> On</label>
-              <button onClick={() => setEditing(full(cur))}>Edit</button>
+              <button onClick={() => setEditor({ script: cur })}>Edit</button>
               <button onClick={() => guard(() => api.cloneScript(cur.id, `Copy of ${cur.name}`), 'Cloned (off).')}>Clone</button>
               <button onClick={() => setHist(true)}>Version history</button>
               <button className="danger" onClick={() => { if (window.confirm(`Delete "${cur.name}"? This cannot be undone.`)) void guard(() => api.deleteScript(cur.id), 'Deleted.') }}>Delete</button></div>
@@ -75,14 +75,7 @@ export default function ScriptsScreen({ say, onPlan }: { say: Say; onPlan: () =>
           </>}
         </section>
       </div>
-      {editing !== null && <div className="overlay" onClick={() => setEditing(null)}><div className="card scroll" role="dialog" aria-label="Edit script" onClick={e => e.stopPropagation()} style={{ width: 720, maxWidth: '96vw' }}>
-        <h3>{cur && editing === full(cur) ? 'Edit script' : 'New script'}</h3>
-        <div className="muted small">Scripts are plain data. Conditions: price, in_play, set_number, goals_total, score_is, minute, rule_matched, position_loss, clock. Actions: back, lay, green, close, stop. The server checks it and explains anything wrong.</div>
-        <textarea className="code" rows={22} value={editing} onChange={e => setEditing(e.target.value)} spellCheck={false} aria-label="Script JSON" />
-        {err && <div className="loss small">{err}</div>}
-        <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={() => setEditing(null)}>Cancel</button>
-          <button className="primary" onClick={() => guard(async () => { const body = JSON.parse(editing); const isEdit = cur && editing === full(cur) ? true : cur && JSON.parse(editing).name === cur.name && JSON.stringify(JSON.parse(editing).rules) !== JSON.stringify(cur.rules)
-            const s = isEdit && cur ? await api.updateScript(cur.id, body) : await api.createScript(body); setSel(s.id); setEditing(null) }, 'Saved as a new version.')}>Save</button></div></div></div>}
+      {editor && <ScriptEditor key={editor.script?.id ?? 'new'} script={editor.script} initial={editor.initial} say={say} onClose={() => setEditor(null)} onSaved={id => { setEditor(null); setSel(id); void load() }} />}
       {importing !== null && <div className="overlay" onClick={() => setImporting(null)}><div className="card" role="dialog" aria-label="Import script" onClick={e => e.stopPropagation()} style={{ width: 560, maxWidth: '95vw' }}>
         <h3>Import script</h3><div className="muted small">Paste a script's JSON. It is checked against the script rules before it is saved, and it starts off.</div>
         <textarea className="code" rows={12} value={importing} onChange={e => setImporting(e.target.value)} spellCheck={false} aria-label="Script JSON to import" />

@@ -50,3 +50,6 @@ One click on a grid price bets at that price with the toolbar stake. To choose t
 
 ### New script proposals and the sport filter
 Recommendations has Football / Tennis / All sports chips. **Propose new scripts** asks Claude for up to three scripts that differ from your library, each with a hypothesis about how the market over- or under-reacts, the risk, and the rules. The server also asks about once a day. Proposals appear on Recommendations (New scripts) and in a Recommended scripts strip at the top of Scripts. Discuss opens the idea in the Copilot panel; Save to Scripts / Approve adds it to your library switched off. Proposals are not backtested; test them in practice mode.
+
+### Editing a script
+Edit on the Scripts screen opens three tabs. **Settings** is a form: name, sport, description and each rule's conditions and actions (stake, price, persistence, repeat) as fields. **Ask Claude to change it** takes a plain-English change, shows you the revised script, and loads it into Settings only if you press Use this version. **Advanced** is the raw data for experts. Save as new version keeps the old version in History; Save as a copy leaves the original untouched.

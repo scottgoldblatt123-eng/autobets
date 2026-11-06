@@ -2604,7 +2604,44 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.21 Pick a future day  \[Either\]
+### 39.21 Edit a script with the settings form  \[Either\]
+
+Steps:
+1. On Scripts select a script and press Edit.
+2. Change a stake, a price condition and the repeat count, then Save as new version.
+
+**Expected:** A form opens (not code): name, sport, description, and each rule with its conditions and actions as fields and dropdowns. Saving creates a new version; the old one is in History.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.22 Save as a copy  \[Either\]
+
+Steps:
+1. Press Edit, change something, then Save as a copy.
+
+**Expected:** A new script 'name (copy)' appears, switched off. The original is unchanged.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.23 Ask Claude to change a script  \[Either\]
+
+Steps:
+1. In Edit open Ask Claude to change it, type 'halve the stake and add a stop at 8 ticks against', press Revise the script, then Use this version.
+
+**Expected:** Claude shows the revised script in plain English first. Use this version loads it into Settings for fine-tuning; nothing is saved until you press Save.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.24 Advanced editing  \[Either\]
+
+Steps:
+1. Open the Advanced tab, change the JSON, switch back to Settings.
+
+**Expected:** Valid changes carry across; invalid JSON is refused with a message and nothing is lost.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 39.25 Pick a future day  \[Either\]
 
 Steps:
 1. On Home, Plan or Manual, click Tomorrow in the day strip above the search box.
@@ -2614,7 +2651,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.22 Next up and Today  \[Either\]
+### 39.26 Next up and Today  \[Either\]
 
 Steps:
 1. Click Next up, then Today.
@@ -2623,7 +2660,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.23 Future markets can be added to the Plan  \[Either\]
+### 39.27 Future markets can be added to the Plan  \[Either\]
 
 Steps:
 1. Choose Tomorrow, tick a few matches, Add to Plan.
@@ -2632,7 +2669,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.24 Selection survives tab and search changes  \[Either\]
+### 39.28 Selection survives tab and search changes  \[Either\]
 
 Steps:
 1. Tick a tennis market, switch to Football, tick one, search, then switch back.
@@ -2641,7 +2678,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.25 Bulk add with a script  \[Either\]
+### 39.29 Bulk add with a script  \[Either\]
 
 Steps:
 1. Tick several markets.
@@ -2651,7 +2688,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.26 Open a ladder from the list  \[Either\]
+### 39.30 Open a ladder from the list  \[Either\]
 
 Steps:
 1. Click the ladder icon on a market row on Home or Plan.
@@ -2660,7 +2697,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.27 Scripts > Add to Plan uses the same list  \[Either\]
+### 39.31 Scripts > Add to Plan uses the same list  \[Either\]
 
 Steps:
 1. On Scripts, click Add to Plan.
@@ -2669,7 +2706,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.28 Home AI panel  \[Practice\]
+### 39.32 Home AI panel  \[Practice\]
 
 Steps:
 1. Ask the docked Copilot about your Plan markets.
@@ -2678,7 +2715,7 @@ Steps:
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
 
-### 39.29 Narrow screens  \[Either\]
+### 39.33 Narrow screens  \[Either\]
 
 Steps:
 1. Open Home on a phone or narrow window.

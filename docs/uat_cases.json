@@ -2983,6 +2983,51 @@
   "id": "39.21",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Edit a script with the settings form",
+  "mode": "Either",
+  "steps": [
+   "On Scripts select a script and press Edit.",
+   "Change a stake, a price condition and the repeat count, then Save as new version."
+  ],
+  "expected": "A form opens (not code): name, sport, description, and each rule with its conditions and actions as fields and dropdowns. Saving creates a new version; the old one is in History."
+ },
+ {
+  "id": "39.22",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Save as a copy",
+  "mode": "Either",
+  "steps": [
+   "Press Edit, change something, then Save as a copy."
+  ],
+  "expected": "A new script 'name (copy)' appears, switched off. The original is unchanged."
+ },
+ {
+  "id": "39.23",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Ask Claude to change a script",
+  "mode": "Either",
+  "steps": [
+   "In Edit open Ask Claude to change it, type 'halve the stake and add a stop at 8 ticks against', press Revise the script, then Use this version."
+  ],
+  "expected": "Claude shows the revised script in plain English first. Use this version loads it into Settings for fine-tuning; nothing is saved until you press Save."
+ },
+ {
+  "id": "39.24",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
+  "title": "Advanced editing",
+  "mode": "Either",
+  "steps": [
+   "Open the Advanced tab, change the JSON, switch back to Settings."
+  ],
+  "expected": "Valid changes carry across; invalid JSON is refused with a message and nothing is lost."
+ },
+ {
+  "id": "39.25",
+  "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
+  "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Pick a future day",
   "mode": "Either",
   "steps": [
@@ -2992,7 +3037,7 @@
   "expected": "The list shows only matches scheduled on that UK day, grouped by competition and sorted by start time. Past dates cannot be chosen. Football and Tennis tabs both follow the day."
  },
  {
-  "id": "39.22",
+  "id": "39.26",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Next up and Today",
@@ -3003,7 +3048,7 @@
   "expected": "Next up is the soonest markets whatever the day; Today is just today's. In-play, Next hour and search still filter the day shown."
  },
  {
-  "id": "39.23",
+  "id": "39.27",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Future markets can be added to the Plan",
@@ -3014,7 +3059,7 @@
   "expected": "They appear on the Plan as Watching with their start time. Scripts attached to them wait until the market is live."
  },
  {
-  "id": "39.24",
+  "id": "39.28",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Selection survives tab and search changes",
@@ -3025,7 +3070,7 @@
   "expected": "The selected count still includes both."
  },
  {
-  "id": "39.25",
+  "id": "39.29",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Bulk add with a script",
@@ -3037,7 +3082,7 @@
   "expected": "Each market gets a Plan row with the favourite (shortest back price) as its runner. Markets where the rule cannot apply (e.g. Draw on tennis) are skipped and listed."
  },
  {
-  "id": "39.26",
+  "id": "39.30",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Open a ladder from the list",
@@ -3048,7 +3093,7 @@
   "expected": "Manual opens with that market's ladders."
  },
  {
-  "id": "39.27",
+  "id": "39.31",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Scripts > Add to Plan uses the same list",
@@ -3059,7 +3104,7 @@
   "expected": "The picker shows the full list including all-markets-on-event; choosing a market then asks which runner."
  },
  {
-  "id": "39.28",
+  "id": "39.32",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Home AI panel",
@@ -3070,7 +3115,7 @@
   "expected": "It answers about the markets in your Plan and any open ladders. It cannot place bets in Advisor mode."
  },
  {
-  "id": "39.29",
+  "id": "39.33",
   "section": "Market list on Home and Plan, bulk add, AI panel (added 5 Nov)",
   "intro": "The same market list as the ladder screen, now on Home and Plan.",
   "title": "Narrow screens",
