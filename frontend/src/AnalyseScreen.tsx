@@ -1,3 +1,4 @@
+import DateRange, { initialRange, rangeLabel, rangeQuery, type RangeState } from './DateRange'
 import { useCallback, useEffect, useState } from 'react'
 import { api, type AiLearning, type BtResult, type ModelsData, type PerfData, type Script } from './api'
 import { Bars, EquityChart, Histogram, LineChart } from './Charts'
@@ -15,27 +16,28 @@ function Clv() {
   return <div className="card" id="clv"><h2>What is CLV?</h2><p className="small muted" style={{ lineHeight: 1.6, margin: '8px 0 0' }}><b className="ink">Closing line value</b> compares the price you took with the price the market closed at (the last price before the match started or went in-play). If you backed at 2.20 and the market closed at 2.00, you beat the closing price. The closing price is the market's best estimate, so beating it consistently is the best early evidence that your bets have a real edge. It needs far fewer bets to show up than profit does, because profit is mostly luck over small samples. AutoBets uses CLV, not just P&amp;L, as the gate for moving from Advisor to more automation.</p></div>
 }
 
-function Performance({ days }: { days: number }) {
+function Performance({ rs }: { rs: RangeState }) {
   const [p, setP] = useState<PerfData | null>(null), [err, setErr] = useState('')
-  useEffect(() => { api.perf(days).then(setP).catch(e => setErr((e as Error).message)) }, [days])
+  useEffect(() => { api.perf(rangeQuery(rs)).then(setP).catch(e => setErr((e as Error).message)) }, [rs])
   if (err) return <div className="loss small">{err}</div>
   if (!p) return <div className="muted">Loading…</div>
-  const c = p.current, v = p.previous
+  const c = p.current, v = p.previous, cmp = !!p.compare
   return <>
     <div className="kpis">
-      {tile('Net P&L', money(c.net), `previous ${money(v.net)}`, cls(c.net))}{tile('Settled markets', String(c.trades), `previous ${v.trades}`)}{tile('Win rate', pct(c.win_rate), `previous ${pct(v.win_rate)}`)}
+      {tile('Net P&L', money(c.net), cmp ? `compare ${money(v.net)}` : rangeLabel(rs.range), cls(c.net))}{tile('Settled markets', String(c.trades), cmp ? `compare ${v.trades}` : 'in the period')}{tile('Win rate', pct(c.win_rate), cmp ? `compare ${pct(v.win_rate)}` : 'in the period')}
       {tile('Avg CLV', p.clv == null ? '–' : `${p.clv > 0 ? '+' : ''}${p.clv} pts`, `${p.clv_n} measured ideas`, cls(p.clv))}{tile('AI costs', '£' + p.costs.toFixed(2), 'estimated, this month')}
     </div>
-    <div className="card"><div className="row"><h2>Cumulative P&amp;L</h2><span className="muted small">solid: this period · dashed: the period before</span></div>
+    <div className="card"><div className="row"><h2>Cumulative P&amp;L</h2><span className="muted small">{cmp ? `solid: ${rangeLabel(rs.range)} · dashed: ${rangeLabel(rs.cmp)}` : 'solid: the selected period'}</span></div>
       <LineChart label="Cumulative profit and loss over the selected period compared to the previous period" series={[{ points: p.prev_curve.map(x => ({ x: x.t, y: x.v })), dashed: true, color: 'var(--text-muted)' }, { points: p.curve.map(x => ({ x: x.t, y: x.v })) }]} /></div>
     <Strategies p={p} /><Clv /></>
 }
 
 function Strategies({ p }: { p: PerfData }) {
   return <div className="card tcard"><div className="row"><h2>By strategy</h2><span className="muted small">Each script, AI ideas, and manual trades, from settled markets</span></div>
-    <table className="tbl"><thead><tr><th>Strategy</th><th>Markets</th><th>P&amp;L</th><th>Win rate</th></tr></thead>
-      <tbody>{p.strategies.map(s => <tr key={s.name}><td>{s.name}</td><td>{s.trades}</td><td className={cls(s.pnl)}>{money(s.pnl)}</td><td>{s.win_rate}%</td></tr>)}
-        {!p.strategies.length && <tr><td colSpan={4} className="muted pad">No settled markets in this period yet.</td></tr>}</tbody></table></div>
+    <table className="tbl"><thead><tr><th>Strategy</th><th>Markets</th><th>P&amp;L</th><th>Win rate</th>{p.compare && <><th>Compare markets</th><th>Compare P&amp;L</th><th>Change</th></>}</tr></thead>
+      <tbody>{p.strategies.map(s => <tr key={s.name}><td>{s.name}</td><td>{s.trades}</td><td className={cls(s.pnl)}>{money(s.pnl)}</td><td>{s.win_rate}%</td>
+        {p.compare && <><td>{s.prev_trades}</td><td className={cls(s.prev_pnl)}>{money(s.prev_pnl)}</td><td className={cls(s.pnl - (s.prev_pnl ?? 0))}>{money(s.pnl - (s.prev_pnl ?? 0))}</td></>}</tr>)}
+        {!p.strategies.length && <tr><td colSpan={p.compare ? 7 : 4} className="muted pad">No settled markets in this period yet.</td></tr>}</tbody></table></div>
 }
 
 function Models() {
@@ -100,14 +102,14 @@ function AiLearn() {
 
 /** Analyse: how things are going, which strategies and models earn their keep, and a place to test scripts on recorded prices. */
 export default function AnalyseScreen({ say }: { say: Say }) {
-  const [tab, setTab] = useState<Tab>('Performance'), [days, setDays] = useState(30), [p, setP] = useState<PerfData | null>(null)
-  useEffect(() => { if (tab === 'Strategies') api.perf(days).then(setP).catch(() => undefined) }, [tab, days])
+  const [tab, setTab] = useState<Tab>('Performance'), [rs, setRs] = useState<RangeState>(() => { try { const x = JSON.parse(localStorage.getItem('autobets.range') ?? 'null'); if (x?.range?.start) return x as RangeState } catch { /* ignore */ } return initialRange() }), [p, setP] = useState<PerfData | null>(null)
+  useEffect(() => { try { localStorage.setItem('autobets.range', JSON.stringify(rs)) } catch { /* ignore */ } }, [rs])
+  useEffect(() => { if (tab === 'Strategies') api.perf(rangeQuery(rs)).then(setP).catch(() => undefined) }, [tab, rs])
   return (
     <div className="screen">
-      <div className="row"><h1>Analyse</h1><span className="spacer" /><span className="muted small">Date range</span>
-        <select value={days} onChange={e => setDays(Number(e.target.value))} aria-label="Date range"><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option><option value={90}>Last 90 days</option><option value={365}>Last year</option></select></div>
+      <div className="row"><h1>Analyse</h1><span className="spacer" /><DateRange value={rs} onChange={setRs} /></div>
       <div className="row" style={{ borderBottom: '1px solid var(--border)', gap: 0 }}>{TABS.map(t => <button key={t} className={'tab' + (tab === t ? ' on' : '')} onClick={() => setTab(t)}>{t}</button>)}</div>
-      {tab === 'Performance' && <Performance days={days} />}
+      {tab === 'Performance' && <Performance rs={rs} />}
       {tab === 'Strategies' && (p ? <><Strategies p={p} /><Clv /></> : <div className="muted">Loading…</div>)}
       {tab === 'Models' && <Models />}
       {tab === 'Backtesting' && <Backtesting say={say} />}

@@ -89,8 +89,8 @@ export interface AlertRow { id: string; t: number; type: string; text: string; a
 export interface HealthItem { key: string; name: string; level: 'ok' | 'bad' | 'off'; detail: string }
 
 export interface PerfData {
-  days: number; current: { net: number; trades: number; win_rate: number | null }; previous: { net: number; trades: number; win_rate: number | null }; clv: number | null; clv_n: number; costs: number
-  curve: { t: number; v: number }[]; prev_curve: { t: number; v: number }[]; strategies: { name: string; trades: number; pnl: number; win_rate: number }[]
+  days: number; compare?: boolean; current: { net: number; trades: number; win_rate: number | null }; previous: { net: number; trades: number; win_rate: number | null }; clv: number | null; clv_n: number; costs: number
+  curve: { t: number; v: number }[]; prev_curve: { t: number; v: number }[]; strategies: { name: string; trades: number; pnl: number; win_rate: number; prev_trades?: number; prev_pnl?: number }[]
 }
 export interface BtTrade { market_id: string; event: string; t: number; date: string; runner: string; side: string; entry: number; pnl: number; staked: number; state: string; won: boolean }
 export interface BtResult {
@@ -106,7 +106,7 @@ export const api = {
   liveArm: (confirm: string) => call<{ armed: boolean }>('/api/live/arm', { method: 'POST', body: JSON.stringify({ confirm }) }),
   liveDisarm: () => call<{ armed: boolean }>('/api/live/disarm', { method: 'POST' }),
   credentials: () => call<{ items: { name: string; set: boolean; detail: string }[]; where: string }>('/api/credentials'),
-  perf: (days: number) => call<PerfData>(`/api/analyse/performance?days=${days}`),
+  perf: (query: string) => call<PerfData>(`/api/analyse/performance?${query}`),
   anModels: () => call<ModelsData>('/api/analyse/models'),
   anAi: () => call<AiLearning>('/api/analyse/ai'),
   backtests: () => call<{ items: Omit<BtResult, 'trade_list'>[]; data: BtResult['data'] | null }>('/api/backtests'),

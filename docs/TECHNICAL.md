@@ -66,3 +66,6 @@ Not yet done: replaying setup scripts over the recorded price log (needs in-play
 
 ### Setup scripts are shared
 `_accept_setup` looks up the library script by its (match-free) name and reuses it, creating it only if missing. Price conditions can be relative (`{"type":"price","op":">=","rel":1.12,"ref":"back"}`): the threshold is `rel x row.ref_price`, where `ref_price` is stored on the Plan row at accept time and passed in `_script_view`. No `ref_price` means the condition is false.
+
+### Analyse ranges
+`GET /api/analyse/performance` accepts `days` (legacy: last N days v the N before) or `start`, `end` (UK dates, end inclusive) with optional `cstart`, `cend`. `analyse.performance_between` returns the same shape plus `compare`, per-strategy `prev_trades`/`prev_pnl`, and the comparison curve shifted onto the main period. Frontend: `DateRange.tsx` (preset maths in `presetRange`/`cmpRange`, unit-tested).

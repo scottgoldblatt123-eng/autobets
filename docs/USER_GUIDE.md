@@ -62,3 +62,6 @@ Accepting a trade setup does not create a script per match. There is one reusabl
 
 ### Quick apply on Home
 In AI recommended trades on Home, **Apply** on a row accepts that idea straight away (a setup is added to the Plan with its reusable script switched on; a script proposal is added to the library switched off). **Apply all** at the top accepts every idea shown, after one Yes/No check. Review still opens the Recommendations screen. Ideas that fail (for example the market has gone) are skipped and reported.
+
+### Analyse date range and comparison
+The Date range control on Analyse has presets (Today, Yesterday, Last 7/30/90 days, This week, Last week, This month, Last month, This year) and two calendar boxes for any dates you like. Tick **Compare** to set a second period: Previous period (the same length straight before, or the previous calendar month if you picked a whole month), Same period last year, or your own dates. With Compare on, the tiles show both periods, the Cumulative P&L chart overlays the comparison as a dashed line, and By strategy adds Compare markets, Compare P&L and Change columns. Your choice is remembered in this browser.

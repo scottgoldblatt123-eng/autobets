@@ -345,8 +345,30 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     from .. import analyse, backtest as bt
 
     @app.get("/api/analyse/performance")
-    def an_perf(days: int = 30, _=Depends(auth)):
-        return analyse.performance(engine.ledger, engine.recs, ai_usage.month_gbp(), max(1, min(days, 365)))
+    def an_perf(days: int = 30, start: str = "", end: str = "", cstart: str = "", cend: str = "", _=Depends(auth)):
+        """Either the last `days` days (against the days before), or an explicit UK date range, optionally with a comparison range. Dates are YYYY-MM-DD, end inclusive."""
+        if not start:
+            return analyse.performance(engine.ledger, engine.recs, ai_usage.month_gbp(), max(1, min(days, 365)))
+        import datetime as dt
+        from ..ledger import UK
+
+        def day(v: str, plus: int = 0) -> float:
+            try:
+                d = dt.date.fromisoformat(v)
+            except ValueError:
+                raise HTTPException(422, f"'{v}' is not a date (use YYYY-MM-DD)")
+            return dt.datetime.combine(d + dt.timedelta(days=plus), dt.time(), tzinfo=UK).timestamp()
+        a, b = day(start), day(end or start, 1)
+        if b <= a:
+            raise HTTPException(422, "the end date is before the start date")
+        if b - a > 800 * 86400:
+            raise HTTPException(422, "pick a range of two years or less")
+        ca = cb = None
+        if cstart:
+            ca, cb = day(cstart), day(cend or cstart, 1)
+            if cb <= ca:
+                raise HTTPException(422, "the comparison end date is before its start date")
+        return analyse.performance_between(engine.ledger, engine.recs, ai_usage.month_gbp(), a, b, ca, cb)
 
     @app.get("/api/analyse/models")
     def an_models(_=Depends(auth)):

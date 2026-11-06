@@ -9,33 +9,52 @@ from .ai.snapshot import _model_odds
 
 
 def performance(ledger, recs, ai_cost_gbp: float, days: int, now: float | None = None) -> dict:
+    """The last `days` days against the `days` before them."""
     now = now or time.time()
     span = days * 86400
-    cur, prev = ledger.window(now - span), ledger.window(now - 2 * span, now - span)
+    out = performance_between(ledger, recs, ai_cost_gbp, now - span, now, now - 2 * span, now - span)
+    return {**out, "days": days}
+
+
+def performance_between(ledger, recs, ai_cost_gbp: float, start: float, end: float, cstart: float | None = None, cend: float | None = None) -> dict:
+    """Settled results in [start, end), optionally against a comparison window [cstart, cend). The comparison curve is shifted onto the main period so they overlay."""
+    cur = ledger.window(start, end)
+    comp = ledger.window(cstart, cend) if cstart is not None and cend is not None else []
+    has_cmp = cstart is not None and cend is not None
 
     def stats(rows):
         n = len(rows)
         wins = sum(1 for e in rows if e["result"] > 0)
         return {"net": round(sum(e["result"] for e in rows), 2), "trades": n, "win_rate": round(100 * wins / n, 1) if n else None}
-    c, p = stats(cur), stats(prev)
+    c, p = stats(cur), stats(comp)
     cum, curve = 0.0, []
     for e in sorted(cur, key=lambda e: e["t"]):
         cum += e["result"]
         curve.append({"t": e["t"], "v": round(cum, 2)})
     pcum, pcurve = 0.0, []
-    for e in sorted(prev, key=lambda e: e["t"]):
+    shift = (start - cstart) if has_cmp else 0
+    for e in sorted(comp, key=lambda e: e["t"]):
         pcum += e["result"]
-        pcurve.append({"t": e["t"] + span, "v": round(pcum, 2)})
-    by: dict[str, dict] = defaultdict(lambda: {"trades": 0, "pnl": 0.0, "wins": 0})
-    for e in cur:
-        for name, v in (e.get("parts") or {"Unattributed (before tracking)": e["result"]}).items():
-            b = by[name]
-            b["trades"] += 1
-            b["pnl"] += v
-            b["wins"] += 1 if v > 0 else 0
-    strategies = sorted(({"name": k, "trades": v["trades"], "pnl": round(v["pnl"], 2), "win_rate": round(100 * v["wins"] / v["trades"], 1)} for k, v in by.items()), key=lambda x: -x["pnl"])
-    st = recs.stats(now - span)
-    return {"days": days, "current": c, "previous": p, "clv": st["avg_clv_pts"], "clv_n": st["evidence"], "costs": round(ai_cost_gbp, 2), "curve": curve, "prev_curve": pcurve, "strategies": strategies}
+        pcurve.append({"t": e["t"] + shift, "v": round(pcum, 2)})
+
+    def split(rows):
+        by: dict[str, dict] = defaultdict(lambda: {"trades": 0, "pnl": 0.0, "wins": 0})
+        for e in rows:
+            for name, v in (e.get("parts") or {"Unattributed (before tracking)": e["result"]}).items():
+                b = by[name]
+                b["trades"] += 1
+                b["pnl"] += v
+                b["wins"] += 1 if v > 0 else 0
+        return by
+    by, pby = split(cur), split(comp)
+    names = set(by) | (set(pby) if has_cmp else set())
+    z = {"trades": 0, "pnl": 0.0, "wins": 0}
+    strategies = sorted(({"name": k, "trades": by.get(k, z)["trades"], "pnl": round(by.get(k, z)["pnl"], 2),
+                          "win_rate": round(100 * by[k]["wins"] / by[k]["trades"], 1) if k in by else 0,
+                          **({"prev_trades": pby.get(k, z)["trades"], "prev_pnl": round(pby.get(k, z)["pnl"], 2)} if has_cmp else {})} for k in names), key=lambda x: -x["pnl"])
+    st = recs.stats(start)
+    return {"days": max(1, round((end - start) / 86400)), "compare": has_cmp, "start": start, "end": end, "current": c, "previous": p, "clv": st["avg_clv_pts"], "clv_n": st["evidence"],
+            "costs": round(ai_cost_gbp, 2), "curve": curve, "prev_curve": pcurve, "strategies": strategies}
 
 
 def models(store, since_days: int = 90) -> dict:

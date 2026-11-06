@@ -76,3 +76,20 @@ def test_backtest_endpoint_runs_and_stores(client):
     assert client.get(f"/api/backtests/{r['id']}").json()["trade_list"]
     assert client.get("/api/analyse/performance?days=30").json()["current"]["trades"] == 0
     assert client.get("/api/analyse/ai").json()["ideas"] == 0
+
+
+def test_performance_by_date_range_with_comparison(monkeypatch):
+    import datetime as dt
+    from autobets.ledger import UK
+    monkeypatch.delenv("AUTOBETS_TOKEN", raising=False)
+    e = Engine.demo()
+    t = lambda d: dt.datetime.fromisoformat(d + "T12:00:00").replace(tzinfo=UK).timestamp()
+    for d, r in (("2026-10-02", 5.0), ("2026-10-03", -2.0), ("2026-10-09", 4.0)):
+        e.ledger.entries.append({"t": t(d), "result": r, "market_id": d, "parts": {"Scalp": r}})
+    c = TestClient(create_app(e))
+    j = c.get("/api/analyse/performance?start=2026-10-09&end=2026-10-09&cstart=2026-10-02&cend=2026-10-03").json()
+    assert j["compare"] and j["current"]["net"] == 4.0 and j["previous"]["net"] == 3.0 and j["previous"]["trades"] == 2
+    assert j["strategies"][0]["prev_pnl"] == 3.0 and j["prev_curve"][0]["t"] > t("2026-10-08")      # comparison is shifted onto the main period
+    assert c.get("/api/analyse/performance?start=2026-10-09&end=2026-10-01").status_code == 422
+    assert c.get("/api/analyse/performance?start=nope").status_code == 422
+    assert c.get("/api/analyse/performance?start=2026-10-09&end=2026-10-09").json()["compare"] is False

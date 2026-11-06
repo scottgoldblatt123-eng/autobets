@@ -3209,3 +3209,70 @@ Steps:
 **Expected:** Every shown idea is applied; any that fail are reported, not silently dropped.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 48. Analyse date range and compare
+
+_Picking periods and comparing them._
+
+### 48.1 Preset  \[Either\]
+
+Steps:
+1. Analyse, Date range, choose Last month.
+
+**Expected:** Both calendar boxes fill with the first and last day of last month; tiles and chart update.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 48.2 Pick by calendar  \[Either\]
+
+Steps:
+1. Change the From or To date in the boxes.
+
+**Expected:** Preset switches to Custom; figures cover exactly those days. Dates after today cannot be chosen.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 48.3 Compare previous period  \[Either\]
+
+Steps:
+1. Tick Compare.
+
+**Expected:** A second pair of dates appears (the period straight before). Tiles show 'compare' figures; the chart gets a dashed line.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 48.4 Compare presets  \[Either\]
+
+Steps:
+1. Choose Same period last year, then Custom and set your own dates.
+
+**Expected:** The comparison dates follow the preset, then your own dates.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 48.5 Whole month compares to the month before  \[Either\]
+
+Steps:
+1. Choose This month's predecessor: Last month, Compare, Previous period.
+
+**Expected:** Comparison is the calendar month before, not a same-length slice.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 48.6 Strategies compare  \[Either\]
+
+Steps:
+1. Open the Strategies tab with Compare on.
+
+**Expected:** Compare markets, Compare P&L and Change columns appear.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 48.7 Choice is remembered  \[Either\]
+
+Steps:
+1. Set a range, reload.
+
+**Expected:** The same range and compare settings are still selected.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

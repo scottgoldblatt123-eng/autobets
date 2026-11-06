@@ -489,6 +489,16 @@ sec("Home quick apply", "Applying recommended trades from Home.", [
     c("Apply all confirmed", "Demo", ["Press Apply all, then Yes, apply all."], "Every shown idea is applied; any that fail are reported, not silently dropped."),
 ])
 
+sec("Analyse date range and compare", "Picking periods and comparing them.", [
+    c("Preset", "Either", ["Analyse, Date range, choose Last month."], "Both calendar boxes fill with the first and last day of last month; tiles and chart update."),
+    c("Pick by calendar", "Either", ["Change the From or To date in the boxes."], "Preset switches to Custom; figures cover exactly those days. Dates after today cannot be chosen."),
+    c("Compare previous period", "Either", ["Tick Compare."], "A second pair of dates appears (the period straight before). Tiles show 'compare' figures; the chart gets a dashed line."),
+    c("Compare presets", "Either", ["Choose Same period last year, then Custom and set your own dates."], "The comparison dates follow the preset, then your own dates."),
+    c("Whole month compares to the month before", "Either", ["Choose This month's predecessor: Last month, Compare, Previous period."], "Comparison is the calendar month before, not a same-length slice."),
+    c("Strategies compare", "Either", ["Open the Strategies tab with Compare on."], "Compare markets, Compare P&L and Change columns appear."),
+    c("Choice is remembered", "Either", ["Set a range, reload."], "The same range and compare settings are still selected."),
+])
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     json.dump(cases, open(os.path.join(here, "uat_cases.json"), "w"), indent=1)
