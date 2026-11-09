@@ -43,12 +43,15 @@ def _scaled(price: float, k: float) -> float:
 # ---- tennis ------------------------------------------------------------------------------------------------------------------------------------
 def tennis(info: dict, book, ctx: dict | None, stake: float) -> dict | None:
     fair = _model_odds(ctx, info.get("runners", {}))
-    if len(fair) != 2:
+    runners = info.get("runners", {})
+    if len(runners) != 2:
         return None
-    mids = {sid: _mid(book.selections.get(sid)) for sid in fair}
+    mids = {sid: _mid(book.selections.get(sid)) for sid in runners}
     if not all(mids.values()):
         return None
     mkt = _implied(mids)
+    if len(fair) != 2:             # no rating model for this match: still offer the market-only swing trade (no view on who is better)
+        fair = {sid: 1.0 / mkt[sid] for sid in runners}
     gap = {sid: round(1.0 / fair[sid] - mkt[sid], 4) for sid in fair}
     best = max(gap, key=gap.get)                                  # the player the model rates higher than the market does
     other = next(s for s in gap if s != best)
@@ -123,13 +126,16 @@ def football(info: dict, ou_info: dict, ou_book, ctx: dict | None, stake: float)
     pm = (ctx or {}).get("pre_model") or {}
     p_over = pm.get("over_2.5")
     ids = _ou_ids(ou_info)
-    if p_over is None or not ids:
+    if not ids:
         return None
     over, under = ids
     mids = {over: _mid(ou_book.selections.get(over)), under: _mid(ou_book.selections.get(under))}
     if not all(mids.values()):
         return None
     mkt = _implied(mids)
+    modelled = p_over is not None
+    if not modelled:               # no goals model for this match: use the market's own view, so only the scalp (which needs no edge) can qualify
+        p_over = mkt[over]
     o_sel, u_sel = ou_book.selections[over], ou_book.selections[under]
     o_back, u_back = o_sel.backs[0].price, u_sel.backs[0].price
     ev = info.get("event", "")
@@ -158,10 +164,11 @@ def football(info: dict, ou_info: dict, ou_book, ctx: dict | None, stake: float)
                             _rule("r3", "exit", [{"type": "rule_matched", "rule": "r1"}, {"type": "ticks_from_entry", "op": "<=", "value": -6}], [{"type": "close"}]),
                             _rule("r4", "safety", [{"type": "goals_total", "op": ">=", "value": 2}], [{"type": "close"}, {"type": "stop"}])]}
         return {**base, "template": "football_under_scalp", "selection_id": under, "runner": ou_info["runners"][under], "side": "BACK", "price": u_back,
-                "model_p": round(p_under, 4), "market_p": round(mkt[under], 4), "edge": round(p_under - UNDER_MIN_P, 4), "script": script,
+                "model_p": round(p_under, 4), "market_p": round(mkt[under], 4), "edge": round(p_under - UNDER_MIN_P, 4) if modelled else 0.003, "script": script,
                 "title": f"Scalp Under 2.5 Goals · {ev}",
-                "reason": (f"The model expects a low-scoring game ({p_under * 100:.0f}% Under 2.5, about {sum(pm.get('mu', [0, 0])):.1f} goals) and the market agrees ({mkt[under] * 100:.0f}%), "
-                           f"with Under at {u_back:.2f}. When both agree the price tends to creep rather than jump while it stays 0-0, which suits taking 2 ticks at a time, repeatedly. "
-                           f"A trade that goes 6 ticks against is closed and the script tries again; a second goal ends it. " + CAVEAT),
+                "reason": ((f"The model expects a low-scoring game ({p_under * 100:.0f}% Under 2.5, about {sum(pm.get('mu', [0, 0])):.1f} goals) and the market agrees ({mkt[under] * 100:.0f}%), with Under at {u_back:.2f}. When both agree"
+                            if modelled else f"There is no goals model for this match, so this uses the market alone: it makes Under 2.5 {mkt[under] * 100:.0f}% likely, at {u_back:.2f}. When the market expects few goals")
+                           + " the price tends to creep rather than jump while it stays 0-0, which suits taking 2 ticks at a time, repeatedly. "
+                           "A trade that goes 6 ticks against is closed and the script tries again; a second goal ends it. " + CAVEAT),
                 "watch": ["Kick-off and a spread of 2 ticks or less on Under 2.5", "A goal makes Under move sharply: expect a loss hedge on the first run it catches"]}
     return None

@@ -506,6 +506,13 @@ sec("Why hasn't it fired", "Diagnosing a script on the Plan.", [
     c("Unmatched entry retries", "Practice", ["Let a script place an entry bet that does not match (price moves away).", "Wait 45 seconds."], "The bet is cancelled, an alert says so, and the same run places a new entry."),
 ])
 
+sec("Setup scan report", "Explaining why trade setups are or are not found.", [
+    c("Scan line", "Either", ["Open Recommendations."], "A line says when the last scan ran and how many setups it found."),
+    c("Why so few", "Either", ["Press Why so few?"], "Per sport: matches listed, starting within 8 hours, priced, with data, with a model view, setups. A sentence explains a zero."),
+    c("Scan now", "Either", ["Press Scan now."], "The scan runs; the line and any new setups update."),
+    c("No model needed", "Live", ["Find a match in scope with no rating or goals model."], "A market-only swing trade (tennis) or Under 2.5 scalp (football) can still be offered, and its reason says there is no model."),
+])
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     json.dump(cases, open(os.path.join(here, "uat_cases.json"), "w"), indent=1)

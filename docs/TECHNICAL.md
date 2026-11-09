@@ -72,3 +72,6 @@ Not yet done: replaying setup scripts over the recorded price log (needs in-play
 
 ### Diagnostics and stale entries
 `GET /api/plan/{id}/why` (`Engine.plan_why`) evaluates each rule's conditions with `scripts.check` against the live view and returns them with `describe_cond` text plus readings. `Engine._stale_entry` (45s, `STALE_ENTRY_S`) cancels a script entry order that has no fills and re-arms the same cycle; previously an unmatched entry left the row Running with no exit able to fire (exits need a matched entry) and no repeat.
+
+### Scan funnel
+`Recs.scan` records `last_scan` (per sport: markets, soon, priced, with_context, with_model, setups, errors[]), returned as `scan` by `GET /api/recs`. Errors from price requests, market listing and setup generation are recorded there instead of being swallowed. `setups.tennis` falls back to market-implied odds when there is no rating model; `setups.football` falls back to the market's Over probability (so only the scalp, which needs no edge, can qualify).

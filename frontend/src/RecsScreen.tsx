@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type Rec, type RecStats } from './api'
+import { api, type ScanInfo, type Rec, type RecStats } from './api'
 import { RuleCards } from './ScriptsScreen'
 
 type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
@@ -7,9 +7,9 @@ type Kind = 'all' | 'setup' | 'script' | 'model'
 
 /** Recommendations: trade setups the models surface, each with a ready-made script. Nothing is bet until you add it to the Plan, and then only in play when its conditions are met. */
 export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDiscuss: (r: Rec) => void; onPlan: () => void }) {
-  const [items, setItems] = useState<Rec[]>([]), [stats, setStats] = useState<RecStats | null>(null), [kind, setKind] = useState<Kind>('all'), [sport, setSport] = useState<'all' | 'football' | 'tennis'>('all'), [err, setErr] = useState(''), [proposing, setProposing] = useState(false)
+  const [items, setItems] = useState<Rec[]>([]), [stats, setStats] = useState<RecStats | null>(null), [scan, setScan] = useState<ScanInfo | null>(null), [scanning, setScanning] = useState(false), [kind, setKind] = useState<Kind>('all'), [sport, setSport] = useState<'all' | 'football' | 'tennis'>('all'), [err, setErr] = useState(''), [proposing, setProposing] = useState(false)
   const [apply, setApply] = useState<Rec | null>(null), [price, setPrice] = useState(''), [stake, setStake] = useState(''), [dismiss, setDismiss] = useState<Rec | null>(null), [reason, setReason] = useState(''), [busy, setBusy] = useState(false)
-  const load = useCallback(() => api.recs('all').then(r => { setItems(r.items); setStats(r.stats); setErr('') }).catch(e => setErr((e as Error).message)), [])
+  const load = useCallback(() => api.recs('all').then(r => { setItems(r.items); setStats(r.stats); setScan(r.scan); setErr('') }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load(); const t = window.setInterval(() => void load(), 15000); return () => window.clearInterval(t) }, [load])
   const inSport = (r: Rec) => sport === 'all' || r.sport === sport || (r.kind === 'script' && r.sport === 'any')
   const shown = items.filter(r => (kind === 'all' || r.kind === kind) && inSport(r))
@@ -36,6 +36,7 @@ export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDis
         <div className="card kpi"><span className="cap">Evidence so far</span><b>{stats?.avg_clv_pts == null ? '–' : `${stats.avg_clv_pts > 0 ? '+' : ''}${stats.avg_clv_pts} pts`}</b><small className="muted">avg CLV over {stats?.evidence ?? 0} measured ideas</small></div>
         <div className="card kpi"><span className="cap">Auto-apply</span><b>{stats?.auto_apply_unlocked ? 'Available' : 'Locked'}</b><small className="muted">{stats?.evidence ?? 0} / {stats?.evidence_needed ?? 300} evidence needed</small></div>
       </div>
+      <ScanReport scan={scan} busy={scanning} run={async () => { setScanning(true); try { await api.recScan(); await load() } catch (e) { setErr((e as Error).message) } finally { setScanning(false) } }} />
       {!!stats?.setup_results?.n && <div className="small muted">Accepted setups that have settled: {stats.setup_results.n}, net <b className={stats.setup_results.net >= 0 ? 'gain' : 'loss'}>{stats.setup_results.net >= 0 ? '+' : ''}£{stats.setup_results.net.toFixed(2)}</b> (whole-market result, practice mode)</div>}
       <div className="row" role="group" aria-label="Sport">
         {([['all', 'All sports'], ['football', 'Football'], ['tennis', 'Tennis']] as ['all' | 'football' | 'tennis', string][]).map(([k, l]) => <button key={k} className={'chip' + (sport === k ? ' on' : '')} onClick={() => setSport(k)}>{l} ({nSport(k)})</button>)}
@@ -87,4 +88,24 @@ export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDis
       <button hidden onClick={onPlan} />
     </div>
   )
+}
+
+/** Where the last scan for trade setups lost each market, so "nothing found" is explained: how many matches were listed, starting soon, priced, had data, and produced a setup. */
+function ScanReport({ scan, run, busy }: { scan: ScanInfo | null; run: () => void; busy: boolean }) {
+  const [open, setOpen] = useState(false)
+  const when = scan ? new Date(scan.t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
+  const total = scan ? Object.values(scan.sports).reduce((n, s) => n + s.setups, 0) : 0
+  return <div className="small muted" style={{ margin: '6px 0' }}>
+    {scan ? <>Last scan {when}: {total} setup{total === 1 ? '' : 's'} found. <button className="linkbtn" onClick={() => setOpen(o => !o)}>{open ? 'Hide detail' : 'Why so few?'}</button></> : 'No scan has run since the server started (it scans every 2 minutes).'}
+    {' '}<button className="linkbtn" disabled={busy} onClick={run}>{busy ? 'Scanning…' : 'Scan now'}</button>
+    {open && scan && <div className="card" style={{ padding: 10, marginTop: 6 }}>
+      {Object.entries(scan.sports).map(([k, s]) => <div key={k} style={{ marginBottom: 6 }}>
+        <b className="ink">{k === 'tennis' ? 'Tennis' : 'Football'}</b>: {s.markets} matches listed · {s.soon} start within 8 hours · {s.priced} priced · {s.with_context} with live data · {s.with_model} with a model view · <b className="ink">{s.setups} setups</b>
+        {s.soon === 0 && <div>Nothing in scope starts in the next 8 hours (the scan only looks that far ahead, in scope leagues and tours only).</div>}
+        {s.soon > 0 && s.priced < s.soon && <div>{s.soon - s.priced} of them have no open price yet.</div>}
+        {s.priced > 0 && s.setups === 0 && <div>Priced matches did not meet a setup's price range or conditions (for example a favourite too short, or an Under 2.5 price outside 1.65 to 2.40).</div>}
+        {s.errors.map((e, i) => <div key={i} className="loss">{e}</div>)}
+      </div>)}
+    </div>}
+  </div>
 }

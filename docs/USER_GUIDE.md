@@ -70,3 +70,6 @@ The Date range control on Analyse has presets (Today, Yesterday, Last 7/30/90 da
 On the Plan, open a row's rules (Show rules) and press **Why hasn't it fired?**. It lists every rule's conditions with a tick or cross for how they stand right now, and the readings they look at (market status, in-play, minute, goals, spread, whether the live score feed is connected). A rule with every condition ticked should act on the next pass. It also says if automation or the script itself is switched off.
 
 If a script's entry bet is not matched within 45 seconds it is now cancelled and the same run tries again, so a scalp cannot get stuck waiting on a bet the price has left behind. An alert says when this happens.
+
+### Why so few trade setups?
+Recommendations shows a line under the tiles: "Last scan 14:32: N setups found". **Why so few?** breaks the last scan down per sport: matches listed, starting within 8 hours, priced, with live data, with a model view, and setups found, with a plain reason when it is zero. **Scan now** runs it immediately. Setups no longer need a rating or goals model: with no model the tennis swing trade (lay the outsider who breaks early) and the Under 2.5 scalp are still offered from the market's own prices, and their reason says so. Over 2.5 setups still need the goals model, because they depend on a view that differs from the market.

@@ -88,6 +88,7 @@ export interface RecStats { pending: number; applied: number; acceptance: number
 export interface AlertRow { id: string; t: number; type: string; text: string; action: string; needs_action: boolean; ref: { kind?: string; id?: string }; read: boolean; active: boolean }
 export interface HealthItem { key: string; name: string; level: 'ok' | 'bad' | 'off'; detail: string }
 
+export interface ScanInfo { t: number; sports: Record<string, { markets: number; soon: number; priced: number; with_context: number; with_model: number; setups: number; errors: string[] }> }
 export interface PlanWhy { ok: boolean; reason?: string; state: string; cycle: number; note: string; automation: boolean; script_enabled: boolean; readings: Record<string, string | number | boolean | null>; rules: { id: string; kind: string; done: boolean; conditions: { text: string; met: boolean }[] }[] }
 export interface PerfData {
   days: number; compare?: boolean; current: { net: number; trades: number; win_rate: number | null }; previous: { net: number; trades: number; win_rate: number | null }; clv: number | null; clv_n: number; costs: number
@@ -115,7 +116,7 @@ export const api = {
   backtest: (id: string) => call<BtResult>(`/api/backtests/${id}`),
   runBacktest: (b: { script_id: string; target: string; days: number; stake?: number }) => call<BtResult>('/api/backtests', { method: 'POST', body: JSON.stringify(b) }),
   home: () => call<Record<string, unknown>>('/api/home'),
-  recs: (kind = 'all') => call<{ items: Rec[]; stats: RecStats }>(`/api/recs?kind=${kind}`),
+  recs: (kind = 'all') => call<{ items: Rec[]; stats: RecStats; scan: ScanInfo | null }>(`/api/recs?kind=${kind}`),
   recApply: (id: string, b: { price?: number; stake?: number } = {}) => call<{ rec: Rec; order: Order | null; script?: { name: string }; warnings: string[] }>(`/api/recs/${id}/apply`, { method: 'POST', body: JSON.stringify(b) }),
   recDismiss: (id: string, reason: string) => call<Rec>(`/api/recs/${id}/dismiss`, { method: 'POST', body: JSON.stringify({ reason }) }),
   proposeScripts: () => call<{ created: number; asked: number; cost_gbp: number }>('/api/recs/propose-scripts', { method: 'POST' }),

@@ -116,16 +116,22 @@ class Recs:
         self.items[rid] = r
         return r, True
 
+    last_scan: dict | None = None
+
     def scan(self, engine, stake: float) -> list[dict]:
         """One pass over upcoming pre-match markets. Returns the recommendations created this pass."""
         created = []
         now = time.time()
         seen_markets = set()
+        self.last_scan = {"t": now, "sports": {}}
         for sport in ("tennis", "football"):
+            f = self.last_scan["sports"][sport] = {"markets": 0, "soon": 0, "priced": 0, "with_context": 0, "with_model": 0, "setups": 0, "errors": []}
             try:
                 markets = engine.markets(sport)
-            except Exception:       # noqa: BLE001
+            except Exception as e:       # noqa: BLE001
+                f["errors"].append(f"could not list {sport} markets: {e}")
                 continue
+            f["markets"] = len(markets)
             soon = []
             for m in markets:
                 st = m.get("start")
@@ -136,10 +142,12 @@ class Recs:
                     t0 = None
                 if t0 and 0 < t0 - now < HORIZON_S and not m.get("in_play"):
                     soon.append(m)
+            f["soon"] = len(soon)
             for i in range(0, len(soon), 40):
                 try:
                     books = engine.feed.get_books([m["market_id"] for m in soon[i:i + 40]], depth=False)
-                except Exception:   # noqa: BLE001
+                except Exception as e:   # noqa: BLE001
+                    f["errors"].append(f"could not get prices: {e}")
                     continue
                 bk = {b.market_id: b for b in books}
                 for m in soon[i:i + 40]:
@@ -147,6 +155,7 @@ class Recs:
                     if b is None or b.status != "OPEN":
                         continue
                     seen_markets.add(m["market_id"])
+                    f["priced"] += 1
                     for r in list(self.items.values()):               # keep the latest pre-play quote on every idea, applied or not: it becomes the closing price
                         if r["kind"] == "trade" and r["clv"] is None and r["market_id"] == m["market_id"] and r["selection_id"] in b.selections:
                             q = b.selections[r["selection_id"]]
@@ -156,21 +165,25 @@ class Recs:
                         ctx = engine.context_fn({**m, "market_id": m["market_id"]}) if engine.context_fn else None
                     except Exception:   # noqa: BLE001
                         ctx = None
-                    if not ctx:
-                        continue
+                    f["with_context"] += 1 if ctx else 0
+                    f["with_model"] += 1 if (ctx or {}).get("model") or (ctx or {}).get("pre_model") else 0
+                    ctx = ctx or {}
                     try:
                         cand = None
                         if sport == "tennis":
                             cand = _setups.tennis(m, b, ctx, stake)
                         else:
-                            ou = _setups.goals_market(engine.event_markets(m.get("event_id", ""))) if m.get("event_id") and (ctx.get("pre_model") or {}).get("over_2.5") is not None else None
+                            ou = _setups.goals_market(engine.event_markets(m.get("event_id", ""))) if m.get("event_id") else None
                             if ou:
                                 seen_markets.add(ou["market_id"])
                                 ob = engine.feed.get_books([ou["market_id"]], depth=False)[0]
                                 cand = _setups.football(m, ou, ob, ctx, stake) if ob.status == "OPEN" else None
-                    except Exception:   # noqa: BLE001
+                    except Exception as e:   # noqa: BLE001
                         cand = None
+                        if len(f["errors"]) < 3:
+                            f["errors"].append(f"{m.get('event', m['market_id'])}: {type(e).__name__}: {e}")
                     if cand:
+                        f["setups"] += 1
                         r, new = self.upsert_setup(cand.get("market_id", m["market_id"]), m, cand)
                         if new:
                             created.append(r)

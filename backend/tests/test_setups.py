@@ -40,7 +40,9 @@ def test_tennis_setup_lays_the_overrated_player_when_the_underrated_one_is_a_hea
 def test_tennis_setup_needs_a_real_gap_and_a_model():
     c = setups.tennis(INFO, mk({"A": (2.0, 2.02), "B": (2.04, 2.06)}), ctx(0.50), 10)         # no view on the winner: fade an early lead by the outsider
     assert c["template"] == "tennis_fade_lay" and c["selection_id"] == "B" and c["edge"] < 0.01 and "not a view on the winner" in c["reason"]
-    assert setups.tennis(INFO, mk({"A": (2.0, 2.02), "B": (2.0, 2.02)}), None, 10) is None
+    c = setups.tennis(INFO, mk({"A": (1.6, 1.62), "B": (2.5, 2.54)}), None, 10)                  # no rating model for the match: market-only swing trade, no view on the winner
+    assert c["template"].startswith("tennis_fade") and "not a view on the winner" in c["reason"]
+    assert setups.tennis(INFO, mk({"A": (1.05, 1.06), "B": (15.0, 16.0)}), None, 10) is None     # prices outside the tradable range
 
 
 def test_new_tennis_conditions():
@@ -83,7 +85,7 @@ def test_football_under_scalp_setup_repeats_and_keeps_scalping_after_a_loss_exit
     assert kinds["r4"] == "safety"                     # the second goal ends it
     assert setups.football(FINFO, ou_info(), ou_book((2.0, 2.02), (1.9, 1.92)), {"pre_model": {"over_2.5": 0.60, "mu": [1.6, 1.6]}}, 10)["template"] == "football_over_wait"
     assert setups.football(FINFO, ou_info(), ou_book((1.4, 1.42), (3.0, 3.1)), {"pre_model": {"over_2.5": 0.80, "mu": [2.0, 1.8]}}, 10) is None    # Over too short to be worth waiting for
-    assert setups.football(FINFO, ou_info(), ou_book((2.0, 2.02), (1.9, 1.92)), None, 10) is None
+    assert setups.football(FINFO, ou_info(), ou_book((2.0, 2.02), (1.9, 1.92)), None, 10)["template"] == "football_under_scalp"       # no model: market-only scalp
 
 
 def test_accepting_a_setup_saves_the_script_switches_it_on_and_adds_the_plan_row_without_betting():
@@ -235,3 +237,18 @@ def test_unmatched_scalp_entry_is_cancelled_and_retried_instead_of_hanging():
     e.run_scripts()
     assert row["entry_order"] != first and row.get("cycle", 1) == 1                   # cancelled, and the same run went again
     assert e.ex.get_order(first).status.value == "CANCELLED"
+
+
+def test_football_scalp_needs_no_model_only_a_market_in_the_right_price_range():
+    c = setups.football(FINFO, ou_info(), ou_book((2.0, 2.04), (1.9, 1.92)), {}, 10)             # no pre_model at all
+    assert c["template"] == "football_under_scalp" and "no goals model" in c["reason"]
+    assert setups.football(FINFO, ou_info(), ou_book((1.4, 1.42), (3.2, 3.3)), {}, 10) is None   # Under too long to scalp
+
+
+def test_scan_reports_where_markets_were_lost():
+    e = Engine.demo()
+    e.recs.scan(e, 10)
+    rep = e.recs.last_scan
+    assert set(rep["sports"]) == {"tennis", "football"}
+    f = rep["sports"]["tennis"]
+    assert {"markets", "soon", "priced", "with_context", "with_model", "setups", "errors"} <= set(f)

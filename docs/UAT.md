@@ -3317,3 +3317,43 @@ Steps:
 **Expected:** The bet is cancelled, an alert says so, and the same run places a new entry.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 50. Setup scan report
+
+_Explaining why trade setups are or are not found._
+
+### 50.1 Scan line  \[Either\]
+
+Steps:
+1. Open Recommendations.
+
+**Expected:** A line says when the last scan ran and how many setups it found.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 50.2 Why so few  \[Either\]
+
+Steps:
+1. Press Why so few?
+
+**Expected:** Per sport: matches listed, starting within 8 hours, priced, with data, with a model view, setups. A sentence explains a zero.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 50.3 Scan now  \[Either\]
+
+Steps:
+1. Press Scan now.
+
+**Expected:** The scan runs; the line and any new setups update.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 50.4 No model needed  \[Live\]
+
+Steps:
+1. Find a match in scope with no rating or goals model.
+
+**Expected:** A market-only swing trade (tennis) or Under 2.5 scalp (football) can still be offered, and its reason says there is no model.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
