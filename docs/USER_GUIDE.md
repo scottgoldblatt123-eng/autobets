@@ -73,3 +73,6 @@ If a script's entry bet is not matched within 45 seconds it is now cancelled and
 
 ### Why so few trade setups?
 Recommendations shows a line under the tiles: "Last scan 14:32: N setups found". **Why so few?** breaks the last scan down per sport: matches listed, starting within 8 hours, priced, with live data, with a model view, and setups found, with a plain reason when it is zero. **Scan now** runs it immediately. Setups no longer need a rating or goals model: with no model the tennis swing trade (lay the outsider who breaks early) and the Under 2.5 scalp are still offered from the market's own prices, and their reason says so. Over 2.5 setups still need the goals model, because they depend on a view that differs from the market.
+
+### Select and apply several recommendations
+Each trade setup and script proposal on Recommendations has a tick box. A bar above the list has **Select all**, **Apply selected (N)**, **Dismiss selected** and **Apply all (N)**; "all" means everything in the current sport and kind filter. Applying asks Yes/No first. Setups go on the Plan with their reusable script switched on; script proposals go to Scripts switched off. Ideas that fail are skipped and reported. Older single-bet ideas (which would place a bet immediately) are not included and are still applied one at a time.

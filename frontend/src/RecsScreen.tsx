@@ -8,13 +8,25 @@ type Kind = 'all' | 'setup' | 'script' | 'model'
 /** Recommendations: trade setups the models surface, each with a ready-made script. Nothing is bet until you add it to the Plan, and then only in play when its conditions are met. */
 export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDiscuss: (r: Rec) => void; onPlan: () => void }) {
   const [items, setItems] = useState<Rec[]>([]), [stats, setStats] = useState<RecStats | null>(null), [scan, setScan] = useState<ScanInfo | null>(null), [scanning, setScanning] = useState(false), [kind, setKind] = useState<Kind>('all'), [sport, setSport] = useState<'all' | 'football' | 'tennis'>('all'), [err, setErr] = useState(''), [proposing, setProposing] = useState(false)
-  const [apply, setApply] = useState<Rec | null>(null), [price, setPrice] = useState(''), [stake, setStake] = useState(''), [dismiss, setDismiss] = useState<Rec | null>(null), [reason, setReason] = useState(''), [busy, setBusy] = useState(false)
+  const [apply, setApply] = useState<Rec | null>(null), [price, setPrice] = useState(''), [stake, setStake] = useState(''), [dismiss, setDismiss] = useState<Rec | null>(null), [reason, setReason] = useState(''), [busy, setBusy] = useState(false), [picked, setPicked] = useState<Set<string>>(new Set()), [sure, setSure] = useState<'' | 'selected' | 'all'>(''), [bulk, setBulk] = useState(false)
   const load = useCallback(() => api.recs('all').then(r => { setItems(r.items); setStats(r.stats); setScan(r.scan); setErr('') }).catch(e => setErr((e as Error).message)), [])
   useEffect(() => { void load(); const t = window.setInterval(() => void load(), 15000); return () => window.clearInterval(t) }, [load])
   const inSport = (r: Rec) => sport === 'all' || r.sport === sport || (r.kind === 'script' && r.sport === 'any')
   const shown = items.filter(r => (kind === 'all' || r.kind === kind) && inSport(r))
   const nSport = (sp: string) => items.filter(r => r.status === 'pending' && (sp === 'all' || r.sport === sp || (r.kind === 'script' && r.sport === 'any'))).length
   const propose = async () => { setProposing(true); try { const r = await api.proposeScripts(); say(r.created ? `${r.created} new script proposal${r.created === 1 ? '' : 's'} (cost about £${r.cost_gbp.toFixed(2)}).` : 'Claude had no new script ideas that differ from what you already have.'); void load() } catch (e) { say((e as Error).message, 'err') } finally { setProposing(false) } }
+  const bulkable = (r: Rec) => r.status === 'pending' && (r.kind === 'setup' || (r.kind === 'script' && !!r.proposal))     // setups and script proposals place no bet now; legacy single-bet ideas are applied one at a time
+  const pickable = shown.filter(bulkable)
+  const chosen = pickable.filter(r => picked.has(r.id))
+  const toggle = (id: string) => setPicked(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const runBulk = async (list: Rec[], dismissAll = false) => {
+    setBulk(true); setSure('')
+    let ok = 0; const bad: string[] = []
+    for (const r of list) { try { if (dismissAll) await api.recDismiss(r.id, 'bulk dismissed'); else await api.recApply(r.id); ok++ } catch (e) { bad.push(`${r.title}: ${(e as Error).message}`) } }
+    setBulk(false); setPicked(new Set()); void load()
+    if (ok) say(dismissAll ? `Dismissed ${ok}.` : `Applied ${ok}: setups are on your Plan, script proposals are in Scripts (switched off).`)
+    if (bad.length) say(`${bad.length} could not be applied. ${bad[0]}`, 'warn')
+  }
   const open = (r: Rec, edit: boolean) => { setApply(r); setStake(String(r.stake)); setPrice(edit ? String(r.price) : '') }
   const confirm = async () => {
     if (!apply) return
@@ -46,10 +58,19 @@ export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDis
         {([['all', `All (${c?.all ?? 0})`], ['setup', `Trade setups (${c?.setups ?? 0})`], ['script', `New scripts (${items.filter(r => r.kind === 'script' && r.status === 'pending').length})`], ['model', `Model improvements (${c?.models ?? 0})`]] as [Kind, string][]).map(([k, l]) => <button key={k} className={'chip' + (kind === k ? ' on' : '')} onClick={() => setKind(k)}>{l}</button>)}
         <span className="spacer" /><label className="sw"><input type="checkbox" disabled /> Auto-apply recommendations</label><span className="muted small">Unlocks after {stats?.evidence_needed ?? 300} recommendations with positive CLV</span>
       </div>
+      {pickable.length > 0 && <div className="row card" style={{ padding: '8px 12px', gap: 10 }}>
+        <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={chosen.length === pickable.length} onChange={e => setPicked(e.target.checked ? new Set(pickable.map(r => r.id)) : new Set())} aria-label="Select all shown" />{chosen.length ? `${chosen.length} selected` : `Select all ${pickable.length}`}</label>
+        <span className="spacer" />
+        {sure ? <><span className="small muted">{sure === 'all' ? `Apply all ${pickable.length}?` : `Apply ${chosen.length}?`} Setups go on the Plan switched on; nothing is bet until their conditions are met.</span>
+            <button className="primary sm" disabled={bulk} onClick={() => void runBulk(sure === 'all' ? pickable : chosen)}>Yes, apply</button><button className="sm" onClick={() => setSure('')}>No</button></>
+          : <><button className="sm" disabled={bulk || !chosen.length} onClick={() => void runBulk(chosen, true)}>Dismiss selected</button>
+              <button className="sm" disabled={bulk || !chosen.length} onClick={() => setSure('selected')}>Apply selected ({chosen.length})</button>
+              <button className="sm primary" disabled={bulk} onClick={() => setSure('all')}>Apply all ({pickable.length})</button></>}
+      </div>}
       {shown.map(r => r.kind === 'script' && r.proposal ? (
         <div key={r.id} className="card reccard">
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="row" style={{ gap: 8 }}><span className="src ai">New script proposal</span><h3>{r.title}</h3><span className="muted small">{r.sport === 'any' ? 'Any sport' : r.sport}</span></div>
+            <div className="row" style={{ gap: 8 }}><input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} aria-label="Select" /><span className="src ai">New script proposal</span><h3>{r.title}</h3><span className="muted small">{r.sport === 'any' ? 'Any sport' : r.sport}</span></div>
             <p className="small muted" style={{ margin: '6px 0 8px', lineHeight: 1.5 }}>{r.reason}</p>
             {!!r.text?.length && <RuleCards text={r.text} fold headline={r.headline} />}
           </div>
@@ -58,7 +79,7 @@ export default function RecsScreen({ say, onDiscuss, onPlan }: { say: Say; onDis
         </div>) : r.kind === 'setup' ? (
         <div key={r.id} className="card reccard">
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="row" style={{ gap: 8 }}><span className="src ai">Trade setup</span><h3>{r.title}{r.start ? ` · ${new Date(r.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</h3></div>
+            <div className="row" style={{ gap: 8 }}><input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} aria-label="Select" /><span className="src ai">Trade setup</span><h3>{r.title}{r.start ? ` · ${new Date(r.start).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</h3></div>
             <p className="small muted" style={{ margin: '6px 0 8px', lineHeight: 1.5 }}>{r.reason}</p>
             {!!r.watch?.length && <div className="small" style={{ marginBottom: 8 }}><b>What has to happen</b><ul style={{ margin: '4px 0 0 18px', padding: 0 }}>{r.watch.map(w => <li key={w}>{w}</li>)}</ul></div>}
             {!!r.text?.length && <div style={{ marginBottom: 8 }}><RuleCards text={r.text} fold headline={r.headline} /></div>}

@@ -513,6 +513,14 @@ sec("Setup scan report", "Explaining why trade setups are or are not found.", [
     c("No model needed", "Live", ["Find a match in scope with no rating or goals model."], "A market-only swing trade (tennis) or Under 2.5 scalp (football) can still be offered, and its reason says there is no model."),
 ])
 
+sec("Recommendations bulk actions", "Selecting and applying several ideas.", [
+    c("Tick boxes", "Demo", ["Open Recommendations with several setups."], "Every trade setup and script proposal has a tick box; a bar shows Select all, Apply selected, Dismiss selected and Apply all."),
+    c("Apply selected", "Demo", ["Tick two ideas, Apply selected, Yes, apply."], "Only those two are applied; the rest stay pending."),
+    c("Apply all respects filters", "Demo", ["Filter to Tennis, press Apply all."], "Only the tennis ideas are applied."),
+    c("Asks first", "Demo", ["Press Apply all then No."], "Nothing is applied."),
+    c("Dismiss selected", "Demo", ["Tick two ideas, Dismiss selected."], "Both are dismissed."),
+])
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     json.dump(cases, open(os.path.join(here, "uat_cases.json"), "w"), indent=1)

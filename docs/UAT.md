@@ -3357,3 +3357,52 @@ Steps:
 **Expected:** A market-only swing trade (tennis) or Under 2.5 scalp (football) can still be offered, and its reason says there is no model.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 51. Recommendations bulk actions
+
+_Selecting and applying several ideas._
+
+### 51.1 Tick boxes  \[Demo\]
+
+Steps:
+1. Open Recommendations with several setups.
+
+**Expected:** Every trade setup and script proposal has a tick box; a bar shows Select all, Apply selected, Dismiss selected and Apply all.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 51.2 Apply selected  \[Demo\]
+
+Steps:
+1. Tick two ideas, Apply selected, Yes, apply.
+
+**Expected:** Only those two are applied; the rest stay pending.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 51.3 Apply all respects filters  \[Demo\]
+
+Steps:
+1. Filter to Tennis, press Apply all.
+
+**Expected:** Only the tennis ideas are applied.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 51.4 Asks first  \[Demo\]
+
+Steps:
+1. Press Apply all then No.
+
+**Expected:** Nothing is applied.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 51.5 Dismiss selected  \[Demo\]
+
+Steps:
+1. Tick two ideas, Dismiss selected.
+
+**Expected:** Both are dismissed.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
