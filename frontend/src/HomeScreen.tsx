@@ -5,7 +5,7 @@ type Say = (text: string, kind?: 'ok' | 'warn' | 'err') => void
 interface HomeData {
   today: number; exposure: number; automation: boolean
   kpis: { month: number; roi: number | null; last7: number; win_rate: number | null; markets: number; clv: number | null; scripts_running: number; recs_pending: number }
-  overview: { market_id: string; event: string; market: string; strategy: string; rules: string; by: string; state: string; pnl: number | null; exposure: number | null; matched: number; start: string | null }[]
+  overview: { market_id: string; event: string; competition?: string; market: string; strategy: string; rules: string; by: string; state: string; pnl: number | null; exposure: number | null; matched: number; start: string | null }[]
   open_orders: { order_id: string; side: 'BACK' | 'LAY'; price: number; size: number; matched: number; remaining: number; status: string; event: string; runner: string; source: string }[]
   recs: { id: string; kind?: string; title: string; edge: number; stake: number; confidence: string; model_p: number; market_p: number; side: string; price: number }[]
   alerts: { id: string; t: number; type: string; text: string }[]
@@ -43,7 +43,7 @@ export default function HomeScreen({ say, go, openMarket }: { say: Say; go: (s: 
       </div>
       <div className="card tcard"><div className="row"><h3>Market overview</h3><span className="muted small">Markets in your Plan and any you hold a position in</span><span className="spacer" /><button className="sm" onClick={() => go('plan')}>Open Plan</button></div>
         <table className="tbl"><thead><tr><th>Market</th><th>Script / rules</th><th>Nominated by</th><th>State</th><th>P&amp;L now</th><th>At risk</th><th>Matched</th><th /></tr></thead>
-          <tbody>{d?.overview.map((o, i) => <tr key={o.market_id + i}><td><b>{o.event}</b><div className="muted small">{o.market}</div></td><td>{o.strategy}<div className="muted small">{o.rules || ''}</div></td>
+          <tbody>{d?.overview.map((o, i) => <tr key={o.market_id + i}><td><b>{o.event}</b>{o.competition && <div className="small" style={{ color: 'var(--accent, #2dd4bf)' }}>{o.competition}</div>}<div className="muted small">{o.market}</div></td><td>{o.strategy}<div className="muted small">{o.rules || ''}</div></td>
             <td><span className={'src' + (o.by === 'ai' ? ' ai' : '')}>{o.by === 'ai' ? 'AI' : 'You'}</span></td><td>{o.state}</td><td className={cls(o.pnl)}>{money(o.pnl)}</td><td>{o.exposure == null ? '–' : '£' + o.exposure.toFixed(2)}</td><td>£{o.matched.toFixed(2)}</td>
             <td style={{ whiteSpace: 'nowrap' }}><button className="sm" onClick={() => openMarket(o.market_id, 'grid')}>Grid</button> <button className="sm" onClick={() => openMarket(o.market_id)}>Ladder</button></td></tr>)}
             {!d?.overview.length && <tr><td colSpan={8} className="muted pad">Nothing planned and no open positions. Add a market to the Plan, or open one in Manual.</td></tr>}</tbody></table></div>

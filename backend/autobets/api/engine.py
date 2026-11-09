@@ -526,13 +526,13 @@ class Engine:
             v = self._row_view(r)
             m = self._mtm_m.get(r["market_id"], {})
             seen.add(r["market_id"])
-            overview.append({"market_id": r["market_id"], "event": r["event"], "market": r["market_name"], "strategy": v["strategy"], "rules": v["trigger"], "by": r["added_by"],
+            overview.append({"market_id": r["market_id"], "event": r["event"], "competition": self._info.get(r["market_id"], {}).get("competition", ""), "market": r["market_name"], "strategy": v["strategy"], "rules": v["trigger"], "by": r["added_by"],
                              "state": r["state"], "pnl": m.get("pnl"), "exposure": m.get("exposure"), "matched": round(vol.get(r["market_id"], 0.0), 2), "start": v["start"]})
         for mid in pos:
             if mid not in seen:
                 info = self._info.get(mid, {})
                 m = self._mtm_m.get(mid, {})
-                overview.append({"market_id": mid, "event": info.get("event", mid), "market": info.get("name", ""), "strategy": "Manual", "rules": "", "by": "you", "state": "open",
+                overview.append({"market_id": mid, "event": info.get("event", mid), "competition": info.get("competition", ""), "market": info.get("name", ""), "strategy": "Manual", "rules": "", "by": "you", "state": "open",
                                  "pnl": m.get("pnl"), "exposure": m.get("exposure"), "matched": round(vol.get(mid, 0.0), 2), "start": info.get("start")})
         open_orders = [self._order(o) | {"event": self._info.get(o.request.market_id, {}).get("event", ""), "runner": self._name(o.request.market_id, o.request.selection_id)}
                        for o in self.ex.open_orders() if o.status in OPEN]
