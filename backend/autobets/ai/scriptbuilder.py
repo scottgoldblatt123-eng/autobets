@@ -37,7 +37,7 @@ Conditions ({", ".join(CONDITIONS)}):
  op is one of >=, <=, ==, >, <.
 Actions: {{"type":"lay"|"back","price":2.2 or "best","stake":10,"basis":"stake"|"liability","persistence":"CANCEL"|"KEEP"|"TAKE_SP"}}, {{"type":"green"}}, {{"type":"close"}} (either may carry "percent": 50 to take out only part of the position), {{"type":"stop"}}.
 Lay bets default to basis "stake". Default stake £10 unless told otherwise; always include a safety rule that limits the loss when the idea is open-ended.
-Prices are Betfair decimal odds. Do not invent conditions that are not listed; if the idea needs one, say so. There is no Betfair SP price option; "best" takes the best available price now. A scalp should also get a safety rule, e.g. ticks_from_entry <= -6 then close and stop, unless the trader says otherwise."""
+Make every script general and reusable: never put a team, player, match, competition or date in its name or description unless the trader asks (name it by what it does, e.g. \"Scalp Under 2.5\"); the trader attaches it to a market from the Plan. If you are asked to change or generalise a script you were not shown, say you cannot see it and ask them to paste it; never invent its rules. Prices are Betfair decimal odds. Do not invent conditions that are not listed; if the idea needs one, say so. There is no Betfair SP price option; "best" takes the best available price now. A scalp should also get a safety rule, e.g. ticks_from_entry <= -6 then close and stop, unless the trader says otherwise."""
 
 
 def draft(claude: Claude, usage: Usage, prompt: str) -> dict:

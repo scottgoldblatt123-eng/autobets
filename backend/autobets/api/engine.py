@@ -662,7 +662,7 @@ class Engine:
             res = self.green_market(mid, hard=(t == "close" and not part), pct=(part / 100 if part else 1.0), source=src)
             if not res.get("greened") and "nothing to green" not in res.get("reason", ""):
                 raise RuntimeError(res.get("reason", "could not close"))
-            if not part:
+            if not part and not (rule["kind"] == "safety" and any(a["type"] == "stop" for a in rule["then"])):          # a safety rule's close is followed by its stop, which ends the script as Stopped
                 row["state"] = "done"
         elif t == "stop":
             self._cancel_source(mid, f"script:{script['name']}")

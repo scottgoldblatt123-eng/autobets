@@ -41,7 +41,7 @@ export default function Copilot({ marketIds, onClose, seed, docked = false, star
     setMsgs(next); setText(''); setBusy(true); setErr('')
     try {
       if (build) {
-        const last = [...msgs].reverse().find(m => m.draft?.script && !m.saved)?.draft?.script       // an unsaved draft is refined, not replaced
+        const last = [...msgs].reverse().find(m => m.draft?.script)?.draft?.script       // the latest draft (saved or not) is what a follow-up refers to: it is refined, not replaced
         const r = await api.buildScript(last ? `Here is my current draft script:\n${JSON.stringify(last)}\n\nChange it like this and return the full updated script: ${t}` : t)
         setMsgs([...next, { role: 'assistant', content: r.explanation || (r.error ?? ''), cost: r.cost_gbp, draft: r }])
         return
