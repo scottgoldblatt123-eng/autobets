@@ -257,6 +257,13 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         except (ValueError, KeyError) as e:
             raise HTTPException(422, str(e))
 
+    @app.get("/api/plan/{rid}/why")
+    def plan_why(rid: str, _=Depends(auth)):
+        try:
+            return engine.plan_why(rid)
+        except KeyError:
+            raise HTTPException(404, "unknown plan row")
+
     @app.patch("/api/plan/{rid}")
     def plan_edit(rid: str, body: dict, _=Depends(auth)):
         try:

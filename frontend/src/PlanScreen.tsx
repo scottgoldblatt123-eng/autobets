@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type PlanBet, type PlanRow, type PlanView } from './api'
+import { api, type PlanWhy, type PlanBet, type PlanRow, type PlanView } from './api'
 import AttachDialog from './AttachDialog'
 import ScriptSelect from './ScriptSelect'
 import { RuleCards } from './ScriptsScreen'
@@ -15,7 +15,8 @@ const TABS: Record<BetTab, string[]> = { Unmatched: ['UNMATCHED'], 'Partially ma
 export default function PlanScreen({ say, openMarket }: { say: Say; openMarket?: (marketId: string, view?: 'ladder' | 'grid') => void }) {
   const [view, setView] = useState<PlanView | null>(null), [bets, setBets] = useState<PlanBet[]>([])
   const [filter, setFilter] = useState<Filter>('all'), [tab, setTab] = useState<BetTab>('Unmatched'), [err, setErr] = useState('')
-  const [open, setOpen] = useState<Set<string>>(new Set())
+  const [open, setOpen] = useState<Set<string>>(new Set()), [why, setWhy] = useState<Record<string, PlanWhy | string>>({})
+  const askWhy = (id: string) => api.planWhy(id).then(w => setWhy(x => ({ ...x, [id]: w }))).catch(e => setWhy(x => ({ ...x, [id]: (e as Error).message })))
   const flip = (id: string) => setOpen(o => { const n = new Set(o); n.has(id) ? n.delete(id) : n.add(id); return n })
   const [edit, setEdit] = useState<PlanRow | null>(null), [stake, setStake] = useState(''), [rm, setRm] = useState<PlanRow | null>(null), [pickScript, setPickScript] = useState<{ m: string; sid: string | null; name: string } | null>(null)
   const load = useCallback(() => Promise.all([api.plan(), api.planBets()]).then(([p, b]) => { setView(p); setBets(b); setErr('') }).catch(e => setErr((e as Error).message)), [])
@@ -45,7 +46,7 @@ export default function PlanScreen({ say, openMarket }: { say: Say; openMarket?:
             <td>{r.strategy}{r.headline && <div className="muted small trunc" title={r.headline}>{r.headline}</div>}{r.script_id && <button className="linkbtn" onClick={() => flip(r.id)}>{open.has(r.id) ? 'Hide rules ▴' : 'Show rules ▾'}</button>}{r.script_id && !r.script_enabled && <div className="muted small">script is off</div>}</td>
             <td>{gbp(r.stake)}<div className="muted small">max {gbp(r.max_liability)}</div></td>            <td><span className={'state ' + r.state}>{STATE[r.state]}</span>{(r.repeat ?? 1) > 1 && <div className="muted small">Run {r.cycle ?? 1} of {r.repeat}</div>}{r.note && <div className="loss small">{r.note}</div>}{clash.has(r.id) && <div className="warn small">Clash: another live script on this market</div>}</td>
             <td className="nowrap"><button className="sm" onClick={() => { setEdit(r); setStake(r.stake == null ? '' : String(r.stake)) }}>Edit</button> <button className="sm" onClick={() => setRm(r)}>Remove</button></td></tr>,
-            open.has(r.id) && r.text && <tr key={r.id + 'x'} className="ruleexp"><td /><td colSpan={7}><div className="row" style={{ marginBottom: 4 }}><span className="muted small">{r.trigger ? `Entry trigger: ${r.trigger}` : ''}</span><span className="spacer" /><button className="linkbtn" onClick={() => flip(r.id)}>Collapse ▴</button></div><RuleCards text={r.text} /></td></tr>])}
+            open.has(r.id) && r.text && <tr key={r.id + 'x'} className="ruleexp"><td /><td colSpan={7}><div className="row" style={{ marginBottom: 4 }}><span className="muted small">{r.trigger ? `Entry trigger: ${r.trigger}` : ''}</span><span className="spacer" /><button className="linkbtn" onClick={() => flip(r.id)}>Collapse ▴</button></div><RuleCards text={r.text} /><WhyPanel w={why[r.id]} ask={() => void askWhy(r.id)} /></td></tr>])}
             {!rows.length && <tr><td colSpan={6} className="muted pad">{view?.rows.length ? 'Nothing matches this filter.' : 'The Plan is empty. Add a market and attach a script, or add one from Scripts.'}</td></tr>}</tbody></table>
         <div className="muted small">Pay-off is not shown: it depends on where each trade exits, which a script decides as the match unfolds.</div></div>
       <div className="card tcard"><h3>Bets</h3><div className="muted small">All bets from you, scripts and the AI</div>
@@ -66,4 +67,19 @@ export default function PlanScreen({ say, openMarket }: { say: Say; openMarket?:
         <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={() => setRm(null)}>Keep</button><button className="stopbtn" onClick={() => act(() => api.planRemove(rm.id), 'Removed.').then(() => setRm(null))}>Remove</button></div></div></div>}
     </div>
   )
+}
+
+/** "Why hasn't it fired?": every rule's conditions, met or not, as they stand right now, plus the live readings they look at. */
+function WhyPanel({ w, ask }: { w?: PlanWhy | string; ask: () => void }) {
+  if (!w) return <div style={{ marginTop: 6 }}><button className="sm" onClick={ask}>Why hasn't it fired?</button></div>
+  if (typeof w === 'string') return <div className="loss small" style={{ marginTop: 6 }}>{w} <button className="linkbtn" onClick={ask}>Retry</button></div>
+  if (!w.ok) return <div className="muted small" style={{ marginTop: 6 }}>{w.reason}</div>
+  const verdict = !w.automation ? 'Automation is switched off, so no script runs.' : !w.script_enabled ? 'This script is switched off.' : w.reason ?? ''
+  return <div className="card" style={{ marginTop: 8, padding: 10 }}>
+    <div className="row"><b>Right now</b><span className="spacer" /><button className="linkbtn" onClick={ask}>Refresh</button></div>
+    {verdict && <div className="loss small">{verdict}</div>}
+    <div className="small muted" style={{ margin: '4px 0' }}>{Object.entries(w.readings).map(([k, v]) => `${k}: ${v === null ? 'not available' : v === true ? 'yes' : v === false ? 'no' : v}`).join(' · ')}</div>
+    {w.rules.map(r => <div key={r.id} className="small" style={{ marginTop: 4 }}><b>{r.id} · {r.kind}</b> {r.done ? <span className="muted">(already done this run)</span> : r.conditions.every(c => c.met) ? <span className="gain">all conditions met: it should act</span> : null}
+      {r.conditions.map((c, i) => <div key={i} className={c.met ? 'gain' : 'loss'}>{c.met ? '✓' : '✗'} {c.text}</div>)}</div>)}
+  </div>
 }

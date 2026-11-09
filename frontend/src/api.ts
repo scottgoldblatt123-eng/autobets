@@ -88,6 +88,7 @@ export interface RecStats { pending: number; applied: number; acceptance: number
 export interface AlertRow { id: string; t: number; type: string; text: string; action: string; needs_action: boolean; ref: { kind?: string; id?: string }; read: boolean; active: boolean }
 export interface HealthItem { key: string; name: string; level: 'ok' | 'bad' | 'off'; detail: string }
 
+export interface PlanWhy { ok: boolean; reason?: string; state: string; cycle: number; note: string; automation: boolean; script_enabled: boolean; readings: Record<string, string | number | boolean | null>; rules: { id: string; kind: string; done: boolean; conditions: { text: string; met: boolean }[] }[] }
 export interface PerfData {
   days: number; compare?: boolean; current: { net: number; trades: number; win_rate: number | null }; previous: { net: number; trades: number; win_rate: number | null }; clv: number | null; clv_n: number; costs: number
   curve: { t: number; v: number }[]; prev_curve: { t: number; v: number }[]; strategies: { name: string; trades: number; pnl: number; win_rate: number; prev_trades?: number; prev_pnl?: number }[]
@@ -106,6 +107,7 @@ export const api = {
   liveArm: (confirm: string) => call<{ armed: boolean }>('/api/live/arm', { method: 'POST', body: JSON.stringify({ confirm }) }),
   liveDisarm: () => call<{ armed: boolean }>('/api/live/disarm', { method: 'POST' }),
   credentials: () => call<{ items: { name: string; set: boolean; detail: string }[]; where: string }>('/api/credentials'),
+  planWhy: (id: string) => call<PlanWhy>(`/api/plan/${id}/why`),
   perf: (query: string) => call<PerfData>(`/api/analyse/performance?${query}`),
   anModels: () => call<ModelsData>('/api/analyse/models'),
   anAi: () => call<AiLearning>('/api/analyse/ai'),

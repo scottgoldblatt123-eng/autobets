@@ -377,37 +377,39 @@ def evaluate(script: dict, view: dict, fired: set[str]) -> list[tuple[dict, dict
     return out
 
 
+def describe_cond(c: dict) -> str:
+    """Plain-English text for one condition."""
+    t = c["type"]
+    if t == "price" and "rel" in c: return f"price ({c['ref']}) is {c['op']} {c['rel']:g}× the price when this was added to the Plan"
+    if t == "price": return f"price ({c['ref']}) is {c['op']} {c['value']:g}"
+    if t == "in_play": return "market is in-play" if c["value"] else "market is not yet in-play"
+    if t == "set_number": return f"set number {c['op']} {c['value']:g}"
+    if t == "serving": return "this player is serving" if c["value"] else "this player is receiving"
+    if t == "game_points_diff": return f"points in the current game, this player minus opponent, {c['op']} {c['value']:g}"
+    if t == "game_score_is": return f"game score is {c['me']}-{c['opp']} (this player first)"
+    if t == "breaks_diff": return f"service breaks in this set, this player's minus the opponent's, {c['op']} {c['value']:g} (+1 = one break up)"
+    if t == "break_point": return "this player is serving and facing a break point" if c["side"] == "against" else "this player has a break point on the opponent's serve"
+    if t == "set_games_total": return f"games played in the set {c['op']} {c['value']:g}"
+    if t == "prev_set_games_diff": return f"games margin in the previous set, this player minus opponent, {c['op']} {c['value']:g}"
+    if t == "half_time": return "it is half time" if c["value"] else "it is not half time"
+    if t == "set_games_diff": return f"games won in the current set, this player minus opponent, {c['op']} {c['value']:g} (negative = behind)"
+    if t == "sets_diff": return f"sets won, this player minus opponent, {c['op']} {c['value']:g}"
+    if t == "goals_total": return f"total goals {c['op']} {c['value']:g}"
+    if t == "score_is": return f"score is {c['home']}-{c['away']}"
+    if t == "minute": return f"minute {c['op']} {c['value']:g}"
+    if t == "rule_matched": return f"rule {c['rule']} has matched"
+    if t == "position_loss": return f"position loss {c['op']} £{c['value']:g}"
+    if t == "ticks_from_entry": return f"exit price is {c['op']} {c['value']:g} ticks {'in profit' if c['value'] >= 0 else 'against you'} from where you were matched"
+    if t == "ticks_from_peak": return f"the exit price has given back {c['value']:g} ticks from its best since you were matched (trailing stop)"
+    if t == "minutes_to_start": return f"minutes to the scheduled start {c['op']} {c['value']:g}"
+    if t == "spread_ticks": return f"spread between best back and lay {c['op']} {c['value']:g} ticks"
+    if t == "market_matched": return f"matched on the market {c['op']} £{c['value']:,.0f}"
+    if t == "price_move": return f"price moved {c['op']} {c['value']:g} ticks in the last {c['seconds']}s (+ drifting out, - shortening)"
+    return f"time is {c['start']}–{c['end']}"
+
+
 def describe(script: dict) -> list[dict]:
     """Plain-English text for each rule, for the screens and for the AI's own check of what it drafted."""
-    def c_txt(c):
-        t = c["type"]
-        if t == "price" and "rel" in c: return f"price ({c['ref']}) is {c['op']} {c['rel']:g}× the price when this was added to the Plan"
-        if t == "price": return f"price ({c['ref']}) is {c['op']} {c['value']:g}"
-        if t == "in_play": return "market is in-play" if c["value"] else "market is not yet in-play"
-        if t == "set_number": return f"set number {c['op']} {c['value']:g}"
-        if t == "serving": return "this player is serving" if c["value"] else "this player is receiving"
-        if t == "game_points_diff": return f"points in the current game, this player minus opponent, {c['op']} {c['value']:g}"
-        if t == "game_score_is": return f"game score is {c['me']}-{c['opp']} (this player first)"
-        if t == "breaks_diff": return f"service breaks in this set, this player's minus the opponent's, {c['op']} {c['value']:g} (+1 = one break up)"
-        if t == "break_point": return "this player is serving and facing a break point" if c["side"] == "against" else "this player has a break point on the opponent's serve"
-        if t == "set_games_total": return f"games played in the set {c['op']} {c['value']:g}"
-        if t == "prev_set_games_diff": return f"games margin in the previous set, this player minus opponent, {c['op']} {c['value']:g}"
-        if t == "half_time": return "it is half time" if c["value"] else "it is not half time"
-        if t == "set_games_diff": return f"games won in the current set, this player minus opponent, {c['op']} {c['value']:g} (negative = behind)"
-        if t == "sets_diff": return f"sets won, this player minus opponent, {c['op']} {c['value']:g}"
-        if t == "goals_total": return f"total goals {c['op']} {c['value']:g}"
-        if t == "score_is": return f"score is {c['home']}-{c['away']}"
-        if t == "minute": return f"minute {c['op']} {c['value']:g}"
-        if t == "rule_matched": return f"rule {c['rule']} has matched"
-        if t == "position_loss": return f"position loss {c['op']} £{c['value']:g}"
-        if t == "ticks_from_entry": return f"exit price is {c['op']} {c['value']:g} ticks {'in profit' if c['value'] >= 0 else 'against you'} from where you were matched"
-        if t == "ticks_from_peak": return f"the exit price has given back {c['value']:g} ticks from its best since you were matched (trailing stop)"
-        if t == "minutes_to_start": return f"minutes to the scheduled start {c['op']} {c['value']:g}"
-        if t == "spread_ticks": return f"spread between best back and lay {c['op']} {c['value']:g} ticks"
-        if t == "market_matched": return f"matched on the market {c['op']} £{c['value']:,.0f}"
-        if t == "price_move": return f"price moved {c['op']} {c['value']:g} ticks in the last {c['seconds']}s (+ drifting out, - shortening)"
-        return f"time is {c['start']}–{c['end']}"
-
     def a_txt(a):
         t = a["type"]
         if t in ("back", "lay"):
@@ -417,7 +419,7 @@ def describe(script: dict) -> list[dict]:
             return f"Take out {a['percent']}% of the position (a partial hedge), the rest stays open"
         return {"green": "Hedge to full green at the best available prices", "close": "Close the position at the best available prices",
                 "stop": "Stop the script"}[t]
-    return [{"id": r["id"], "kind": r["kind"], "if": [c_txt(c) for c in r["when"]],
+    return [{"id": r["id"], "kind": r["kind"], "if": [describe_cond(c) for c in r["when"]],
              "then": [a_txt(a) for a in r["then"]] + ([f"Repeat up to {r['repeat']} times, one at a time, each after the exit has levelled the position"] if r.get("repeat", 1) > 1 else [])}
             for r in script["rules"]]
 

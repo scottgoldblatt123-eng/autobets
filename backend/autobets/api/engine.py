@@ -22,7 +22,7 @@ from ..ledger import Ledger
 from ..plan import Plan
 from ..recs import Recs
 from ..order_service import Blocked, OrderService
-from ..scripts import ScriptStore, describe, evaluate, gain_ticks, headline
+from ..scripts import ScriptStore, check, describe, describe_cond, evaluate, gain_ticks, headline
 from ..settings import Settings
 from .demo import DemoFeed
 from .history import Tracker, load_logged
@@ -745,6 +745,8 @@ class Engine:
                 if self._rearm(row, script, book):
                     acted += 1
                 continue
+            if self._stale_entry(row, script):
+                continue
             fired = set(row["fired"])
             for rule, act in evaluate(script, self._script_view(row, book), fired):
                 ok = True
@@ -769,6 +771,52 @@ class Engine:
                 if row["state"] in ("done", "stopped") or not ok or row.get("await_flat"):
                     break
         return acted
+
+    def plan_why(self, rid: str) -> dict:
+        """Why has this row (not) fired? Each rule's conditions with whether they are met right now, plus the live readings the conditions look at."""
+        row = self.plan.rows.get(rid)
+        if not row:
+            raise KeyError(rid)
+        if not row.get("script_id") or row["script_id"] not in self.scripts.scripts:
+            return {"ok": False, "reason": "This row has no script."}
+        script = self.scripts.current(row["script_id"])
+        out = {"ok": True, "state": row["state"], "cycle": row.get("cycle", 1), "note": row.get("note", ""), "automation": self.settings.automation_enabled,
+               "script_enabled": bool(self.scripts.get(row["script_id"])["enabled"]), "rules": [], "readings": {}}
+        book = next(iter(self.feed.get_books([row["market_id"]], depth=False)), None)
+        if book is None:
+            out["reason"] = "No prices for this market right now."
+            return out
+        self.ex.refresh([book])
+        view = self._script_view(row, book)
+        pr, ctx = view["prices"], view.get("ctx") or {}
+        sp = ticks.ticks_between(ticks.nearest(pr["back"]), ticks.nearest(pr["lay"])) if pr.get("back") and pr.get("lay") else None
+        out["readings"] = {"Market status": book.status, "In-play": bool(view.get("in_play")), "Best back": pr["back"], "Best lay": pr["lay"], "Spread (ticks)": sp,
+                           "Live score feed": bool(ctx), "Minute": ctx.get("elapsed"), "Goals": sum(ctx["goals"]) if ctx.get("goals") else None, "Entry matched": bool(view.get("entry"))}
+        fired = set(row["fired"])
+        for r in script["rules"]:
+            out["rules"].append({"id": r["id"], "kind": r["kind"], "done": r["id"] in fired,
+                                 "conditions": [{"text": describe_cond(c), "met": bool(check(c, view, fired))} for c in r["when"]]})
+        return out
+
+    STALE_ENTRY_S = 45
+
+    def _stale_entry(self, row: dict, script: dict) -> bool:
+        """A script's entry bet that nobody has matched for a while is cancelled and the same run re-armed. Without this a scalp whose first bet was left behind by the price would sit 'running' forever: its exits need a matched entry, so nothing would ever fire or repeat."""
+        eo = row.get("entry_order")
+        if row.get("state") != "running" or not eo or row.get("await_flat"):
+            return False
+        try:
+            o = self.ex.get_order(eo)
+        except Exception:       # noqa: BLE001
+            return False
+        if o.matched > 0 or o.status not in OPEN or time.time() - o.placed_at < self.STALE_ENTRY_S:
+            return False
+        self.ex.cancel_order(eo)
+        self.fok.pop(eo, None)
+        row.update({"fired": [], "state": "armed", "entry_order": None, "note": ""})
+        self._log(f"Script '{script['name']}' on {row['event']}: entry bet unmatched for {self.STALE_ENTRY_S}s, cancelled; run {row.get('cycle', 1)} re-armed", "info")
+        self.alerts.add("info", f"{script['name']}: entry bet on {row['runner']} was not matched within {self.STALE_ENTRY_S}s, so it was cancelled and the script is trying again", "Script retry", False, {"kind": "plan", "id": row["id"]})
+        return True
 
     def _rearm(self, row: dict, script: dict, book) -> bool:
         """After an exit has greened, start the next cycle once the position is level and nothing of this script is still waiting."""

@@ -65,3 +65,8 @@ In AI recommended trades on Home, **Apply** on a row accepts that idea straight 
 
 ### Analyse date range and comparison
 The Date range control on Analyse has presets (Today, Yesterday, Last 7/30/90 days, This week, Last week, This month, Last month, This year) and two calendar boxes for any dates you like. Tick **Compare** to set a second period: Previous period (the same length straight before, or the previous calendar month if you picked a whole month), Same period last year, or your own dates. With Compare on, the tiles show both periods, the Cumulative P&L chart overlays the comparison as a dashed line, and By strategy adds Compare markets, Compare P&L and Change columns. Your choice is remembered in this browser.
+
+### Why hasn't it fired?
+On the Plan, open a row's rules (Show rules) and press **Why hasn't it fired?**. It lists every rule's conditions with a tick or cross for how they stand right now, and the readings they look at (market status, in-play, minute, goals, spread, whether the live score feed is connected). A rule with every condition ticked should act on the next pass. It also says if automation or the script itself is switched off.
+
+If a script's entry bet is not matched within 45 seconds it is now cancelled and the same run tries again, so a scalp cannot get stuck waiting on a bet the price has left behind. An alert says when this happens.

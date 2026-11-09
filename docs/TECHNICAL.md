@@ -69,3 +69,6 @@ Not yet done: replaying setup scripts over the recorded price log (needs in-play
 
 ### Analyse ranges
 `GET /api/analyse/performance` accepts `days` (legacy: last N days v the N before) or `start`, `end` (UK dates, end inclusive) with optional `cstart`, `cend`. `analyse.performance_between` returns the same shape plus `compare`, per-strategy `prev_trades`/`prev_pnl`, and the comparison curve shifted onto the main period. Frontend: `DateRange.tsx` (preset maths in `presetRange`/`cmpRange`, unit-tested).
+
+### Diagnostics and stale entries
+`GET /api/plan/{id}/why` (`Engine.plan_why`) evaluates each rule's conditions with `scripts.check` against the live view and returns them with `describe_cond` text plus readings. `Engine._stale_entry` (45s, `STALE_ENTRY_S`) cancels a script entry order that has no fills and re-arms the same cycle; previously an unmatched entry left the row Running with no exit able to fire (exits need a matched entry) and no repeat.

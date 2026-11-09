@@ -3276,3 +3276,44 @@ Steps:
 **Expected:** The same range and compare settings are still selected.
 
 Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+## 49. Why hasn't it fired
+
+_Diagnosing a script on the Plan._
+
+### 49.1 Open the checklist  \[Either\]
+
+Steps:
+1. Plan, Show rules on a row, Why hasn't it fired?
+
+**Expected:** Each rule lists its conditions with a tick or cross, plus readings such as in-play, minute, goals and spread.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 49.2 Refresh  \[Either\]
+
+Steps:
+1. Press Refresh as the match changes.
+
+**Expected:** Ticks and crosses update to the current state.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 49.3 Switched off  \[Either\]
+
+Steps:
+1. Switch the script off or automation off, then open the checklist.
+
+**Expected:** A red line says automation or the script is off.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 
+
+### 49.4 Unmatched entry retries  \[Practice\]
+
+Steps:
+1. Let a script place an entry bet that does not match (price moves away).
+2. Wait 45 seconds.
+
+**Expected:** The bet is cancelled, an alert says so, and the same run places a new entry.
+
+Result: ☐ Pass ☐ Fail ☐ Blocked  Notes: 

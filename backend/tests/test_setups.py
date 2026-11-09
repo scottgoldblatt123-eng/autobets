@@ -200,3 +200,38 @@ def test_proposal_needs_a_key_and_respects_the_spend_cap():
         def record(self, *a): return 0.01
     out = scriptideas.propose(Key(), U2(), [{"name": "x", "sport": "any", "headline": "h"}], ["t: 1 accepted"], 3)
     assert len(out["ideas"]) == 1 and out["cost_gbp"] == 0.01
+
+
+def test_plan_why_lists_each_condition_with_whether_it_is_met():
+    e = Engine.demo()
+    mid = "1.900004"
+    info = e.info([mid])[mid]
+    over = next(k for k, v in info["runners"].items() if v.lower().startswith("over"))
+    sc = e.scripts.create({"name": "Why test", "sport": "football", "description": "d", "rules": [
+        {"id": "r1", "kind": "entry", "when": [{"type": "in_play", "value": True}, {"type": "minute", "op": ">=", "value": 2}],
+         "then": [{"type": "back", "price": "best", "stake": 10, "basis": "stake", "persistence": "CANCEL"}]}]}, "you", "t")
+    e.scripts.set_enabled(sc["id"], True)
+    row = e.plan_add(mid, over, sc["id"], 10)
+    j = e.plan_why(row["id"])
+    assert j["ok"] and j["rules"][0]["conditions"] and all("met" in c and c["text"] for r in j["rules"] for c in r["conditions"])
+    assert "Spread (ticks)" in j["readings"] and j["script_enabled"] is True
+    with pytest.raises(KeyError):
+        e.plan_why("nope")
+
+
+def test_unmatched_scalp_entry_is_cancelled_and_retried_instead_of_hanging():
+    e = Engine.demo()
+    mid = "1.900004"
+    info = e.info([mid])[mid]
+    sel = next(k for k, v in info["runners"].items() if v.lower().startswith("under"))
+    sc = e.scripts.create({"name": "Stale test", "sport": "football", "description": "d", "rules": [
+        {"id": "r1", "kind": "entry", "when": [{"type": "price", "op": ">=", "value": 1.01, "ref": "last"}], "then": [{"type": "back", "price": 100, "stake": 10, "basis": "stake", "persistence": "CANCEL"}], "repeat": 3}]}, "you", "t")
+    e.scripts.set_enabled(sc["id"], True)
+    row = e.plan.rows[e.plan_add(mid, sel, sc["id"], 10)["id"]]
+    e.run_scripts()
+    assert row["state"] == "running" and row["entry_order"]
+    first = row["entry_order"]
+    e.ex.get_order(first).placed_at -= 120                                     # it has sat unmatched for two minutes
+    e.run_scripts()
+    assert row["entry_order"] != first and row.get("cycle", 1) == 1                   # cancelled, and the same run went again
+    assert e.ex.get_order(first).status.value == "CANCELLED"

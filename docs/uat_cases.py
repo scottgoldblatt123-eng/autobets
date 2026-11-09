@@ -499,6 +499,13 @@ sec("Analyse date range and compare", "Picking periods and comparing them.", [
     c("Choice is remembered", "Either", ["Set a range, reload."], "The same range and compare settings are still selected."),
 ])
 
+sec("Why hasn't it fired", "Diagnosing a script on the Plan.", [
+    c("Open the checklist", "Either", ["Plan, Show rules on a row, Why hasn't it fired?"], "Each rule lists its conditions with a tick or cross, plus readings such as in-play, minute, goals and spread."),
+    c("Refresh", "Either", ["Press Refresh as the match changes."], "Ticks and crosses update to the current state."),
+    c("Switched off", "Either", ["Switch the script off or automation off, then open the checklist."], "A red line says automation or the script is off."),
+    c("Unmatched entry retries", "Practice", ["Let a script place an entry bet that does not match (price moves away).", "Wait 45 seconds."], "The bet is cancelled, an alert says so, and the same run places a new entry."),
+])
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     json.dump(cases, open(os.path.join(here, "uat_cases.json"), "w"), indent=1)
